@@ -1,0 +1,9 @@
+protocol_mapping:
+  other: convert
+
+pipelines:
+  convert:
+    name: convert
+    path: sra_convert.py
+    arguments:
+      "--srr": SRR

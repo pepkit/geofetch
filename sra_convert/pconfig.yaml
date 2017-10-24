@@ -1,0 +1,9 @@
+metadata:
+  output_dir: ${PROCESSED}pepsra
+  sample_annotation: ${SRAMETA}annocomb_GSE52457.csv
+  pipeline_interfaces: pi.yaml
+  merge_table: ${SRAMETA}allmerge_GSE52457.csv
+
+subprojects:
+  metadata:
+    pipeline_interfaces: "${CODE}pepsra/sra_convert/pi.yaml"

@@ -40,13 +40,14 @@ def main(cmdl):
 	
 	args = _parse_cmdl(cmdl)
 
+	key=args.srr[0]
 	pm = pypiper.PipelineManager(	name="sra_convert",
 									outfolder=args.srafolder,
 									args=args)
 
 	nfiles = len(args.srr)
 	for i in range(nfiles):
-		print("Processing " + str(i) + " of " + str(nfiles))
+		print("Processing " + str(i+1) + " of " + str(nfiles))
 		infile = os.path.join(args.srafolder, args.srr[i] + ".sra")
 		outfile = os.path.join(args.bamfolder, args.srr[i] + ".bam")
 		cmd = "sam-dump -u {data_source} | samtools view -bS - > {outfile}".format(

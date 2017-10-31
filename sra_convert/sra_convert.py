@@ -26,7 +26,7 @@ def _parse_cmdl(cmdl):
 	
 	parser.add_argument(
 			"-r", "--srr", required=True, nargs="+",
-			help="SRR accession")
+			help="SRR files")
 
 	parser = pypiper.add_pypiper_args(parser, groups=["pypiper", "config"])
 	return parser.parse_args(cmdl)
@@ -36,8 +36,11 @@ def safe_echo(var):
 	return os.getenv(var, "")
 
 
-def main(cmdl):
-	
+#def main(cmdl):
+
+if __name__ == "__main__":
+	#main(sys.argv[1:])
+	cmdl = sys.argv[1:]
 	args = _parse_cmdl(cmdl)
 
 	key=args.srr[0]
@@ -48,14 +51,19 @@ def main(cmdl):
 	nfiles = len(args.srr)
 	for i in range(nfiles):
 		print("Processing " + str(i+1) + " of " + str(nfiles))
-		infile = os.path.join(args.srafolder, args.srr[i] + ".sra")
-		outfile = os.path.join(args.bamfolder, args.srr[i] + ".bam")
+		infile = args.srr[i]
+		srr_acc = os.path.splitext(os.path.basename(args.srr[i]))[0]
+		outfile = os.path.join(args.bamfolder, srr_acc + ".bam")
+		if (not os.path.isfile(infile)):
+			infile = os.path.join(args.srafolder, args.srr[i] + ".sra")
+			outfile = os.path.join(args.bamfolder, args.srr[i] + ".bam")
+		if (not os.path.isfile(infile)):
+			next
+
+			
 		cmd = "sam-dump -u {data_source} | samtools view -bS - > {outfile}".format(
 			data_source=infile, outfile=outfile)
-
 		pm.run(cmd, target=outfile)
 
-	pm.stop_pipeline()
 
-if __name__ == "__main__":
-	main(sys.argv[1:])
+	pm.stop_pipeline()

@@ -4,6 +4,11 @@ metadata:
   pipeline_interfaces: pipeline_interface_convert.yaml
   merge_table: ${SRAMETA}allmerge_GSE52457.csv
 
+derived_columns: [data_source]
+
+data_sources:
+  SRA: "${SRARAW}{SRR}.sra"
+
 subprojects:
   convert:
     metadata:

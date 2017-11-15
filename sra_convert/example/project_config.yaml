@@ -1,3 +1,6 @@
+# This is an example project for how to use the sra_convert pipeline to convert
+# .sra files to .bam files using looper.
+
 metadata:
   output_dir: ${PROCESSED}pepsra
   sample_annotation: ${SRAMETA}annocomb_GSE52457.csv

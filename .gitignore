@@ -1,0 +1,6 @@
+# IDEs
+.idea/
+
+# Python
+*.pyc
+

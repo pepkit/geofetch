@@ -265,7 +265,6 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 	return exp
 
 
-
 def main(cmdl):
 	
 	args = _parse_cmdl(cmdl)
@@ -285,8 +284,31 @@ def main(cmdl):
 	if not os.path.isfile(args.input):
 		print("Input: No file named {}; trying it as an accession...".format(args.input))
 		# No limits accepted on command line, so keep an empty list.
-		acc_GSE = args.input
-		acc_GSE_list[acc_GSE] = OrderedDict()
+		if args.input.startswith("SRP"):
+			base, ext = os.path.splitext(args.input)
+			if ext:
+				raise ValueError("SRP-like input must be an SRP accession")
+			file_sra = os.path.join(
+				args.metadata_folder, "SRA_{}.csv".format(args.input))
+			# Fetch and write the metdata for this SRP accession.
+			Accession(args.input).fetch_metadata(file_sra)
+			if args.just_metadata:
+				return
+			# Read the Run identifiers to download.
+			run_ids = []
+			with open(file_sra, 'r') as f:
+				for l in f:
+					if l.startswith("SRR"):
+						r_id = l.split(",")[0]
+						run_ids.append(r_id)
+			print("{} run(s)".format(len(run_ids)))
+			for r_id in run_ids:
+				subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
+			# Early return if we've just handled SRP accession directly.
+			return
+		else:
+			acc_GSE = args.input
+			acc_GSE_list[acc_GSE] = OrderedDict()
 	else:
 		print("Input: Accession list file found: '{}'".format(args.input))
 	

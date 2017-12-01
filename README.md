@@ -1,13 +1,14 @@
 # geofetch
 
-Converts GEO or SRA accessions into PEP projects. This project is still pre-release, but it is completely functional. However, some things may change in the near future.
+Given a GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standaridized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data aquisition and metadata formatting and standaridazation for you.
 
+This project is still pre-release, but it is completely functional. However, some things may change in the near future.
 
 ## Overview
 
 geofetch has two components:
 
-1. `geofetch/geofetch.py` - A python script that downloads metadata and produces PEP-compatible sample annotation files, and downloads `.sra` files.
+1. `geofetch/geofetch.py` - A python script that downloads metadata and produces PEP-compatible sample annotation files, and downloads `.sra` files (or processed data from GEO if requested).
 2. `sra_convert/sra_convert.py` - A [pypiper](http://pypiper.readthedocs.io) pipeline that converts SRA files into BAM files.
 
 

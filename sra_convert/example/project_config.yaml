@@ -11,8 +11,3 @@ derived_columns: [data_source]
 
 data_sources:
   SRA: "${SRARAW}{SRR}.sra"
-
-subprojects:
-  convert:
-    metadata:
-      pipeline_interfaces: "${CODE}pepsra/sra_convert/pipeline_interface_convert.yaml"

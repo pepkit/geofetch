@@ -120,7 +120,7 @@ def _parse_cmdl(cmdl):
 
 	parser.add_argument(
 			"-g", "--geofolder", default=safe_echo("GEODATA"),
-			help="Optional: Specify a location to store sra files [Default: $GEODATA:" + safe_echo("GEODATA") + "]")
+			help="Optional: Specify a location to store processed GEO files [Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 	
 	parser.add_argument(
 			"--picard", dest="picard_path", default=safe_echo("PICARD"),

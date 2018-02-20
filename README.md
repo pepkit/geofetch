@@ -18,13 +18,13 @@ geofetch has two components:
 2. Download SRA data using `geofetch.py`. You run it like:
 
 	```
-	geofetch.py -i GSE#####
+	python geofetch.py -i GSE#####
 	```
 
 	This will download all `.sra` files into your `$SRARAW` folder. To see full options, see the help menu with:
 
 	```
-	geofetch.py -h
+	python geofetch.py -h
 	```
 
 	This will also produce a sample annotation sheet (currently called `annocomb_GSE#####.csv` in your `$SRAMETA` folder), which is what you will use as part of your PEP.

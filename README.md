@@ -46,3 +46,4 @@ looper run project_config.yaml --lump
 echo "/repository/user/main/public/root = \"$SRARAW\"" > ${HOME}/.ncbi/user-settings.mkfg
 ```
 
+If the `.ncbi` folder does not exist in your home directory, you can just make a folder `.ncbi` with an empty file `user-settings.mkfg` and follow the same command above.

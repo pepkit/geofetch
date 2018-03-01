@@ -5,7 +5,7 @@ metadata:
   output_dir: ${PROCESSED}pepsra
   sample_annotation: ${SRAMETA}annocomb_GSE52457.csv
   pipeline_interfaces: pipeline_interface_convert.yaml
-  merge_table: ${SRAMETA}allmerge_GSE52457.csv
+  sample_subannotation: ${SRAMETA}allmerge_GSE52457.csv
 
 derived_columns: [data_source]
 

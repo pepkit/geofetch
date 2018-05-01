@@ -13,19 +13,19 @@ pipelines:
         file_size: "0"
         cores: "1"
         mem: "4000"
-        time: "50-02:00:00"
+        time: "0-06:00:00"
       package1:
         file_size: "10"
         cores: "1"
         mem: "4000"
-        time: "50-06:00:00"
+        time: "0-12:00:00"
       package2:
         file_size: "100"
         cores: "1"
         mem: "4000"
-        time: "50-12:00:00"
+        time: "1-00:00:00"
       package3:
         file_size: "300"
         cores: "1"
         mem: "4000"
-        time: "52-00:00:00"
+        time: "2-00:00:00"

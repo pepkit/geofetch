@@ -34,7 +34,7 @@ geofetch has two components:
 4. Run the `sra_convert` pipeline using `looper` by running this command:
 
 ```
-looper run project_config.yaml --lump
+looper run project_config.yaml --lump 5000
 ```
 
 ## Setting data download location with `sratools`

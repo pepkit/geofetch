@@ -1,6 +1,6 @@
 # geofetch
 
-Given a GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standardized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
+Given one or more GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standardized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
 
 This project is still pre-release, but it is completely functional. However, some things may change in the near future.
 
@@ -15,26 +15,34 @@ geofetch has two components:
 ## How to build a PEP from SRA or GEO data
 
 1. Set environment variables for `$SRARAW` (where `.sra` files will live) and `$SRABAM` (where `.bam` files will live). `geofetch` will use these environment variables to automatically know where to store the `.sra` and `.bam` files.
-2. Download SRA data using `geofetch.py`. You run it like:
+
+2. Download SRA data using `geofetch.py`. To see full options, see the help menu with:
+
+	```
+	python geofetch.py -h
+	```
+	
+	In most basic mode, you run it like:
 
 	```
 	python geofetch.py -i GSE#####
 	```
 
-	This will download all `.sra` files into your `$SRARAW` folder. To see full options, see the help menu with:
+	This will do 2 things:
 
-	```
-	python geofetch.py -h
-	```
+	1. download all `.sra` files from `GSE#####` into your `$SRARAW` folder.
+	2. produce a sample annotation sheet (currently called `annocomb_GSE#####.csv` in your `$SRAMETA` folder), which is what you will use as part of your PEP.
 
-	This will also produce a sample annotation sheet (currently called `annocomb_GSE#####.csv` in your `$SRAMETA` folder), which is what you will use as part of your PEP.
+	You can see details below about how to pass multiple GSE accessions, or limit the GSM samples within a GSE instead of downloading all of them.
 
 3. With `.sra` data downloaded, we now need to convert these files into a more usable format (`.bam`). Build a configuration file (see `sra_convert/example/project_config.yaml` for example) and point the `sample_annotation` to the annotation file produced by earlier `geofetch.py`.
+
+If your project contains some samples that had sequencing reads split across multiple files, then we will need to do one extra step: Make sure the `sample_subannotation` attribute is correctly pointing to the subannotation file produced by `geofetch`.
 
 4. Run the `sra_convert` pipeline using `looper` by running this command:
 
 ```
-looper run project_config.yaml --lump
+looper run project_config.yaml --lumpn 5
 ```
 
 ## Setting data download location with `sratools`
@@ -70,10 +78,10 @@ This will download 3 particular GSM experiments from GSE123, and everything from
 GSE456. It will name the first two samples Sample1 and Sample2, and the third,
 plus any from GSE456, will have names according to GEO metadata.
 
-This script also produces an annotation metadata file for use as input to
-alignment pipelines. By default, multiple Runs (SRR) in an Experiment (SRX) will
-be treated as samples to combine, but this can be changed with a command-line
-argument.
+In addition to downloading the files (using the `sratoolkit`), this script also
+produces an annotation metadata file for use as input to alignment pipelines. By
+default, multiple Runs (SRR) in an Experiment (SRX) will be treated as samples
+to combine, but this can be changed with a command-line argument.
 
 Metadata output:
 For each GSE input accession (ACC),

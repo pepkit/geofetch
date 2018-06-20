@@ -44,8 +44,9 @@ if __name__ == "__main__":
 	args = _parse_cmdl(cmdl)
 
 	key=args.srr[0]
+	outfolder = os.path.join(args.srafolder, "sra_convert_pipeline")
 	pm = pypiper.PipelineManager(	name="sra_convert",
-									outfolder=args.srafolder,
+									outfolder=outfolder,
 									args=args)
 
 	nfiles = len(args.srr)

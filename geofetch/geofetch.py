@@ -26,6 +26,8 @@ import sys
 from utils import Accession
 
 
+# A set of hard-coded keys if you want to limit to just a few instead of taking
+# all information provided in GEO. Use with `--use-key-subset`
 ANNOTATION_SHEET_KEYS = [
 	"sample_name", "protocol", "read_type", "organism", "data_source",
 	'Sample_title', 'Sample_source_name_ch1', 'Sample_organism_ch1', 
@@ -53,8 +55,7 @@ def _parse_cmdl(cmdl):
 	
 	# Optional
 	parser.add_argument(
-			"-p",
-			"--processed",
+			"-p", "--processed",
 			default=False,
 			action="store_true",
 			help="By default, download raw data. Turn this flag to download processed data instead.")
@@ -67,7 +68,7 @@ def _parse_cmdl(cmdl):
 				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 	
 	parser.add_argument(
-			"-b", "--bamfolder", dest="bam_folder", default=safe_echo("SRABAM"),
+			"-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
 			help="Optional: Specify a location to store bam files "
 				"[Default: $SRABAM:" + safe_echo("SRABAM") + "]")
 	
@@ -77,18 +78,19 @@ def _parse_cmdl(cmdl):
 
 
 	parser.add_argument(
-			"-s", "--srafolder", dest="sra_folder", default=safe_echo("SRARAW"),
+			"-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
 			help="Optional: Specify a location to store sra files "
 				"[Default: $SRARAW:" + safe_echo("SRARAW") + "]")
 
 	parser.add_argument(
-			"-g", "--geofolder", default=safe_echo("GEODATA"),
+			"-g", "--geo-folder", default=safe_echo("GEODATA"),
 			help="Optional: Specify a location to store processed GEO files "
 				"[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 	
 	parser.add_argument(
-			"--picard", dest="picard_path", default=safe_echo("PICARD"),
-			help="Specify a path to the picard jar, if you want to convert fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]")
+			"--picard-path", dest="picard_path", default=safe_echo("PICARD"),
+			help="Specify a path to the picard jar, if you want to convert "
+			"fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]")
 	
 	parser.add_argument(
 			"--just-metadata", action="store_true",
@@ -139,7 +141,7 @@ def write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=False):
 
 	if use_key_subset:
 		# Use complete data
-		keys =  ANNOTATION_SHEET_KEYS
+		keys = ANNOTATION_SHEET_KEYS
 	else:
 		keys = gsm_metadata[gsm_metadata.iterkeys().next()].keys()
 
@@ -150,11 +152,26 @@ def write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=False):
 			w.writerow(gsm_metadata[item])
 
 
+def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SRX", "SRR"]):
+	"""
+	Writes one or more tables to a given CSV filepath.
+	"""
+	with open(filepath, 'w') as openfile:
+		writer = csv.writer(openfile, delimiter=",")
+		# write header
+		writer.writerow(column_names)
+		if not isinstance(tabular_data, list):
+			tabular_data = [tabular_data]
+
+		for table in tabular_data:
+			for key, values in table.items():
+				# print(key, values)
+				writer.writerows(values)
+
 
 class InvalidSoftLineException(Exception):
 	def __init__(self, l):
 		super(self, "{}".format(l))
-
 
 
 # From Jay@Stackoverflow
@@ -313,7 +330,7 @@ def main(cmdl):
 	
 	# This loop populates a list of metadata.
 	metadata_dict = OrderedDict()
-	combined_multi_table = []
+	combined_subannotation_table = []
 	
 	for acc_GSE in acc_GSE_list.keys():
 		print("Processing accession: " + acc_GSE)
@@ -331,7 +348,7 @@ def main(cmdl):
 		# For each GSE acc, produce a series of metadata files
 		file_gse = os.path.join(args.metadata_folder, "GSE_" + acc_GSE + '.soft')
 		file_gsm = os.path.join(args.metadata_folder, "GSM_" + acc_GSE + '.soft')
-		file_multi = os.path.join(args.metadata_folder, "merge_" + acc_GSE + '.csv')
+		file_subannotation = os.path.join(args.metadata_folder, "subannotation_" + acc_GSE + '.csv')
 		file_sra = os.path.join(args.metadata_folder, "SRA_" + acc_GSE + '.csv')
 		file_srafilt = os.path.join(args.metadata_folder, "SRA_" + acc_GSE + '_filt.csv')
 	
@@ -355,7 +372,7 @@ def main(cmdl):
 		#gsm_metadata = {}
 		gsm_metadata = OrderedDict()
 		# For multi samples (samples with multiple runs), we keep track of these
-		# relations in a separate table.
+		# relations in a separate table, which is called the subannotation table.
 		gsm_multi_table = OrderedDict()
 		# save the state
 		current_sample_id = None
@@ -491,7 +508,8 @@ def main(cmdl):
 				# Otherwise, record that there's SRA data for this run.
 				# And set a few columns that are used as input to the Looper
 				print("Updating columns for looper")
-				update_columns(gsm_metadata, experiment, sample_name=sample_name, read_type=line['LibraryLayout'])
+				update_columns(gsm_metadata, experiment, sample_name=sample_name,
+								read_type=line['LibraryLayout'])
 
 				# Some experiments are flagged in SRA as having multiple runs.
 				if gsm_metadata[experiment].get("SRR") is not None:
@@ -533,7 +551,7 @@ def main(cmdl):
 	
 				# Write to filtered SRA Runinfo file
 				w.writerow(line)
-				sys.stdout.write("Get SRR: {} ({})".format(run_name, experiment))
+				print("Get SRR: {} ({})".format(run_name, experiment))
 				bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
 	
 				# TODO: sam-dump has a built-in prefetch. I don't have to do
@@ -609,51 +627,35 @@ def main(cmdl):
 			file_read.close()
 			file_write.close()
 	
-		# Print the per-GSE multi table
+		# Print the per-GSE subannotation (multi) table
 		if len(gsm_multi_table) > 0:
-			multi_fw = open(file_multi, 'w')
-			multiw = csv.writer(multi_fw, delimiter=",")
-			for key, values in gsm_multi_table.items():
-				print key, values
-				multiw.writerows(values)
-	
-			multi_fw.close()
-			print("  Wrote out a multi table: " + file_multi)
-			combined_multi_table.append(gsm_multi_table)
+			write_subannotation(gsm_multi_table, file_subannotation)
+			print("  Writing subannotation table: " + file_subannotation)
+			combined_subannotation_table.append(gsm_multi_table)
 	
 	
 	metadata_dict_combined = OrderedDict()
 	for acc_GSE, gsm_metadata in metadata_dict.iteritems():
-		file_annotation = os.path.join(args.metadata_folder, "anno_" + acc_GSE + '.csv')
+		file_annotation = os.path.join(args.metadata_folder, "annotation_" + acc_GSE + '.csv')
 		write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
 		metadata_dict_combined.update(gsm_metadata)
-	
-	# Write combined annotation sheet
-	
-	out = os.path.splitext(os.path.basename(args.input))[0]
-	file_annotation = os.path.join(args.metadata_folder, "annocomb_" + out + '.csv')
-	write_annotation_sheet(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
-	
-	# Write combined multi table
-	
-	if len(combined_multi_table) > 0:
-	
-		file_multi = os.path.join(args.metadata_folder, "allmerge_" + out + '.csv')
-		multi_fw = open(file_multi, 'w')
-		multiw = csv.writer(multi_fw, delimiter=",")
-	
-		mykeys = ["sample_name", "SRX",  "SRR"]
-		multiw.writerow(mykeys)
-	
-		for multi_table in combined_multi_table:
-			for key, values in multi_table.items():
-				print key, values
-				multiw.writerows(values)
-	
-		multi_fw.close()
-		print("  All multi table: " + file_multi)
 
+	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 
-
+	if (len(acc_GSE_list) > 1):
+		print("Creating combined annotation sheets...")
+		# If the project included more than one GSE, we can now output combined
+		# annotation tables for the entire project.
+		# Write combined annotation sheet
+		out = os.path.splitext(os.path.basename(args.input))[0]
+		file_annotation = os.path.join(args.metadata_folder, "combined_annotation_" + out + '.csv')
+		write_annotation_sheet(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
+		
+		# Write combined subannotation table
+		if len(combined_subannotation_table) > 0:
+			file_subannotation = os.path.join(args.metadata_folder, "combined_subannotation_" + out + '.csv')
+			write_subannotation(combined_subannotation_table, file_subannotation)
+			print("  Combined subannotation table: " + file_subannotation)
+		
 if __name__ == "__main__":
 	main(sys.argv[1:])

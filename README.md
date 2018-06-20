@@ -1,6 +1,6 @@
 # geofetch
 
-Given a GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standaridized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data aquisition and metadata formatting and standaridazation for you.
+Given a GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standardized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
 
 This project is still pre-release, but it is completely functional. However, some things may change in the near future.
 

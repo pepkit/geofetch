@@ -104,23 +104,33 @@ def _parse_cmdl(cmdl):
 			default=False,
 			action="store_true",
 			help="By default, download raw data. Turn this flag to download processed data instead.")
+
 	parser.add_argument(
 			"-m", "--metadata",
 			dest="metadata_folder",
 			default=safe_echo("SRAMETA"),
-			help="Specify a location to store metadata [Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+			help="Specify a location to store metadata "
+				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 	
 	parser.add_argument(
 			"-b", "--bamfolder", dest="bam_folder", default=safe_echo("SRABAM"),
-			help="Optional: Specify a location to store bam files [Default: $SRABAM:" + safe_echo("SRABAM") + "]")
+			help="Optional: Specify a location to store bam files "
+				"[Default: $SRABAM:" + safe_echo("SRABAM") + "]")
 	
 	parser.add_argument(
+			"--bam-conversion", action="store_true",
+			help="Optional: Convert to bam right here?")
+
+
+	parser.add_argument(
 			"-s", "--srafolder", dest="sra_folder", default=safe_echo("SRARAW"),
-			help="Optional: Specify a location to store sra files [Default: $SRARAW:" + safe_echo("SRARAW") + "]")
+			help="Optional: Specify a location to store sra files "
+				"[Default: $SRARAW:" + safe_echo("SRARAW") + "]")
 
 	parser.add_argument(
 			"-g", "--geofolder", default=safe_echo("GEODATA"),
-			help="Optional: Specify a location to store processed GEO files [Default: $GEODATA:" + safe_echo("GEODATA") + "]")
+			help="Optional: Specify a location to store processed GEO files "
+				"[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 	
 	parser.add_argument(
 			"--picard", dest="picard_path", default=safe_echo("PICARD"),
@@ -586,7 +596,7 @@ def main(cmdl):
 					else:
 						print("  Dry run")
 	
-					if args.bam_folder is not '':
+					if args.bam_conversion and args.bam_folder is not '':
 						print("  Converting to bam: " + run_name)
 						sra_file = os.path.join(args.sra_folder, run_name + ".sra")
 						if not os.path.exists(sra_file):
@@ -609,7 +619,7 @@ def main(cmdl):
 				# encodings. I contacted GEO about it in December 2015
 				# Here we check the file size and use fastq -> bam conversion
 				# if the sam-dump failed.
-				if args.bam_folder is not '':
+				if args.bam_conversion and args.bam_folder is not '':
 					st = os.stat(bam_file)
 					# print("File size: " + str(st.st_size))
 					if st.st_size < 100:

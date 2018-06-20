@@ -15,7 +15,7 @@ pipelines:
         mem: "4000"
         time: "0-06:00:00"
       package1:
-        file_size: "10"
+        file_size: "15"
         cores: "1"
         mem: "4000"
         time: "0-12:00:00"

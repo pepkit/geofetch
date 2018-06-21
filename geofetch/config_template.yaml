@@ -1,0 +1,28 @@
+# This is an example project for how to use the sra_convert pipeline to convert
+# .sra files to .bam files using looper.
+
+name: {project_name}
+
+metadata:
+  sample_annotation: ${SRAMETA}project_annotation_{project_name}.csv
+  sample_subannotation: ${SRAMETA}project_subannotation_{project_name}.csv
+  output_dir: ${PROCESSED}{project_name}
+
+derived_columns: [data_source]
+
+data_sources:
+  SRA: "${SRABAM}{SRR}.bam"
+
+implied_columns:
+  organism:
+    "Mus musculus":
+      genome: mm10
+    "Homo sapiens":
+      genome: hg38
+
+subprojects:
+  sra_convert:
+    metadata:
+      pipeline_interfaces: ${CODEBASE}geofetch/sra_convert/pipeline_interface_convert.yaml
+    data_sources:
+     SRA: "${SRARAW}{SRR}.sra"

@@ -61,6 +61,10 @@ def _parse_cmdl(cmdl):
 			help="By default, download raw data. Turn this flag to download processed data instead.")
 
 	parser.add_argument(
+			"-n", "--name",
+			help="Specify a project name. Defaults to GSE number")
+
+	parser.add_argument(
 			"-m", "--metadata",
 			dest="metadata_folder",
 			default=safe_echo("SRAMETA"),
@@ -76,6 +80,14 @@ def _parse_cmdl(cmdl):
 			"--bam-conversion", action="store_true",
 			help="Optional: Convert to bam right here?")
 
+	parser.add_argument(
+			"--acc-anno", action="store_true",
+			help="Also produce annotation sheets for each accession, not just"
+			" for the whole project combined")
+
+	parser.add_argument(
+			"--config-template", default="config_template.yaml",
+			help="yaml file config template.")
 
 	parser.add_argument(
 			"-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
@@ -137,7 +149,7 @@ def write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=False):
 		metadata object given (False), or instead use a fixed set of keys
 		defined within this module (True)
 	"""
-	print("  Writing sample annotation sheet:" + file_annotation)
+	print("  Sample annotation sheet:" + file_annotation)
 
 	if use_key_subset:
 		# Use complete data
@@ -629,33 +641,58 @@ def main(cmdl):
 	
 		# Print the per-GSE subannotation (multi) table
 		if len(gsm_multi_table) > 0:
-			write_subannotation(gsm_multi_table, file_subannotation)
-			print("  Writing subannotation table: " + file_subannotation)
+			if args.acc_anno:
+				write_subannotation(gsm_multi_table, file_subannotation)
+				print("  Subannotation table: " + file_subannotation)
 			combined_subannotation_table.append(gsm_multi_table)
 	
 	
 	metadata_dict_combined = OrderedDict()
+	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 	for acc_GSE, gsm_metadata in metadata_dict.iteritems():
 		file_annotation = os.path.join(args.metadata_folder, "annotation_" + acc_GSE + '.csv')
-		write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
+		if args.acc_anno:
+			write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
 		metadata_dict_combined.update(gsm_metadata)
 
-	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 
-	if (len(acc_GSE_list) > 1):
-		print("Creating combined annotation sheets...")
-		# If the project included more than one GSE, we can now output combined
-		# annotation tables for the entire project.
-		# Write combined annotation sheet
-		out = os.path.splitext(os.path.basename(args.input))[0]
-		file_annotation = os.path.join(args.metadata_folder, "combined_annotation_" + out + '.csv')
-		write_annotation_sheet(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
-		
-		# Write combined subannotation table
-		if len(combined_subannotation_table) > 0:
-			file_subannotation = os.path.join(args.metadata_folder, "combined_subannotation_" + out + '.csv')
-			write_subannotation(combined_subannotation_table, file_subannotation)
-			print("  Combined subannotation table: " + file_subannotation)
-		
+
+	print("Creating complete project annotation sheets and config file...")
+	# If the project included more than one GSE, we can now output combined
+	# annotation tables for the entire project.
+
+	if args.name:
+		project_name = args.name
+	else:
+		project_name = os.path.splitext(os.path.basename(args.input))[0]
+
+	with open(args.config_template, 'r') as template_file:
+		template = template_file.read()
+
+	template_values = {"project_name": project_name}
+	for k, v in template_values.items():
+		placeholder = "{" + str(k) + "}"
+		template = template.replace(placeholder, str(v))
+
+	config = os.path.join(args.metadata_folder, project_name + ".yaml")
+	print("  Config file: " + config)
+	with open(config, 'w') as config_file:
+		config_file.write(template)
+
+
+	# Write combined annotation sheet
+	file_annotation = os.path.join(args.metadata_folder, "annotation_" + project_name + '.csv')
+	write_annotation_sheet(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
+	
+	# Write combined subannotation table
+	if len(combined_subannotation_table) > 0:
+		file_subannotation = os.path.join(args.metadata_folder, "subannotation_" + project_name + '.csv')
+		write_subannotation(combined_subannotation_table, file_subannotation)
+		print("  Combined project subannotation table: " + file_subannotation)
+	
+
+
+
+
 if __name__ == "__main__":
 	main(sys.argv[1:])

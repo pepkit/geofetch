@@ -94,11 +94,12 @@ def _parse_cmdl(cmdl):
 			"--use-key-subset", action="store_true",
 			help="Use just the keys defined in this module when writing out metadata.")
 
-	parser.add_argument(
-			"-x", "--split-experiments", action="store_true",
-		help="By default, SRX experiments with multiple SRR Runs will be merged \
-		in the metadata sheets. You can treat each run as a separate sample with \
-		this argument.")
+	parser.add_argument( "-x", "--split-experiments", action="store_true", 
+		help="""Split SRR runs into individual samples. By default, SRX
+			experiments with multiple SRR Runs will have a single entry in the
+			annotation table, with each run as a separate row in the
+			subannotation table. This setting instead treats each run as a
+			separate sample""")
 
 	parser.add_argument(
 			"--config-template", default="config_template.yaml",

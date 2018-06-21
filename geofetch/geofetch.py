@@ -58,11 +58,15 @@ def _parse_cmdl(cmdl):
 			"-p", "--processed",
 			default=False,
 			action="store_true",
-			help="By default, download raw data. Turn this flag to download processed data instead.")
+			help="Download processed data (Default: download raw data).")
 
 	parser.add_argument(
 			"-n", "--name",
 			help="Specify a project name. Defaults to GSE number")
+
+	parser.add_argument(
+			"-f", "--subfolder", action="store_true",
+			help="Put metadata into a subfolder named with project name")
 
 	parser.add_argument(
 			"-m", "--metadata-folder",
@@ -71,19 +75,30 @@ def _parse_cmdl(cmdl):
 			help="Specify a location to store metadata "
 				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 	
-	parser.add_argument(
-			"-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
-			help="Optional: Specify a location to store bam files "
-				"[Default: $SRABAM:" + safe_echo("SRABAM") + "]")
 	
 	parser.add_argument(
-			"--bam-conversion", action="store_true",
-			help="Optional: Convert to bam right here?")
+			"--just-metadata", action="store_true",
+			help="If set, don't actually run downloads, just create metadata")
+
+
+	parser.add_argument(
+			"-r", "--refresh-metadata", action="store_true",
+			help="If set, re-download metadata even if it exists.")
 
 	parser.add_argument(
 			"--acc-anno", action="store_true",
 			help="Also produce annotation sheets for each accession, not just"
 			" for the whole project combined")
+
+	parser.add_argument(
+			"--use-key-subset", action="store_true",
+			help="Use just the keys defined in this module when writing out metadata.")
+
+	parser.add_argument(
+			"-x", "--split-experiments", action="store_true",
+		help="By default, SRX experiments with multiple SRR Runs will be merged \
+		in the metadata sheets. You can treat each run as a separate sample with \
+		this argument.")
 
 	parser.add_argument(
 			"--config-template", default="config_template.yaml",
@@ -99,28 +114,20 @@ def _parse_cmdl(cmdl):
 			help="Optional: Specify a location to store processed GEO files "
 				"[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 	
+	
+	parser.add_argument(
+			"--bam-conversion", action="store_true",
+			help="Turn on sequential bam conversion. Default: No conversion.")
+	parser.add_argument(
+			"-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
+			help="Optional: Specify a location to store bam files "
+				"[Default: $SRABAM:" + safe_echo("SRABAM") + "]")
+
 	parser.add_argument(
 			"--picard-path", dest="picard_path", default=safe_echo("PICARD"),
 			help="Specify a path to the picard jar, if you want to convert "
 			"fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]")
-	
-	parser.add_argument(
-			"--just-metadata", action="store_true",
-			help="If set, don't actually run downloads, just create metadata")
 
-	parser.add_argument(
-			"-r", "--refresh-metadata", action="store_true",
-			help="If set, re-download metadata even if it exists.")
-
-	parser.add_argument(
-			"--use-key-subset", action="store_true",
-			help="Use just the keys defined in this module when writing out metadata.")
-
-	parser.add_argument(
-			"-x", "--split-experiments", action="store_true",
-		help="By default, SRX experiments with multiple SRR Runs will be merged \
-		in the metadata sheets. You can treat each run as a separate sample with \
-		this argument.")
 	
 	return parser.parse_args(cmdl)
 
@@ -157,7 +164,7 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
 	else:
 		keys = gsm_metadata[gsm_metadata.iterkeys().next()].keys()
 
-	with open(file_annotation, 'wb') as of:
+	with open(os.path.expandvars(file_annotation), 'wb') as of:
 		w = csv.DictWriter(of, keys, extrasaction='ignore')
 		w.writeheader()
 		for item in gsm_metadata:
@@ -170,7 +177,7 @@ def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SR
 	"""
 
 	print("  Sample subannotation sheet:" + filepath)
-	with open(filepath, 'w') as openfile:
+	with open(os.path.expandvars(filepath), 'w') as openfile:
 		writer = csv.writer(openfile, delimiter=",")
 		# write header
 		writer.writerow(column_names)
@@ -260,7 +267,7 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 	return exp
 
 
-def parse_accessions(input_arg):
+def parse_accessions(input_arg, metadata_folder, just_metadata=False):
 	"""
 	Create a list of GSE accession numbers, either from file or a single value
 	from the command line This will be a dict, with the GSE# as the key, and
@@ -279,10 +286,10 @@ def parse_accessions(input_arg):
 			if ext:
 				raise ValueError("SRP-like input must be an SRP accession")
 			file_sra = os.path.join(
-				args.metadata_folder, "SRA_{}.csv".format(input_arg))
+				metadata_folder, "SRA_{}.csv".format(input_arg))
 			# Fetch and write the metadata for this SRP accession.
 			Accession(input_arg).fetch_metadata(file_sra)
-			if args.just_metadata:
+			if just_metadata:
 				return
 			# Read the Run identifiers to download.
 			run_ids = []
@@ -337,14 +344,27 @@ def main(cmdl):
 	
 	args = _parse_cmdl(cmdl)
 
+	if args.name:
+		project_name = args.name
+	else:
+		project_name = os.path.splitext(os.path.basename(args.input))[0]
+
 	metadata_expanded = os.path.expandvars(args.metadata_folder)
-	metadata_raw = args.metadata_folder
-		
+	if os.path.isabs(metadata_expanded):
+		metadata_raw = args.metadata_folder
+	else:
+		metadata_expanded = os.path.abspath(metadata_expanded)
+		metadata_raw = os.path.abspath(args.metadata_folder)
+
+	if args.subfolder:
+		metadata_expanded = os.path.join(metadata_expanded, project_name)
+		metadata_raw = os.path.join(metadata_raw, project_name)
+
 	# Some sanity checks before proceeding
 	if args.bam_folder and not which("samtools"):
 		raise SystemExit("samtools not found")
 
-	acc_GSE_list = parse_accessions(args.input)
+	acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)
 	
 	# Loop through each accession.
 	# This will process that accession, produce metadata and download files for
@@ -370,10 +390,10 @@ def main(cmdl):
 		if args.refresh_metadata:
 			print("Refreshing metadata...")
 		# For each GSE acc, produce a series of metadata files
-		file_gse = os.path.join(metadata_expanded, "GSE_" + acc_GSE + '.soft')
-		file_gsm = os.path.join(metadata_expanded, "GSM_" + acc_GSE + '.soft')
-		file_sra = os.path.join(metadata_expanded, "SRA_" + acc_GSE + '.csv')
-		file_srafilt = os.path.join(metadata_expanded, "SRA_" + acc_GSE + '_filt.csv')
+		file_gse = os.path.join(metadata_expanded, acc_GSE + '_GSE.soft')
+		file_gsm = os.path.join(metadata_expanded, acc_GSE + '_GSM.soft')
+		file_sra = os.path.join(metadata_expanded, acc_GSE + '_SRA.csv')
+		file_srafilt = os.path.join(metadata_expanded, acc_GSE + '_SRA_filt.csv')
 	
 	
 		# Grab the GSE and GSM SOFT files from GEO.
@@ -665,14 +685,14 @@ def main(cmdl):
 
 	metadata_dict_combined = OrderedDict()
 	for acc_GSE, gsm_metadata in metadata_dict.iteritems():
-		file_annotation = os.path.join(metadata_expanded, "annotation_" + acc_GSE + '.csv')
+		file_annotation = os.path.join(metadata_expanded, acc_GSE + '_annotation.csv')
 		if args.acc_anno:
 			write_annotation(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
 		metadata_dict_combined.update(gsm_metadata)
 
 	subannotation_dict_combined = OrderedDict()
 	for acc_GSE, gsm_multi_table in subannotation_dict.iteritems():
-		file_subannotation = os.path.join(metadata_expanded, "subannotation_" + acc_GSE + '.csv')
+		file_subannotation = os.path.join(metadata_expanded, acc_GSE + '_subannotation.csv')
 		if args.acc_anno:
 			write_subannotation(gsm_multi_table, file_subannotation)
 		subannotation_dict_combined.update(gsm_multi_table)
@@ -684,41 +704,32 @@ def main(cmdl):
 	# If the project included more than one GSE, we can now output combined
 	# annotation tables for the entire project.
 
-	if args.name:
-		project_name = args.name
-	else:
-		project_name = os.path.splitext(os.path.basename(args.input))[0]
-
-
 	# Write combined annotation sheet
-	file_annotation = os.path.join(metadata_expanded, "annotation_" + project_name + '.csv')
-	file_annotation_raw = os.path.join(metadata_raw, "annotation_" + project_name + '.csv')
+	file_annotation = os.path.join(metadata_raw, project_name + '_annotation.csv')
 	write_annotation(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
 	
 	# Write combined subannotation table
 	if len(subannotation_dict_combined) > 0:
-		file_subannotation = os.path.join(metadata_expanded, "subannotation_" + project_name + '.csv')
+		file_subannotation = os.path.join(metadata_raw, project_name + '_subannotation.csv')
 		write_subannotation(subannotation_dict_combined, file_subannotation)
-		file_subannotation_raw = os.path.join(metadata_raw, "subannotation_" + project_name + '.csv')
-		print("  Combined project subannotation table: " + file_subannotation)
 	else:
-		file_subannotation_raw = "null"
+		file_subannotation = "null"
 	
 	# Write project config file
 	with open(args.config_template, 'r') as template_file:
 		template = template_file.read()
 
 	template_values = {"project_name": project_name,
-						"annotation": file_annotation_raw,
-						"subannotation": file_subannotation_raw}
+						"annotation": file_annotation,
+						"subannotation": file_subannotation}
 
 	for k, v in template_values.items():
 		placeholder = "{" + str(k) + "}"
 		template = template.replace(placeholder, str(v))
 
-	config = os.path.join(metadata_expanded, project_name + ".yaml")
+	config = os.path.join(metadata_raw, project_name + "_config.yaml")
 	print("  Config file: " + config)
-	with open(config, 'w') as config_file:
+	with open(os.path.expandvars(config), 'w') as config_file:
 		config_file.write(template)
 
 

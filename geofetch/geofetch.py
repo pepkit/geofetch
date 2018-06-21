@@ -250,7 +250,7 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 	# print(":" + exp["Sample_library_strategy"] + ":")
 	# Try to be smart about some library methods, refining protocol if possible.
 	if exp["Sample_library_strategy"] == "Bisulfite-Seq":
-		print("Parsing protocol")
+		# print("Parsing protocol")
 		proto = exp["Sample_library_selection"].lower()
 		if proto in bisulfite_protocols:
 			exp["protocol"] = bisulfite_protocols[proto]
@@ -258,33 +258,28 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 	return exp
 
 
-def main(cmdl):
-	
-	args = _parse_cmdl(cmdl)
-	
-	# Some sanity checks before proceeding
-	if args.bam_folder and not which("samtools"):
-		raise SystemExit("samtools not found")
+def parse_accessions(input_arg):
+	"""
+	Create a list of GSE accession numbers, either from file or a single value
+	from the command line This will be a dict, with the GSE# as the key, and
+	corresponding value is a list of GSM# specifying the samples we're
+	interested in from that GSE#. An empty sample list means we should get all
+	samples from that GSE#. This loop will create this dict.
+	"""
 
-	# Create a list of GSE accession numbers, either from file or a single value
-	# from the command line
-	# This will be a dict, with the GSE# as the key, and then each will have a list
-	# of GSM# specifying the samples we're interested in from that GSE#. An empty
-	# sample list means we should get all samples from that GSE#.
-	# This loop will create this dict.
 	acc_GSE_list = OrderedDict()
-	
-	if not os.path.isfile(args.input):
-		print("Input: No file named {}; trying it as an accession...".format(args.input))
+
+	if not os.path.isfile(input_arg):
+		print("Input: No file named {}; trying it as an accession...".format(input_arg))
 		# No limits accepted on command line, so keep an empty list.
-		if args.input.startswith("SRP"):
-			base, ext = os.path.splitext(args.input)
+		if input_arg.startswith("SRP"):
+			base, ext = os.path.splitext(input_arg)
 			if ext:
 				raise ValueError("SRP-like input must be an SRP accession")
 			file_sra = os.path.join(
-				args.metadata_folder, "SRA_{}.csv".format(args.input))
-			# Fetch and write the metdata for this SRP accession.
-			Accession(args.input).fetch_metadata(file_sra)
+				args.metadata_folder, "SRA_{}.csv".format(input_arg))
+			# Fetch and write the metadata for this SRP accession.
+			Accession(input_arg).fetch_metadata(file_sra)
 			if args.just_metadata:
 				return
 			# Read the Run identifiers to download.
@@ -300,13 +295,13 @@ def main(cmdl):
 			# Early return if we've just handled SRP accession directly.
 			return
 		else:
-			acc_GSE = args.input
+			acc_GSE = input_arg
 			acc_GSE_list[acc_GSE] = OrderedDict()
 	else:
-		print("Input: Accession list file found: '{}'".format(args.input))
+		print("Input: Accession list file found: '{}'".format(input_arg))
 	
 		# Read input file line by line.
-		for line in open(args.input, 'r'):
+		for line in open(input_arg, 'r'):
 			if (not line) or (line[0] in ["#", "\n", "\t"]):
 				continue
 			fields = [x.rstrip() for x in line.split("\t")]
@@ -334,6 +329,17 @@ def main(cmdl):
 				# No GSM limit; use empty dict.
 				acc_GSE_list[gse] = {}
 	
+	return acc_GSE_list
+
+def main(cmdl):
+	
+	args = _parse_cmdl(cmdl)
+	
+	# Some sanity checks before proceeding
+	if args.bam_folder and not which("samtools"):
+		raise SystemExit("samtools not found")
+
+	acc_GSE_list = parse_accessions(args.input)
 	
 	# Loop through each accession.
 	# This will process that accession, produce metadata and download files for
@@ -519,7 +525,7 @@ def main(cmdl):
 	
 				# Otherwise, record that there's SRA data for this run.
 				# And set a few columns that are used as input to the Looper
-				print("Updating columns for looper")
+				# print("Updating columns for looper")
 				update_columns(gsm_metadata, experiment, sample_name=sample_name,
 								read_type=line['LibraryLayout'])
 

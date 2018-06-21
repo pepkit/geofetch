@@ -4,7 +4,7 @@
 name: {project_name}
 
 metadata:
-  sample_annotation: ${SRAMETA}project_annotation_{project_name}.csv
+  sample_annotation: {annotation}
   sample_subannotation: {subannotation}
   output_dir: ${PROCESSED}{project_name}
 

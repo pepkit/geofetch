@@ -65,9 +65,9 @@ def _parse_cmdl(cmdl):
 			help="Specify a project name. Defaults to GSE number")
 
 	parser.add_argument(
-			"-m", "--metadata",
+			"-m", "--metadata-folder",
 			dest="metadata_folder",
-			default=safe_echo("SRAMETA"),
+			default="${SRAMETA}",
 			help="Specify a location to store metadata "
 				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 	
@@ -138,7 +138,7 @@ def parse_SOFT_line(l):
 
 
 
-def write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=False):
+def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
 	"""
 	Write metadata sheet out as an annotation file.
 
@@ -168,6 +168,8 @@ def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SR
 	"""
 	Writes one or more tables to a given CSV filepath.
 	"""
+
+	print("  Sample subannotation sheet:" + filepath)
 	with open(filepath, 'w') as openfile:
 		writer = csv.writer(openfile, delimiter=",")
 		# write header
@@ -334,7 +336,10 @@ def parse_accessions(input_arg):
 def main(cmdl):
 	
 	args = _parse_cmdl(cmdl)
-	
+
+	metadata_expanded = os.path.expandvars(args.metadata_folder)
+	metadata_raw = args.metadata_folder
+		
 	# Some sanity checks before proceeding
 	if args.bam_folder and not which("samtools"):
 		raise SystemExit("samtools not found")
@@ -348,6 +353,7 @@ def main(cmdl):
 	
 	# This loop populates a list of metadata.
 	metadata_dict = OrderedDict()
+	subannotation_dict = OrderedDict()
 	combined_subannotation_table = []
 	
 	for acc_GSE in acc_GSE_list.keys():
@@ -364,11 +370,10 @@ def main(cmdl):
 		if args.refresh_metadata:
 			print("Refreshing metadata...")
 		# For each GSE acc, produce a series of metadata files
-		file_gse = os.path.join(args.metadata_folder, "GSE_" + acc_GSE + '.soft')
-		file_gsm = os.path.join(args.metadata_folder, "GSM_" + acc_GSE + '.soft')
-		file_subannotation = os.path.join(args.metadata_folder, "subannotation_" + acc_GSE + '.csv')
-		file_sra = os.path.join(args.metadata_folder, "SRA_" + acc_GSE + '.csv')
-		file_srafilt = os.path.join(args.metadata_folder, "SRA_" + acc_GSE + '_filt.csv')
+		file_gse = os.path.join(metadata_expanded, "GSE_" + acc_GSE + '.soft')
+		file_gsm = os.path.join(metadata_expanded, "GSM_" + acc_GSE + '.soft')
+		file_sra = os.path.join(metadata_expanded, "SRA_" + acc_GSE + '.csv')
+		file_srafilt = os.path.join(metadata_expanded, "SRA_" + acc_GSE + '_filt.csv')
 	
 	
 		# Grab the GSE and GSM SOFT files from GEO.
@@ -584,7 +589,7 @@ def main(cmdl):
 						# (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
 						subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
 					else:
-						print("  Dry run")
+						print("  Dry run (no data download)")
 	
 					if args.bam_conversion and args.bam_folder is not '':
 						print("  Converting to bam: " + run_name)
@@ -645,22 +650,34 @@ def main(cmdl):
 			file_read.close()
 			file_write.close()
 	
+		subannotation_dict[acc_GSE] = gsm_multi_table
+
 		# Print the per-GSE subannotation (multi) table
-		if len(gsm_multi_table) > 0:
-			if args.acc_anno:
-				write_subannotation(gsm_multi_table, file_subannotation)
-				print("  Subannotation table: " + file_subannotation)
-			combined_subannotation_table.append(gsm_multi_table)
+		# if len(gsm_multi_table) > 0:
+		# 	if args.acc_anno:
+		# 		write_subannotation(gsm_multi_table, file_subannotation)
+		# 		print("  Subannotation table: " + file_subannotation)
+		# 	combined_subannotation_table.append(gsm_multi_table)
 	
 	
+	# Combine individual accessions into project-level annotations, and write
+	# individual accession files (if requested)
+
 	metadata_dict_combined = OrderedDict()
-	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 	for acc_GSE, gsm_metadata in metadata_dict.iteritems():
-		file_annotation = os.path.join(args.metadata_folder, "annotation_" + acc_GSE + '.csv')
+		file_annotation = os.path.join(metadata_expanded, "annotation_" + acc_GSE + '.csv')
 		if args.acc_anno:
-			write_annotation_sheet(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
+			write_annotation(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
 		metadata_dict_combined.update(gsm_metadata)
 
+	subannotation_dict_combined = OrderedDict()
+	for acc_GSE, gsm_multi_table in subannotation_dict.iteritems():
+		file_subannotation = os.path.join(metadata_expanded, "subannotation_" + acc_GSE + '.csv')
+		if args.acc_anno:
+			write_subannotation(gsm_multi_table, file_subannotation)
+		subannotation_dict_combined.update(gsm_multi_table)
+
+	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 
 
 	print("Creating complete project annotation sheets and config file...")
@@ -672,30 +689,38 @@ def main(cmdl):
 	else:
 		project_name = os.path.splitext(os.path.basename(args.input))[0]
 
+
+	# Write combined annotation sheet
+	file_annotation = os.path.join(metadata_expanded, "annotation_" + project_name + '.csv')
+	file_annotation_raw = os.path.join(metadata_raw, "annotation_" + project_name + '.csv')
+	write_annotation(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
+	
+	# Write combined subannotation table
+	if len(subannotation_dict_combined) > 0:
+		file_subannotation = os.path.join(metadata_expanded, "subannotation_" + project_name + '.csv')
+		write_subannotation(subannotation_dict_combined, file_subannotation)
+		file_subannotation_raw = os.path.join(metadata_raw, "subannotation_" + project_name + '.csv')
+		print("  Combined project subannotation table: " + file_subannotation)
+	else:
+		file_subannotation_raw = "null"
+	
+	# Write project config file
 	with open(args.config_template, 'r') as template_file:
 		template = template_file.read()
 
-	template_values = {"project_name": project_name}
+	template_values = {"project_name": project_name,
+						"annotation": file_annotation_raw,
+						"subannotation": file_subannotation_raw}
+
 	for k, v in template_values.items():
 		placeholder = "{" + str(k) + "}"
 		template = template.replace(placeholder, str(v))
 
-	config = os.path.join(args.metadata_folder, project_name + ".yaml")
+	config = os.path.join(metadata_expanded, project_name + ".yaml")
 	print("  Config file: " + config)
 	with open(config, 'w') as config_file:
 		config_file.write(template)
 
-
-	# Write combined annotation sheet
-	file_annotation = os.path.join(args.metadata_folder, "annotation_" + project_name + '.csv')
-	write_annotation_sheet(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
-	
-	# Write combined subannotation table
-	if len(combined_subannotation_table) > 0:
-		file_subannotation = os.path.join(args.metadata_folder, "subannotation_" + project_name + '.csv')
-		write_subannotation(combined_subannotation_table, file_subannotation)
-		print("  Combined project subannotation table: " + file_subannotation)
-	
 
 
 

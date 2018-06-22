@@ -15,7 +15,7 @@ __author__ = "Nathan Sheffield"
 
 # 4. Parse the SRA RunInfo csv file and use the download_link field to grab the .sra file
 
-from argparse import ArgumentParser
+import argparse
 from collections import OrderedDict
 import copy
 import csv
@@ -46,7 +46,7 @@ SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
 
 def _parse_cmdl(cmdl):
-	parser = ArgumentParser(description="Automatic GEO SRA data downloader")
+	parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
 	
 	# Required
 	parser.add_argument(
@@ -55,18 +55,8 @@ def _parse_cmdl(cmdl):
 	
 	# Optional
 	parser.add_argument(
-			"-p", "--processed",
-			default=False,
-			action="store_true",
-			help="Download processed data (Default: download raw data).")
-
-	parser.add_argument(
 			"-n", "--name",
 			help="Specify a project name. Defaults to GSE number")
-
-	parser.add_argument(
-			"-f", "--subfolder", action="store_true",
-			help="Put metadata into a subfolder named with project name")
 
 	parser.add_argument(
 			"-m", "--metadata-folder",
@@ -75,6 +65,10 @@ def _parse_cmdl(cmdl):
 			help="Specify a location to store metadata "
 				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 	
+	parser.add_argument(
+			"-f", "--no-subfolder", action="store_true",
+			help="Don't automatically put metadata into a subfolder named with project name")
+
 	
 	parser.add_argument(
 			"--just-metadata", action="store_true",
@@ -102,32 +96,44 @@ def _parse_cmdl(cmdl):
 			separate sample""")
 
 	parser.add_argument(
-			"--config-template", default="config_template.yaml",
-			help="yaml file config template.")
+			"--config-template", default=None,
+			help="Project config yaml file template.")
 
 	parser.add_argument(
-			"-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
-			help="Optional: Specify a location to store sra files "
-				"[Default: $SRARAW:" + safe_echo("SRARAW") + "]")
+			"-p", "--processed",
+			default=False,
+			action="store_true",
+			help="Download processed data (Default: download raw data).")
 
 	parser.add_argument(
 			"-g", "--geo-folder", default=safe_echo("GEODATA"),
 			help="Optional: Specify a location to store processed GEO files "
 				"[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 	
-	
-	parser.add_argument(
-			"--bam-conversion", action="store_true",
-			help="Turn on sequential bam conversion. Default: No conversion.")
 	parser.add_argument(
 			"-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
-			help="Optional: Specify a location to store bam files "
-				"[Default: $SRABAM:" + safe_echo("SRABAM") + "]")
-
+			help="""Optional: Specify folder of bam files. Geofetch will not
+			download sra files when corresponding bam files already exist.
+			[Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
+	
+	# Deprecated; these are for bam conversion which now happens in sra_convert
+	# it still works here but I hide it so people don't use it, because it's confusing.
+	parser.add_argument(
+			"-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
+			help=argparse.SUPPRESS,
+			# help="Optional: Specify a location to store sra files "
+			# 	"[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
+			)
+	parser.add_argument(
+			"--bam-conversion", action="store_true",
+			# help="Turn on sequential bam conversion. Default: No conversion.",
+			help=argparse.SUPPRESS)
+	
 	parser.add_argument(
 			"--picard-path", dest="picard_path", default=safe_echo("PICARD"),
-			help="Specify a path to the picard jar, if you want to convert "
-			"fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]")
+			# help="Specify a path to the picard jar, if you want to convert "
+			# "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
+			help=argparse.SUPPRESS)
 
 	
 	return parser.parse_args(cmdl)
@@ -351,15 +357,18 @@ def main(cmdl):
 		project_name = os.path.splitext(os.path.basename(args.input))[0]
 
 	metadata_expanded = os.path.expandvars(args.metadata_folder)
+	print(args.metadata_folder)
 	if os.path.isabs(metadata_expanded):
 		metadata_raw = args.metadata_folder
 	else:
 		metadata_expanded = os.path.abspath(metadata_expanded)
 		metadata_raw = os.path.abspath(args.metadata_folder)
 
-	if args.subfolder:
+	print(metadata_raw)
+	if not args.no_subfolder:
 		metadata_expanded = os.path.join(metadata_expanded, project_name)
 		metadata_raw = os.path.join(metadata_raw, project_name)
+	print(metadata_raw)
 
 	# Some sanity checks before proceeding
 	if args.bam_folder and not which("samtools"):
@@ -671,16 +680,9 @@ def main(cmdl):
 			file_read.close()
 			file_write.close()
 	
+		# accumulate subannotations
 		subannotation_dict[acc_GSE] = gsm_multi_table
 
-		# Print the per-GSE subannotation (multi) table
-		# if len(gsm_multi_table) > 0:
-		# 	if args.acc_anno:
-		# 		write_subannotation(gsm_multi_table, file_subannotation)
-		# 		print("  Subannotation table: " + file_subannotation)
-		# 	combined_subannotation_table.append(gsm_multi_table)
-	
-	
 	# Combine individual accessions into project-level annotations, and write
 	# individual accession files (if requested)
 
@@ -717,6 +719,11 @@ def main(cmdl):
 		file_subannotation = "null"
 	
 	# Write project config file
+
+	if not args.config_template:
+		geofetchdir = os.path.dirname(sys.argv[0])
+		args.config_template = os.path.join(geofetchdir, "config_template.yaml")
+
 	with open(args.config_template, 'r') as template_file:
 		template = template_file.read()
 
@@ -732,8 +739,6 @@ def main(cmdl):
 	print("  Config file: " + config)
 	with open(os.path.expandvars(config), 'w') as config_file:
 		config_file.write(template)
-
-
 
 
 

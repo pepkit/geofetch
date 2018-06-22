@@ -14,7 +14,7 @@ geofetch has two components:
 
 ## How to build a PEP from SRA or GEO data
 
-1. Set environment variables for `$SRARAW` (where `.sra` files will live) and `$SRABAM` (where `.bam` files will live). `geofetch` will use these environment variables to automatically know where to store the `.sra` and `.bam` files.
+1. You must have the `sratoolkit` installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them (see details below on `sratools`).
 
 2. Download SRA data using `geofetch.py`. To see full options, see the help menu with:
 
@@ -22,40 +22,68 @@ geofetch has two components:
 	python geofetch.py -h
 	```
 	
-	In most basic mode, you run it like:
+	For example, run it like:
 
 	```
-	python geofetch.py -i GSE#####
+	python geofetch.py -i GSE##### -m path/to/metadata/folder -n PROJECT_NAME
 	```
 
 	This will do 2 things:
 
-	1. download all `.sra` files from `GSE#####` into your `$SRARAW` folder.
-	2. produce a sample annotation sheet (currently called `annocomb_GSE#####.csv` in your `$SRAMETA` folder), which is what you will use as part of your PEP.
+	1. download all `.sra` files from `GSE#####` into your SRA folder (wherever you have configured `sratools` to stick data).
+	2. produce a sample annotation sheet (currently called `PROJECT_NAME_annotation.csv` in your metadata folder), which is what you will use as part of your PEP.
+	3. produce a project configuration file (`PROJECT_NAME_config.yaml`) in your metadata folder.
 
-	You can see details below about how to pass multiple GSE accessions, or limit the GSM samples within a GSE instead of downloading all of them.
+	Here are some other examples:
 
-3. With `.sra` data downloaded, we now need to convert these files into a more usable format (`.bam`). Build a configuration file (see `sra_convert/example/project_config.yaml` for example) and point the `sample_annotation` to the annotation file produced by earlier `geofetch.py`.
+	```
+	./geofetch.py -i GSE94568 --just-metadata -n autism_microglia -m '${CODE}sandbox'
+	./geofetch.py -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
+	
+	```
+ 
+3. Once you've produced your PEP annotation files and downloaded your SRA data, you should go check out the config files and annotation sheets and make sure they make sense to you. Then, you're ready to run pipelines on the data! The next thing is to convert the `sra` data into a format that can be used by pipelines, which we go over in the next section.
 
-If your project contains some samples that had sequencing reads split across multiple files, then we will need to do one extra step: Make sure the `sample_subannotation` attribute is correctly pointing to the subannotation file produced by `geofetch`.
+## How to convert the `sra` files to `bam`
 
-4. Run the `sra_convert` pipeline using `looper` by running this command:
+With `.sra` data downloaded, we now need to convert these files into a more usable format. The `sra_convert` pipeline can convert `.sra` files into `.bam` format using the `sratoolkit`. The *PEP* files produced by `geofetch` can be immediately plugged into this pipeline to handle this conversion for you, either locally or on a compute cluster.
+
+1. Make sure you have [looper](https://pepkit.github.io/docs/looper/) installed.
+
+2. `geofetch` produces a configuration file with a built-in subproject for `sra_convert`, so we can run this pipeline with no further modification by activating that subproject using the `--sp sra_convert` argument. Here's how to convert one of the above samples:
 
 ```
-looper run project_config.yaml --lumpn 5
+looper run ${CODE}sandbox/cohesin_dose/cohesin_dose_config.yaml -d --sp sra_convert --lump 10
 ```
+
+Here's what this means:
+
+-`looper run` tells looper to `run` the project
+- `${CODE}sandbox/cohesin_dose/cohesin_dose_config.yaml` is the project config file produced by `geofetch`. you can use any [PEP-compatible](http://pepkit.github.io) file here.
+- `-d` means dry-run, so it won't actually submit the jobs, just to see if it works. 
+- `--sp sra_convert` activates the *subproject* (`sp`) called `sra_convert`, which is defined in your project config file. It's created automatically by `geofetch`. This subproject points the `pipeline_interfaces` to `sra_convert` so `looper` knows which pipeline to use.
+- `-lump 10` will tell `looper` to lump jobs together until it accumulates 10 GB of input files. This creates individual jobs that take about an hour or so, instead of submitting lots of 5-10 minute jobs. This is useful if you're using a cluster.
+
+
+
+
+## Tips
+
+* Set an environment variable for `$SRABAM` (where `.bam` files will live), and `geofetch` check to see if you have an already-converted bamfile there before issuing the command to download the `sra` file. In this way, you can delete old `sra` files after conversion and not have to worry about re-downloading them. 
+
+* The config template uses an environment variable `$SRARAW` for where `.sra` files will live. If you set this variable to the same place you instructed `sratoolkit` to download `sra` files, you won't have to tweak the config file.
 
 ## Setting data download location with `sratools`
 
 `geofetch` is using the `sratoolkit` to download raw data from SRA -- which means it's stuck with the [default path for downloading SRA data](http://databio.org/posts/downloading_sra_data.html), which I've written about. So before you run `geofetch`, make sure you have set up your download location to the correct place. In our group, we use a shared group environment variable called `${SRARAW}`, which points to a shared folder where the whole group has access to downloaded SRA data. You can point the `sratoolkit` (and therefore `geofetch`) to use that location with this one-time configuration code:
 
-
 ```
 echo "/repository/user/main/public/root = \"$SRARAW\"" > ${HOME}/.ncbi/user-settings.mkfg
 ```
+
 If the `.ncbi` folder does not exist in your home directory, you can just make a folder `.ncbi` with an empty file `user-settings.mkfg` and follow the same command above.
 
-## Details for `geofetch.py`
+## How to limit the files downloaded by `geofetch.py`
 
 Fetch data and metadata from GEO and SRA.
 

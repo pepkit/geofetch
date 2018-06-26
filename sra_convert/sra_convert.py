@@ -18,6 +18,10 @@ def _parse_cmdl(cmdl):
 			"-s", "--srafolder", default=safe_echo("SRARAW"),
 			help="Optional: Specify a location to store sra files "
 			"[Default: $SRARAW:" + safe_echo("SRARAW") + "]")
+
+	parser.add_argument(
+			"-m", "--mode", default="convert",
+			help="Mode. Can be: 'convert', 'delete_sra', 'delete_bam'")
 	
 	# parser.add_argument(
 	# 		"--picard", dest="picard_path", default=safe_echo("PICARD"),
@@ -28,7 +32,8 @@ def _parse_cmdl(cmdl):
 			"-r", "--srr", required=True, nargs="+",
 			help="SRR files")
 
-	parser = pypiper.add_pypiper_args(parser, groups=["pypiper", "config"])
+	parser = pypiper.add_pypiper_args(parser, groups=["pypiper", "config"],
+		args=["output-parent"])
 	return parser.parse_args(cmdl)
 
 def safe_echo(var):
@@ -61,10 +66,20 @@ if __name__ == "__main__":
 		if (not os.path.isfile(infile)):
 			next
 
-			
-		cmd = "sam-dump -u {data_source} | samtools view -bS - > {outfile}".format(
-			data_source=infile, outfile=outfile)
-		pm.run(cmd, target=outfile)
+		if args.mode == "convert":
+			cmd = "sam-dump -u {data_source} | samtools view -bS - > {outfile}".format(
+				data_source=infile, outfile=outfile)
+			target = outfile
+			pm.run(cmd, target=target)
+		elif args.mode == "delete_sra":
+			cmd = "rm {data_source}".format(data_source=infile)
+			target = "rm_"+infile
+			pm.run(cmd, target=target, nofail=True)
+		elif args.mode == "delete_bam":
+			cmd = "rm {data_source}".format(data_source=outfile)
+			target = "rm_"+outfile
+			pm.run(cmd, target=target, nofail=True)
+
 
 
 	pm.stop_pipeline()

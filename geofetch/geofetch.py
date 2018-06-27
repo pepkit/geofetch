@@ -440,7 +440,11 @@ def main(cmdl):
 					continue
 				current_sample_id = pl['SAMPLE']
 				current_sample_srx = False
-				gsm_metadata[current_sample_id] = {}
+				columns_init = [("sample_name",""), ("protocol",""),
+								("organism",""), ("read_type",""),
+								("data_source", None), ("SRR", None), ("SRX",None)]
+				gsm_metadata[current_sample_id] = OrderedDict(columns_init)
+
 				sys.stdout.write ("  Found sample " + current_sample_id)
 			elif current_sample_id is not None:
 				pl = parse_SOFT_line(line)

@@ -98,10 +98,12 @@ sample_name; otherwise, the sample will be named according to the GEO
 Sample_title field. Any columns after the third will be ignored.
 
 The 1, 2, or 3-column input file would look like this:
+```
 GSE123	GSM####	Sample1
 GSE123	GSM####	Sample2
 GSE123	GSM####
 GSE456
+```
 
 This will download 3 particular GSM experiments from GSE123, and everything from
 GSE456. It will name the first two samples Sample1 and Sample2, and the third,

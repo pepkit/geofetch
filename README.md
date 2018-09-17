@@ -2,11 +2,11 @@
 
 Given one or more GEO or SRA accessions, `geofetch` can 1) download either raw or processed data from either GEO or SRA and 2) produce a standardized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
 
-This project is still pre-release, but it is completely functional. However, some things may change in the near future.
+This project is still pre-release, but it is completely functional.
 
 ## Overview
 
-geofetch has two components:
+The geofetch repository has two components:
 
 1. `geofetch/geofetch.py` - A python script that downloads metadata and produces PEP-compatible sample annotation files, and downloads `.sra` files (or processed data from GEO if requested).
 2. `sra_convert/sra_convert.py` - A [pypiper](http://pypiper.readthedocs.io) pipeline that converts SRA files into BAM files.
@@ -37,7 +37,7 @@ geofetch has two components:
 	Here are some other examples:
 
 	```
-	./geofetch.py -i GSE94568 --just-metadata -n autism_microglia -m '${CODE}sandbox'
+	./geofetch.py -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
 	./geofetch.py -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
 	
 	```
@@ -65,6 +65,42 @@ Here's what this means:
 - `-lump 10` will tell `looper` to lump jobs together until it accumulates 10 GB of input files. This creates individual jobs that take about an hour or so, instead of submitting lots of 5-10 minute jobs. This is useful if you're using a cluster.
 
 
+## Next steps
+
+Once you've converted, then you just need to run the actual pipeline. What pipeline do you want to run? Add the pipeline interface into the `metadata.pipeline_interfaces` section on the project config file:
+
+```
+metadata:
+  pipeline_interfaces: path/to/pipeline_interface
+```
+
+
+# A start-to-finish example
+
+Let's take a GEO project from start to finish.
+
+
+1. Download the data
+
+```
+./geofetch.py -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
+```
+
+2. *Finalize project config*. Link to the pipeline you want to use by adding a `pipeline_interface` to the project config file produced by `geofetch`. Make any other configuration adjustments to your project.
+
+3. *Finalize sample annotation*. Adjust the `sample_annotation` file to make sure you have the right column names and attributes needed by the pipeline you're using. Make sure the `protocol` column matches the pipeline's `protocol` -- GEO submitters are notoriously bad at getting the metadata correct. For example,  this project lists the protocol as 'other' instead of as 'ATAC', so we have to manually correct it in the sample annotation file.
+
+4. Run your pipeline:
+
+	```
+	looper run ${CODE}sandbox/cohesin_dose/cohesin_dose_config.yaml
+	```
+
+	or:
+
+	```
+	looper run ${CODE}sandbox/autism_microglia/autism_microglia_config.yaml -d
+	```
 
 
 ## Tips

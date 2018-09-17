@@ -12,9 +12,10 @@ __email__ = "vreuter@virginia.edu"
 _LOGGER = logging.getLogger(__name__)
 
 
-# This dict provides NCBI lookup URLs for different accession types. SRX identifiers can be used to
-# grab metadata from SRA for a single sample, just as an SRP identifier is used to grab the same table
-# for multiple samples, so these accessions are the same.
+# This dict provides NCBI lookup URLs for different accession types. SRX
+# identifiers can be used to grab metadata from SRA for a single sample, just as
+# an SRP identifier is used to grab the same table for multiple samples, so
+# these accessions are the same.
 URL_BY_ACC = {
     "GSE": "http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gse&acc={ACCESSION}&form=text&view=full",
     "GSM": "http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc={ACCESSION}&form=text&view=full",

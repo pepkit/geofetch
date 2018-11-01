@@ -357,18 +357,18 @@ def main(cmdl):
 		project_name = os.path.splitext(os.path.basename(args.input))[0]
 
 	metadata_expanded = os.path.expandvars(args.metadata_folder)
-	print(args.metadata_folder)
+	print("Given metadata folder: {}".format(args.metadata_folder))
 	if os.path.isabs(metadata_expanded):
 		metadata_raw = args.metadata_folder
 	else:
 		metadata_expanded = os.path.abspath(metadata_expanded)
 		metadata_raw = os.path.abspath(args.metadata_folder)
 
-	print(metadata_raw)
+	print("Initial raw metadata folder: {}".format(metadata_raw))
 	if not args.no_subfolder:
 		metadata_expanded = os.path.join(metadata_expanded, project_name)
 		metadata_raw = os.path.join(metadata_raw, project_name)
-	print(metadata_raw)
+	print("Final raw metadata folder: {}".format(metadata_raw))
 
 	# Some sanity checks before proceeding
 	if args.bam_folder and not which("samtools"):

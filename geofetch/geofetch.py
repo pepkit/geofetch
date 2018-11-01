@@ -384,8 +384,7 @@ def main(cmdl):
 	# This loop populates a list of metadata.
 	metadata_dict = OrderedDict()
 	subannotation_dict = OrderedDict()
-	combined_subannotation_table = []
-	
+
 	for acc_GSE in acc_GSE_list.keys():
 		print("Processing accession: " + acc_GSE)
 		if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
@@ -396,7 +395,7 @@ def main(cmdl):
 		GSM_limit_list = acc_GSE_list[acc_GSE].keys() #[x[1] for x in acc_GSE_list[acc_GSE]]
 	
 		print("Limit to: " + str(acc_GSE_list[acc_GSE])) # a list of GSM#s
-		print("Limit to: " + str(GSM_limit_list)) # a list of GSM#s
+		#print("Limit to: " + str(GSM_limit_list)) # a list of GSM#s
 		if args.refresh_metadata:
 			print("Refreshing metadata...")
 		# For each GSE acc, produce a series of metadata files

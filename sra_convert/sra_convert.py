@@ -16,7 +16,7 @@ def _parse_cmdl(cmdl):
 	
 	parser.add_argument(
 			"-s", "--srafolder", default=safe_echo("SRARAW"),
-			help="Optional: Specify a location to store sra files "
+			help="Optional: Specify a location to store pipeline output "
 			"[Default: $SRARAW:" + safe_echo("SRARAW") + "]")
 
 	parser.add_argument(

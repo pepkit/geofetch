@@ -6,7 +6,7 @@ metadata:
   sample_annotation: {annotation}
   sample_subannotation: {subannotation}
   output_dir: ${PROCESSED}{project_name}
-  pipeline_interfaces: null
+  pipeline_interfaces: {pipeline_interfaces}
 
 derived_columns: [data_source]
 

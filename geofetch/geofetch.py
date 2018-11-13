@@ -117,7 +117,7 @@ def _parse_cmdl(cmdl):
 			[Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
 
 	parser.add_argument(
-			"-pipe", "--pipeline_interfaces", default=None,
+			"-P", "--pipeline_interfaces", default=None,
 			help="Optional: Specify the filepath of a pipeline interface yaml file. "
 				"[Default: null]")
 	

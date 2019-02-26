@@ -347,8 +347,9 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
 	
 	return acc_GSE_list
 
-def main(cmdl):
-	
+
+def run_geofetch(cmdl):
+
 	args = _parse_cmdl(cmdl)
 
 	if args.name:
@@ -745,6 +746,9 @@ def main(cmdl):
 		config_file.write(template)
 
 
+def main():
+	run_geofetch(sys.argv[1:])
+
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+	main()

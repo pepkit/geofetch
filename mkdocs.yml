@@ -1,0 +1,31 @@
+site_name: Geofetch
+site_logo: img/geofetch_logo_dark.svg
+site_url: http://code.databio.org/geofetch/
+
+repo_url: http://github.com/pepkit/geofetch
+
+nav:
+  - Getting started:
+    - Introduction: README.md
+    - Tutorial: tutorial.md
+  - How-to Guides:
+    - How to build a PEP: howto.md
+    - How to limit the files downloaded: howto-limit.md
+    - How to control data location: howto-location.md
+  - Reference:
+    - Usage: usage.md
+    - Support: support.md
+    - Contributing: contributing.md
+  - Changelog: changelog.md
+
+theme: databio
+
+
+plugins:
+  - search
+  - databio:
+      autodoc_modules: null
+      autodoc_build: "docs_build"
+      usage_template: "docs/usage_template.md"
+      usage_cmds:
+        -"$CODEBASE/databio/pepatac/pipelines/pepatac.py --help

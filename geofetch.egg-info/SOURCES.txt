@@ -1,9 +1,0 @@
-setup.py
-geofetch/_version.py
-geofetch/geofetch.py
-geofetch/utils.py
-geofetch.egg-info/PKG-INFO
-geofetch.egg-info/SOURCES.txt
-geofetch.egg-info/dependency_links.txt
-geofetch.egg-info/entry_points.txt
-geofetch.egg-info/top_level.txt

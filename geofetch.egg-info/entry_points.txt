@@ -1,3 +1,0 @@
-[console_scripts]
-geofetch = geofetch.geofetch:main
-

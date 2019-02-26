@@ -1,4 +1,4 @@
-# <img src="docs/img/geofetch_logo.svg" alt="caravel logo" height="70" align="left"/> geofetch
+# <img src="docs/img/geofetch_logo.svg" alt="caravel logo" height="70" align="left"/>
 
 [![PEP compatible](http://pepkit.github.io/img/PEP-compatible-green.svg)](http://pepkit.github.io)
 

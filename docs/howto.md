@@ -6,13 +6,13 @@
 2. Download SRA data using `geofetch.py`. To see full options, see the help menu with:
 
 ```console
-python geofetch.py -h
+geofetch -h
 ```
 
 For example, run it like:
 
 ```console
-python geofetch.py -i GSE##### -m path/to/metadata/folder -n PROJECT_NAME
+geofetch -i GSE##### -m path/to/metadata/folder -n PROJECT_NAME
 ```
 
 This will do 3 things:
@@ -24,8 +24,8 @@ This will do 3 things:
 Here are some other examples:
 
 ```console
-./geofetch.py -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
-./geofetch.py -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
+geofetch -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
+geofetch -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
 ```
 
 Once you've produced your PEP annotation files and downloaded your SRA data, you should go check out the config files and annotation sheets and make sure they make sense to you. Then, you're ready to run pipelines on the data! The next thing is to convert the `sra` data into a format that can be used by pipelines, which we go over in the next section.

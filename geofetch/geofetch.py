@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Nathan Sheffield"
+__all__ = ["parse_accessions"]
 
 # Outline:
 # INPUT: A list of GSE ids, optionally including GSM ids to limit to.

@@ -68,7 +68,6 @@ setup(
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Topic :: Scientific/Engineering :: Bio-Informatics"
@@ -85,5 +84,8 @@ setup(
     package_data={PACKAGE: ['templates/*']},
     scripts=scripts,
     include_package_data=True,
+    test_suite="tests", 
+    tests_require=(["mock", "pytest"]),
+    setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []), 
     **extra
 )

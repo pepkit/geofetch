@@ -24,7 +24,7 @@ import os
 import re
 import subprocess
 import sys
-from utils import Accession
+from .utils import Accession
 
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking

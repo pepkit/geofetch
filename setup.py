@@ -5,33 +5,27 @@ from setuptools import setup
 import sys
 
 PACKAGE = "geofetch"
+REQDIR = "requirements"
 
 # Additional keyword arguments for setup().
 extra = {}
 
-# Ordinary dependencies
-DEPENDENCIES = []
-with open("requirements/requirements-all.txt", "r") as reqs_file:
-    for line in reqs_file:
-        if not line.strip():
-            continue
-        #DEPENDENCIES.append(line.split("=")[0].rstrip("<>"))
-        DEPENDENCIES.append(line)
 
-# numexpr for pandas
-try:
-    import numexpr
-except ImportError:
-    # No numexpr is OK for pandas.
-    pass
-else:
-    # pandas 0.20.2 needs updated numexpr; the claim is 2.4.6, but that failed.
-    DEPENDENCIES.append("numexpr>=2.6.2")
+def read_reqs(reqs_name):
+    deps = []
+    with open(os.path.join(REQDIR, "requirements-{}.txt".format(reqs_name)), 'r') as f:
+        for l in f:
+            if not l.strip():
+                continue
+            #deps.append(l.split("=")[0].rstrip("<>"))
+            deps.append(l)
+    return deps
+
 
 # 2to3
 if sys.version_info >= (3, ):
     extra["use_2to3"] = True
-extra["install_requires"] = DEPENDENCIES
+extra["install_requires"] = read_reqs("all")
 
 
 # Additional files to include with package
@@ -85,7 +79,7 @@ setup(
     scripts=scripts,
     include_package_data=True,
     test_suite="tests", 
-    tests_require=(["mock", "pytest"]),
+    tests_require=read_reqs("dev"),
     setup_requires=(["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []), 
     **extra
 )

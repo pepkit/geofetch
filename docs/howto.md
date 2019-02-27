@@ -1,7 +1,7 @@
 
 ## How to build a PEP from SRA or GEO data
 
-1. You must have the `sratoolkit` installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them (see details below on `sratools`).
+1. You must have the `sratoolkit` installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them. For more information, refer to the [`sratools` page](howto-location.md).
 
 2. Download SRA data using `geofetch.py`. To see full options, see the help menu with:
 

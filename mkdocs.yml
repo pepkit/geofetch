@@ -9,7 +9,7 @@ nav:
     - Introduction: README.md
     - Tutorial: tutorial.md
   - How-to Guides:
-    - How to limit the files downloaded: howto-limit.md
+    - How to specify multiple accessions: howto-limit.md
     - How to control data location: howto-location.md
   - Reference:
     - Usage: usage.md

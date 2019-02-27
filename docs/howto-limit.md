@@ -1,19 +1,20 @@
 
-## How to limit the files downloaded by `geofetch.py`
+## How to specify multiple accessions
 
-Fetch data and metadata from GEO and SRA.
+If you just have a single accession, you can pass it to `geofetch` directly on
+the command line. If you want more control, either because you have multiple
+accessions, or you want to specify a subset of samples, then you can provide a
+file with a list of GSE accessions.
 
-This script will download either raw SRA data from SRA or processed GEO data
-from GEO, given a GEO accession. It wants a GSE number, which can be passed
-directly on the command line, or you can instead provide a file with a list of
-GSE accessions. By default it will download all the samples in that accession,
-but you can limit this by creating a long-format file with GSM numbers
-specifying which individual samples to include. If the second column is
-included, a third column may also be included and will be used as the
-sample_name; otherwise, the sample will be named according to the GEO
+By default, `geofetch` will download all the samples in every included
+accession, but you can limit this by adding a second column with **GSM
+accessions** (which specify individual samples with a **GSE dataset**). If the
+second column is included, a third column may also be included and will be used
+as the sample_name; otherwise, the sample will be named according to the GEO
 Sample_title field. Any columns after the third will be ignored.
 
-The 1, 2, or 3-column input file would look like this:
+You may mix 1, 2, and 3 column lines in the file. SO, the 1, 2, or 3-column
+input file could look like this:
 
 ```console
 GSE123  GSM#### Sample1
@@ -26,12 +27,9 @@ This will download 3 particular GSM experiments from GSE123, and everything from
 GSE456. It will name the first two samples Sample1 and Sample2, and the third,
 plus any from GSE456, will have names according to GEO metadata.
 
-In addition to downloading the files (using the `sratoolkit`), this script also
-produces an annotation metadata file for use as input to alignment pipelines. By
-default, multiple `Run`s (SRR) in an `Experiment` (SRX) will be treated as samples
-to combine, but this can be changed with a command-line argument.
+## Metadata output
 
-Metadata output. For each GSE input accession (ACC),
+For each GSE input accession (ACC), `geofetch` produces:
 
 - GSE_ACC####.soft a SOFT file (annotating the experiment itself)
 - GSM_ACC####.soft a SOFT file (annotating the samples within the experiment)

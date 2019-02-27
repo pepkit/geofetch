@@ -24,4 +24,4 @@ Now, run it on the command line:
 geofetch --help
 ```
 
-Next, check out the [usage](/usage) reference, or for a detailed walkthrough, head on over to the [tutorial](tutorial).
+Next, check out the [usage](usage) reference, or for a detailed walkthrough, head on over to the [tutorial](tutorial).

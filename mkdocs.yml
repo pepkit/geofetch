@@ -9,7 +9,6 @@ nav:
     - Introduction: README.md
     - Tutorial: tutorial.md
   - How-to Guides:
-    - How to build a PEP: howto.md
     - How to limit the files downloaded: howto-limit.md
     - How to control data location: howto-location.md
   - Reference:
@@ -28,4 +27,4 @@ plugins:
       autodoc_build: "docs_build"
       usage_template: "docs/usage_template.md"
       usage_cmds:
-        -"$CODEBASE/databio/pepatac/pipelines/pepatac.py --help
+        -"geofetch --help

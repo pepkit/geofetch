@@ -1,32 +1,61 @@
-# A start-to-finish example
+# geofetch tutorial
 
 Let's take a GEO project from start to finish.
 
+## Prerequisites
 
-1. Download the data
+You must have the `sratoolkit` from NCBI installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them. For more information, see [how to change sratools download location](howto-location.md).
 
-    ```
-    geofetch -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
-    ```
 
-2. Finalize the project config. Link to the pipeline you want to use by adding a `pipeline_interface` to the project config file produced by `geofetch`. Make any other configuration adjustments to your project.
+## Download SRA data using `geofetch`
 
-3. Finalize the sample annotation. Adjust the `sample_annotation` file to make sure you have the right column names and attributes needed by the pipeline you're using. Make sure the `protocol` column matches the pipeline's `protocol` -- GEO submitters are notoriously bad at getting the metadata correct. For example,  this project lists the protocol as 'other' instead of as 'ATAC', so we have to manually correct it in the sample annotation file.
+To see full options, see the help menu with:
 
-4. Run your pipeline:
+```console
+geofetch -h
+```
 
-    ```
-    looper run ${CODE}sandbox/cohesin_dose/cohesin_dose_config.yaml
-    ```
+For example, run it like:
 
-    or:
+```console
+geofetch -i GSE##### -m path/to/metadata/folder -n PROJECT_NAME
+```
 
-    ```
-    looper run ${CODE}sandbox/autism_microglia/autism_microglia_config.yaml -d
-    ```
+This will do 3 things:
+
+1. download all `.sra` files from `GSE#####` into your SRA folder (wherever you have configured `sratools` to stick data).
+2. produce a sample annotation sheet (currently called `PROJECT_NAME_annotation.csv` in your metadata folder), which is what you will use as part of your PEP.
+3. produce a project configuration file (`PROJECT_NAME_config.yaml`) in your metadata folder.
+
+Here are some other examples:
+
+```console
+geofetch -i GSE95654 --just-metadata -n crc_rrbs -m '${CODE}sandbox'
+geofetch -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
+```
+
+## Finalize the project config and sample annotation
+
+That's basically it! `Geofetch` will have produced a general-purpose PEP for you, but you'll need to modify it for whatever purpose you have. For example, one common thing is to link to the pipeline you want to use by adding a `pipeline_interface` to the project config file. You may also need to adjust the `sample_annotation` file to make sure you have the right column names and attributes needed by the pipeline you're using. GEO submitters are notoriously bad at getting the metadata correct.
+
+## A few real-world examples
+
+```
+looper run ${CODE}sandbox/cohesin_dose/cohesin_dose_config.yaml
+```
+
+or:
+
+```
+looper run ${CODE}sandbox/autism_microglia/autism_microglia_config.yaml -d
+```
+
+You can find a complete example of [using `geofetch` for RNA-seq data](https://github.com/databio/example-projects/tree/master/rna-seq). 
+
 
 ## Tips
 
 * Set an environment variable for `$SRABAM` (where `.bam` files will live), and `geofetch` will check to see if you have an already-converted bamfile there before issuing the command to download the `sra` file. In this way, you can delete old `sra` files after conversion and not have to worry about re-downloading them. 
 
 * The config template uses an environment variable `$SRARAW` for where `.sra` files will live. If you set this variable to the same place you instructed `sratoolkit` to download `sra` files, you won't have to tweak the config file. For more information refer to the [`sratools` page](howto-location.md).
+

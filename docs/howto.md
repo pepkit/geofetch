@@ -15,7 +15,7 @@ For example, run it like:
 python geofetch.py -i GSE##### -m path/to/metadata/folder -n PROJECT_NAME
 ```
 
-This will do 2 things:
+This will do 3 things:
 
 1. download all `.sra` files from `GSE#####` into your SRA folder (wherever you have configured `sratools` to stick data).
 2. produce a sample annotation sheet (currently called `PROJECT_NAME_annotation.csv` in your metadata folder), which is what you will use as part of your PEP.
@@ -28,5 +28,5 @@ Here are some other examples:
 ./geofetch.py -i GSE73215 --just-metadata -n cohesin_dose -m '${CODE}sandbox'
 ```
 
-3. Once you've produced your PEP annotation files and downloaded your SRA data, you should go check out the config files and annotation sheets and make sure they make sense to you. Then, you're ready to run pipelines on the data! The next thing is to convert the `sra` data into a format that can be used by pipelines, which we go over in the next section.
+Once you've produced your PEP annotation files and downloaded your SRA data, you should go check out the config files and annotation sheets and make sure they make sense to you. Then, you're ready to run pipelines on the data! The next thing is to convert the `sra` data into a format that can be used by pipelines, which we go over in the next section.
 

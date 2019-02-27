@@ -11,7 +11,7 @@ extra = {}
 
 # Ordinary dependencies
 DEPENDENCIES = []
-with open("requirements.txt", 'r') as reqs_file:
+with open("requirements/requirements-all.txt", "r") as reqs_file:
     for line in reqs_file:
         if not line.strip():
             continue

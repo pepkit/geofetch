@@ -28,7 +28,7 @@ plus any from GSE456, will have names according to GEO metadata.
 
 In addition to downloading the files (using the `sratoolkit`), this script also
 produces an annotation metadata file for use as input to alignment pipelines. By
-default, multiple Runs (SRR) in an Experiment (SRX) will be treated as samples
+default, multiple `Run`s (SRR) in an `Experiment` (SRX) will be treated as samples
 to combine, but this can be changed with a command-line argument.
 
 Metadata output. For each GSE input accession (ACC),
@@ -41,7 +41,7 @@ In addition, a single combined metadata file ("annoComb") for the whole input,
 including SRA and GSM annotations for each sample. Here, "combined" means that it will have
 rows for every sample in every GSE included in your input. So if you just gave a single GSE,
 then the combined file is the same as the GSE file. If any "merged" samples exist
-(samples for which there are multiple SRR Runs for a single SRX Experiment), the
+(samples for which there are multiple SRR Runs for a single SRX `Experiment`), the
 script will also produce a merge table CSV file with the relationships between
 SRX and SRR.
 

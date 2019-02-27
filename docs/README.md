@@ -20,7 +20,7 @@ pip install geofetch
 
 Now, run it on the command line:
 
-```bash
+```console
 geofetch --help
 ```
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Nathan Sheffield"
+__all__ = ["parse_accessions"]
 
 # Outline:
 # INPUT: A list of GSE ids, optionally including GSM ids to limit to.
@@ -23,7 +24,7 @@ import os
 import re
 import subprocess
 import sys
-from utils import Accession
+from .utils import Accession
 
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking

@@ -56,7 +56,7 @@ setup(
     name=PACKAGE,
     packages=[PACKAGE],
     version=version,
-    description="A ",
+    description="Downloads data and metadata from GEO and SRA and creates standard PEPs.",
     long_description=long_description,
     classifiers=[
         "Development Status :: 4 - Beta",

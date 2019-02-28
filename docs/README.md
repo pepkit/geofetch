@@ -1,6 +1,6 @@
-[![PEP compatible](http://pepkit.github.io/img/PEP-compatible-green.svg)](http://pepkit.github.io)
+# <img src="img/geofetch_logo.svg" class="img-header">
 
-# <img src="img/geofetch_logo.svg" class="img-fluid" style="max-height:45px; margin-top:-15px; margin-bottom:-10px">  geofetch
+[![PEP compatible](http://pepkit.github.io/img/PEP-compatible-green.svg)](http://pepkit.github.io)
 
 `geofetch` is a command-line tool that does two things when given one or more GEO/SRA accessions:
 

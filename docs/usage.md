@@ -1,4 +1,4 @@
-# <img src="../img/geofetch_logo.svg" class="img-fluid" style="max-height:35px; margin-top:-15px; margin-bottom:-10px">  usage reference
+# <img src="../img/geofetch_logo.svg" class="img-header">  usage reference
 
 `geofetch` command-line usage instructions:
 
@@ -9,7 +9,7 @@
 usage: geofetch [-h] -i INPUT [-n NAME] [-m METADATA_FOLDER] [-f]
                 [--just-metadata] [-r] [--acc-anno] [--use-key-subset] [-x]
                 [--config-template CONFIG_TEMPLATE] [-p] [-g GEO_FOLDER]
-                [-b BAM_FOLDER]
+                [-b BAM_FOLDER] [-P PIPELINE_INTERFACES]
 
 Automatic GEO SRA data downloader
 
@@ -40,7 +40,7 @@ optional arguments:
                         setting instead treats each run as a separate sample
   --config-template CONFIG_TEMPLATE
                         Project config yaml file template.
-  -p, --processed       Download processed data (Default: download raw data).
+  -p, --processed       Download processed data [Default: download raw data].
   -g GEO_FOLDER, --geo-folder GEO_FOLDER
                         Optional: Specify a location to store processed GEO
                         files [Default: $GEODATA:]
@@ -48,4 +48,7 @@ optional arguments:
                         Optional: Specify folder of bam files. Geofetch will
                         not download sra files when corresponding bam files
                         already exist. [Default: $SRABAM:]
+  -P PIPELINE_INTERFACES, --pipeline_interfaces PIPELINE_INTERFACES
+                        Optional: Specify the filepath of a pipeline interface
+                        yaml file. [Default: null]
 ```

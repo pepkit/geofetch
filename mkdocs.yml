@@ -13,6 +13,7 @@ nav:
     - How to control data location: howto-location.md
   - Reference:
     - Usage: usage.md
+    - FAQ: faq.md
     - Support: support.md
     - Contributing: contributing.md
   - Changelog: changelog.md

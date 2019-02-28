@@ -1,4 +1,4 @@
-# geofetch tutorial
+# <img src="../img/geofetch_logo.svg" class="img-header">  tutorial
 
 ## Prerequisites
 

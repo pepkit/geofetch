@@ -1,9 +1,10 @@
 # Changelog
 
 
-## geofetch v0.2 (2019-02-28)
 
-- Fixed a bug that prevented install from pypi
+## geofetch v0.2, v0.3 (2019-02-28)
+
+- Fixed bugs that prevented install from pypi
 
 ## geofetch v0.1 (2019-02-27)
 

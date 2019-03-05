@@ -449,9 +449,9 @@ def run_geofetch(cmdl):
 					continue
 				current_sample_id = pl['SAMPLE']
 				current_sample_srx = False
-				columns_init = [("sample_name",""), ("protocol",""),
-								("organism",""), ("read_type",""),
-								("data_source", None), ("SRR", None), ("SRX",None)]
+				columns_init = [("sample_name", ""), ("protocol", ""),
+								("organism", ""), ("read_type", ""),
+								("data_source", None), ("SRR", None), ("SRX", None)]
 				gsm_metadata[current_sample_id] = OrderedDict(columns_init)
 
 				sys.stdout.write ("  Found sample " + current_sample_id)

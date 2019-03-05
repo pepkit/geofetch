@@ -24,7 +24,7 @@ import os
 import re
 import subprocess
 import sys
-from .utils import Accession
+from .utils import Accession, expandpath
 
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking
@@ -363,19 +363,22 @@ def run_geofetch(cmdl):
 	else:
 		project_name = os.path.splitext(os.path.basename(args.input))[0]
 
-	metadata_expanded = os.path.expandvars(args.metadata_folder)
-	print("Given metadata folder: {}".format(args.metadata_folder))
+	def render_env_var(ev):
+		return "{} ({})".format(ev, expandpath(ev))
+
+	metadata_expanded = expandpath(args.metadata_folder)
+	print("Given metadata folder: {} ({})".format(args.metadata_folder, metadata_expanded))
 	if os.path.isabs(metadata_expanded):
 		metadata_raw = args.metadata_folder
 	else:
 		metadata_expanded = os.path.abspath(metadata_expanded)
 		metadata_raw = os.path.abspath(args.metadata_folder)
 
-	print("Initial raw metadata folder: {}".format(metadata_raw))
+	print("Initial raw metadata folder: {}".format(render_env_var(metadata_raw)))
 	if not args.no_subfolder:
 		metadata_expanded = os.path.join(metadata_expanded, project_name)
 		metadata_raw = os.path.join(metadata_raw, project_name)
-	print("Final raw metadata folder: {}".format(metadata_raw))
+	print("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
 
 	# Some sanity checks before proceeding
 	if args.bam_folder and not which("samtools"):

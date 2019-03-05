@@ -27,6 +27,12 @@ import sys
 from .utils import Accession, expandpath
 
 
+if sys.version_info[0] == 2:
+	_STRING_TYPES = basestring
+else:
+	_STRING_TYPES = str
+
+
 # A set of hard-coded keys if you want to limit to just a few instead of taking
 # all information provided in GEO. Use with `--use-key-subset`
 ANNOTATION_SHEET_KEYS = [
@@ -582,7 +588,7 @@ def run_geofetch(cmdl):
 					# This SRX number already has an entry in the table.
 					print("  Found additional run: {} ({})".format(run_name, experiment))
 	
-					if isinstance(gsm_metadata[experiment]["SRR"], basestring) \
+					if isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES) \
 							and experiment not in gsm_multi_table:
 						# Only one has been stuck in so far, make a list
 						gsm_multi_table[experiment] = []

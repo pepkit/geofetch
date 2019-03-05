@@ -583,7 +583,7 @@ def run_geofetch(cmdl):
 					print("  Found additional run: {} ({})".format(run_name, experiment))
 	
 					if isinstance(gsm_metadata[experiment]["SRR"], basestring) \
-							and not gsm_multi_table.has_key(experiment):
+							and experiment not in gsm_multi_table:
 						# Only one has been stuck in so far, make a list
 						gsm_multi_table[experiment] = []
 						# Add first the original one, which was stored as a string

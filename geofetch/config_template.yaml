@@ -11,7 +11,7 @@ metadata:
 derived_columns: [data_source]
 
 data_sources:
-  SRA: "${SRABAM}{SRR}.bam"
+  SRA: "${SRABAM}/{SRR}.bam"
 
 implied_columns:
   organism:
@@ -29,4 +29,4 @@ subprojects:
     metadata:
       pipeline_interfaces: ${CODEBASE}sra_convert/pipeline_interface_convert.yaml
     data_sources:
-     SRA: "${SRARAW}{SRR}.sra"
+     SRA: "${SRARAW}/{SRR}.sra"

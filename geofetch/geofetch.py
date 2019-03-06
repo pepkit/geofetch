@@ -751,7 +751,7 @@ def run_geofetch(cmdl):
     # Write project config file
 
     if not args.config_template:
-        geofetchdir = os.path.dirname(sys.argv[0])
+        geofetchdir = os.path.dirname(__file__)
         args.config_template = os.path.join(geofetchdir, "config_template.yaml")
 
     with open(args.config_template, 'r') as template_file:

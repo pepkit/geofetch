@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 from .utils import Accession, expandpath
-
+from ._version import __version__
 
 if sys.version_info[0] == 2:
     _STRING_TYPES = basestring
@@ -54,7 +54,12 @@ SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
 def _parse_cmdl(cmdl):
     parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
-    
+
+    parser.add_argument(
+            "-V", "--version",
+            action="version",
+            version="%(prog)s {v}".format(v=__version__))
+ 
 
     # Required
     parser.add_argument(

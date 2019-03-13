@@ -1,6 +1,10 @@
 # Changelog
 
+## geofetch v0.4 (2019-03-06)
 
+- Fixed a bug with default generic config template
+- Added `--version` option
+- Improved python 3 compatibility
 
 ## geofetch v0.2, v0.3 (2019-02-28)
 

@@ -24,17 +24,23 @@ import os
 import re
 import subprocess
 import sys
-from .utils import Accession
+from .utils import Accession, expandpath
+from ._version import __version__
+
+if sys.version_info[0] == 2:
+    _STRING_TYPES = basestring
+else:
+    _STRING_TYPES = str
 
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking
 # all information provided in GEO. Use with `--use-key-subset`
 ANNOTATION_SHEET_KEYS = [
-	"sample_name", "protocol", "read_type", "organism", "data_source",
-	'Sample_title', 'Sample_source_name_ch1', 'Sample_organism_ch1', 
-	"Sample_library_selection", "Sample_library_strategy", 
-	'Sample_type',  "SRR", "SRX", 'Sample_geo_accession', 'Sample_series_id', 
-	'Sample_instrument_model']
+    "sample_name", "protocol", "read_type", "organism", "data_source",
+    'Sample_title', 'Sample_source_name_ch1', 'Sample_organism_ch1', 
+    "Sample_library_selection", "Sample_library_strategy", 
+    'Sample_type',  "SRR", "SRX", 'Sample_geo_accession', 'Sample_series_id', 
+    'Sample_instrument_model']
 
 
 # Regex to parse out SRA accession identifiers
@@ -47,719 +53,728 @@ SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
 
 def _parse_cmdl(cmdl):
-	parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
-	
-	# Required
-	parser.add_argument(
-			"-i", "--input", dest="input", required=True,
-			help="required: a GEO (GSE) accession, or a file with a list of GSE numbers")
-	
-	# Optional
-	parser.add_argument(
-			"-n", "--name",
-			help="Specify a project name. Defaults to GSE number")
+    parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
 
-	parser.add_argument(
-			"-m", "--metadata-folder",
-			dest="metadata_folder",
-			default="${SRAMETA}",
-			help="Specify a location to store metadata "
-				"[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
-	
-	parser.add_argument(
-			"-f", "--no-subfolder", action="store_true",
-			help="Don't automatically put metadata into a subfolder named with project name")
+    parser.add_argument(
+            "-V", "--version",
+            action="version",
+            version="%(prog)s {v}".format(v=__version__))
+ 
 
-	
-	parser.add_argument(
-			"--just-metadata", action="store_true",
-			help="If set, don't actually run downloads, just create metadata")
+    # Required
+    parser.add_argument(
+            "-i", "--input", dest="input", required=True,
+            help="required: a GEO (GSE) accession, or a file with a list of GSE numbers")
+    
+    # Optional
+    parser.add_argument(
+            "-n", "--name",
+            help="Specify a project name. Defaults to GSE number")
+
+    parser.add_argument(
+            "-m", "--metadata-folder",
+            dest="metadata_folder",
+            default="${SRAMETA}",
+            help="Specify a location to store metadata "
+                "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+    
+    parser.add_argument(
+            "-f", "--no-subfolder", action="store_true",
+            help="Don't automatically put metadata into a subfolder named with project name")
+
+    
+    parser.add_argument(
+            "--just-metadata", action="store_true",
+            help="If set, don't actually run downloads, just create metadata")
 
 
-	parser.add_argument(
-			"-r", "--refresh-metadata", action="store_true",
-			help="If set, re-download metadata even if it exists.")
+    parser.add_argument(
+            "-r", "--refresh-metadata", action="store_true",
+            help="If set, re-download metadata even if it exists.")
 
-	parser.add_argument(
-			"--acc-anno", action="store_true",
-			help="Also produce annotation sheets for each accession, not just"
-			" for the whole project combined")
+    parser.add_argument(
+            "--acc-anno", action="store_true",
+            help="Also produce annotation sheets for each accession, not just"
+            " for the whole project combined")
 
-	parser.add_argument(
-			"--use-key-subset", action="store_true",
-			help="Use just the keys defined in this module when writing out metadata.")
+    parser.add_argument(
+            "--use-key-subset", action="store_true",
+            help="Use just the keys defined in this module when writing out metadata.")
 
-	parser.add_argument( "-x", "--split-experiments", action="store_true", 
-		help="""Split SRR runs into individual samples. By default, SRX
-			experiments with multiple SRR Runs will have a single entry in the
-			annotation table, with each run as a separate row in the
-			subannotation table. This setting instead treats each run as a
-			separate sample""")
+    parser.add_argument( "-x", "--split-experiments", action="store_true", 
+        help="""Split SRR runs into individual samples. By default, SRX
+            experiments with multiple SRR Runs will have a single entry in the
+            annotation table, with each run as a separate row in the
+            subannotation table. This setting instead treats each run as a
+            separate sample""")
 
-	parser.add_argument(
-			"--config-template", default=None,
-			help="Project config yaml file template.")
+    parser.add_argument(
+            "--config-template", default=None,
+            help="Project config yaml file template.")
 
-	parser.add_argument(
-			"-p", "--processed",
-			default=False,
-			action="store_true",
-			help="Download processed data [Default: download raw data].")
+    parser.add_argument(
+            "-p", "--processed",
+            default=False,
+            action="store_true",
+            help="Download processed data [Default: download raw data].")
 
-	parser.add_argument(
-			"-g", "--geo-folder", default=safe_echo("GEODATA"),
-			help="Optional: Specify a location to store processed GEO files "
-				"[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
-	
-	parser.add_argument(
-			"-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
-			help="""Optional: Specify folder of bam files. Geofetch will not
-			download sra files when corresponding bam files already exist.
-			[Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
+    parser.add_argument(
+            "-g", "--geo-folder", default=safe_echo("GEODATA"),
+            help="Optional: Specify a location to store processed GEO files "
+                "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
+    
+    parser.add_argument(
+            "-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
+            help="""Optional: Specify folder of bam files. Geofetch will not
+            download sra files when corresponding bam files already exist.
+            [Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
 
-	parser.add_argument(
-			"-P", "--pipeline_interfaces", default=None,
-			help="Optional: Specify the filepath of a pipeline interface yaml file. "
-				"[Default: null]")
-	
-	# Deprecated; these are for bam conversion which now happens in sra_convert
-	# it still works here but I hide it so people don't use it, because it's confusing.
-	parser.add_argument(
-			"-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
-			help=argparse.SUPPRESS,
-			# help="Optional: Specify a location to store sra files "
-			# 	"[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
-			)
-	parser.add_argument(
-			"--bam-conversion", action="store_true",
-			# help="Turn on sequential bam conversion. Default: No conversion.",
-			help=argparse.SUPPRESS)
-	
-	parser.add_argument(
-			"--picard-path", dest="picard_path", default=safe_echo("PICARD"),
-			# help="Specify a path to the picard jar, if you want to convert "
-			# "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
-			help=argparse.SUPPRESS)
+    parser.add_argument(
+            "-P", "--pipeline_interfaces", default=None,
+            help="Optional: Specify the filepath of a pipeline interface yaml file. "
+                "[Default: null]")
+    
+    # Deprecated; these are for bam conversion which now happens in sra_convert
+    # it still works here but I hide it so people don't use it, because it's confusing.
+    parser.add_argument(
+            "-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
+            help=argparse.SUPPRESS,
+            # help="Optional: Specify a location to store sra files "
+            #   "[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
+            )
+    parser.add_argument(
+            "--bam-conversion", action="store_true",
+            # help="Turn on sequential bam conversion. Default: No conversion.",
+            help=argparse.SUPPRESS)
+    
+    parser.add_argument(
+            "--picard-path", dest="picard_path", default=safe_echo("PICARD"),
+            # help="Specify a path to the picard jar, if you want to convert "
+            # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
+            help=argparse.SUPPRESS)
 
-	
-	return parser.parse_args(cmdl)
+    
+    return parser.parse_args(cmdl)
 
 
 
 def parse_SOFT_line(l):
-	"""
-	Parse SOFT formatted line, returning a dictionary with the key-value pair.
-	:param str l: A SOFT-formatted line to parse ( !key = value )
-	:return dict[str, str]: A python Dict object representing the key-value.
-	:raise InvalidSoftLineException: if given line can't be parsed as SOFT line
-	"""
-	elems = l[1:].split("=")
-	return {elems[0].rstrip(): elems[1].lstrip()}
+    """
+    Parse SOFT formatted line, returning a dictionary with the key-value pair.
+    :param str l: A SOFT-formatted line to parse ( !key = value )
+    :return dict[str, str]: A python Dict object representing the key-value.
+    :raise InvalidSoftLineException: if given line can't be parsed as SOFT line
+    """
+    elems = l[1:].split("=")
+    return {elems[0].rstrip(): elems[1].lstrip()}
 
 
 
 def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
-	"""
-	Write metadata sheet out as an annotation file.
+    """
+    Write metadata sheet out as an annotation file.
 
-	:param Mapping gsm_metadata: the data to write, parsed from a file
-		with metadata/annotation information
-	:param str file_annotation: the path to the file to write
-	:param bool use_key_subset: whether to use the keys present in the
-		metadata object given (False), or instead use a fixed set of keys
-		defined within this module (True)
-	"""
-	print("  Sample annotation sheet:" + file_annotation)
+    :param Mapping gsm_metadata: the data to write, parsed from a file
+        with metadata/annotation information
+    :param str file_annotation: the path to the file to write
+    :param bool use_key_subset: whether to use the keys present in the
+        metadata object given (False), or instead use a fixed set of keys
+        defined within this module (True)
+    """
+    print("  Sample annotation sheet:" + file_annotation)
 
-	if use_key_subset:
-		# Use complete data
-		keys = ANNOTATION_SHEET_KEYS
-	else:
-		keys = gsm_metadata[gsm_metadata.iterkeys().next()].keys()
+    if use_key_subset:
+        # Use complete data
+        keys = ANNOTATION_SHEET_KEYS
+    else:
+        keys = gsm_metadata[gsm_metadata.iterkeys().next()].keys()
 
-	with open(os.path.expandvars(file_annotation), 'wb') as of:
-		w = csv.DictWriter(of, keys, extrasaction='ignore')
-		w.writeheader()
-		for item in gsm_metadata:
-			w.writerow(gsm_metadata[item])
+    with open(os.path.expandvars(file_annotation), 'wb') as of:
+        w = csv.DictWriter(of, keys, extrasaction='ignore')
+        w.writeheader()
+        for item in gsm_metadata:
+            w.writerow(gsm_metadata[item])
 
 
 def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SRX", "SRR"]):
-	"""
-	Writes one or more tables to a given CSV filepath.
-	"""
+    """
+    Writes one or more tables to a given CSV filepath.
+    """
 
-	print("  Sample subannotation sheet:" + filepath)
-	with open(os.path.expandvars(filepath), 'w') as openfile:
-		writer = csv.writer(openfile, delimiter=",")
-		# write header
-		writer.writerow(column_names)
-		if not isinstance(tabular_data, list):
-			tabular_data = [tabular_data]
+    print("  Sample subannotation sheet:" + filepath)
+    with open(os.path.expandvars(filepath), 'w') as openfile:
+        writer = csv.writer(openfile, delimiter=",")
+        # write header
+        writer.writerow(column_names)
+        if not isinstance(tabular_data, list):
+            tabular_data = [tabular_data]
 
-		for table in tabular_data:
-			for key, values in table.items():
-				# print(key, values)
-				writer.writerows(values)
+        for table in tabular_data:
+            for key, values in table.items():
+                # print(key, values)
+                writer.writerows(values)
 
 
 class InvalidSoftLineException(Exception):
-	def __init__(self, l):
-		super(self, "{}".format(l))
+    def __init__(self, l):
+        super(self, "{}".format(l))
 
 
 # From Jay@Stackoverflow
 def which(program):
-	"""Returns the path to a program to make sure it exists"""
-	import os
+    """Returns the path to a program to make sure it exists"""
+    import os
 
-	def is_exe(fp):
-		return os.path.isfile(fp) and os.access(fp, os.X_OK)
+    def is_exe(fp):
+        return os.path.isfile(fp) and os.access(fp, os.X_OK)
 
-	fpath, fname = os.path.split(program)
-	if fpath:
-		if is_exe(program):
-			return program
-	else:
-		for path in os.environ["PATH"].split(os.pathsep):
-			path = path.strip('"')
-			exe_file = os.path.join(path, program)
-			if is_exe(exe_file):
-				return exe_file
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
 
 
 
 def safe_echo(var):
-	""" Returns an environment variable if it exists, or an empty string if not"""
-	return os.getenv(var, "")
+    """ Returns an environment variable if it exists, or an empty string if not"""
+    return os.getenv(var, "")
 
 
 
 def update_columns(metadata, experiment_name, sample_name, read_type):
-	"""
-	Update the metadata associated with a particular experiment.
-	
-	For the experiment indicated, this function updates the value (mapping), 
-	including new data and populating columns used by looper based on 
-	existing values in the mapping.
-	
-	:param Mapping metadata: the key-value mapping to update
-	:param str experiment_name: name of the experiment from which these
-		data came and are associated; the key in the metadata mapping
-		for which the value is to be updated
-	:param str sample_name: name of the sample with which these data are
-		associated
-	:param str read_type: usually "single" or "paired," an indication of the
-		type of sequencing reads for this experiment
-	:return Mapping: 
-	"""
-	
-	exp = metadata[experiment_name]
+    """
+    Update the metadata associated with a particular experiment.
+    
+    For the experiment indicated, this function updates the value (mapping), 
+    including new data and populating columns used by looper based on 
+    existing values in the mapping.
+    
+    :param Mapping metadata: the key-value mapping to update
+    :param str experiment_name: name of the experiment from which these
+        data came and are associated; the key in the metadata mapping
+        for which the value is to be updated
+    :param str sample_name: name of the sample with which these data are
+        associated
+    :param str read_type: usually "single" or "paired," an indication of the
+        type of sequencing reads for this experiment
+    :return Mapping: 
+    """
+    
+    exp = metadata[experiment_name]
 
-	# Protocol-agnostic
-	exp["sample_name"] = sample_name
-	exp["protocol"] = exp["Sample_library_selection"]
-	exp["read_type"] = read_type
-	exp["organism"] = exp['Sample_organism_ch1']
-	exp["data_source"] = "SRA"
-	exp["SRX"] = experiment_name
+    # Protocol-agnostic
+    exp["sample_name"] = sample_name
+    exp["protocol"] = exp["Sample_library_selection"]
+    exp["read_type"] = read_type
+    exp["organism"] = exp['Sample_organism_ch1']
+    exp["data_source"] = "SRA"
+    exp["SRX"] = experiment_name
 
-	# Protocol specified is lowercased prior to checking here to alleviate
-	# dependence on case for the value in the annotations file.
-	bisulfite_protocols = {"reduced representation": "RRBS", "random": "WGBS"}
+    # Protocol specified is lowercased prior to checking here to alleviate
+    # dependence on case for the value in the annotations file.
+    bisulfite_protocols = {"reduced representation": "RRBS", "random": "WGBS"}
 
-	# Conditional on bisulfite sequencing
-	# print(":" + exp["Sample_library_strategy"] + ":")
-	# Try to be smart about some library methods, refining protocol if possible.
-	if exp["Sample_library_strategy"] == "Bisulfite-Seq":
-		# print("Parsing protocol")
-		proto = exp["Sample_library_selection"].lower()
-		if proto in bisulfite_protocols:
-			exp["protocol"] = bisulfite_protocols[proto]
+    # Conditional on bisulfite sequencing
+    # print(":" + exp["Sample_library_strategy"] + ":")
+    # Try to be smart about some library methods, refining protocol if possible.
+    if exp["Sample_library_strategy"] == "Bisulfite-Seq":
+        # print("Parsing protocol")
+        proto = exp["Sample_library_selection"].lower()
+        if proto in bisulfite_protocols:
+            exp["protocol"] = bisulfite_protocols[proto]
 
-	return exp
+    return exp
 
 
 def parse_accessions(input_arg, metadata_folder, just_metadata=False):
-	"""
-	Create a list of GSE accession numbers, either from file or a single value
-	from the command line This will be a dict, with the GSE# as the key, and
-	corresponding value is a list of GSM# specifying the samples we're
-	interested in from that GSE#. An empty sample list means we should get all
-	samples from that GSE#. This loop will create this dict.
-	"""
+    """
+    Create a list of GSE accession numbers, either from file or a single value
+    from the command line This will be a dict, with the GSE# as the key, and
+    corresponding value is a list of GSM# specifying the samples we're
+    interested in from that GSE#. An empty sample list means we should get all
+    samples from that GSE#. This loop will create this dict.
+    """
 
-	acc_GSE_list = OrderedDict()
+    acc_GSE_list = OrderedDict()
 
-	if not os.path.isfile(input_arg):
-		print("Input: No file named {}; trying it as an accession...".format(input_arg))
-		# No limits accepted on command line, so keep an empty list.
-		if input_arg.startswith("SRP"):
-			base, ext = os.path.splitext(input_arg)
-			if ext:
-				raise ValueError("SRP-like input must be an SRP accession")
-			file_sra = os.path.join(
-				metadata_folder, "SRA_{}.csv".format(input_arg))
-			# Fetch and write the metadata for this SRP accession.
-			Accession(input_arg).fetch_metadata(file_sra)
-			if just_metadata:
-				return
-			# Read the Run identifiers to download.
-			run_ids = []
-			with open(file_sra, 'r') as f:
-				for l in f:
-					if l.startswith("SRR"):
-						r_id = l.split(",")[0]
-						run_ids.append(r_id)
-			print("{} run(s)".format(len(run_ids)))
-			for r_id in run_ids:
-				subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
-			# Early return if we've just handled SRP accession directly.
-			return
-		else:
-			acc_GSE = input_arg
-			acc_GSE_list[acc_GSE] = OrderedDict()
-	else:
-		print("Input: Accession list file found: '{}'".format(input_arg))
-	
-		# Read input file line by line.
-		for line in open(input_arg, 'r'):
-			if (not line) or (line[0] in ["#", "\n", "\t"]):
-				continue
-			fields = [x.rstrip() for x in line.split("\t")]
-			gse = fields[0]
-			if not gse:
-				continue
-	
-			gse = gse.rstrip()
+    if not os.path.isfile(input_arg):
+        print("Input: No file named {}; trying it as an accession...".format(input_arg))
+        # No limits accepted on command line, so keep an empty list.
+        if input_arg.startswith("SRP"):
+            base, ext = os.path.splitext(input_arg)
+            if ext:
+                raise ValueError("SRP-like input must be an SRP accession")
+            file_sra = os.path.join(
+                metadata_folder, "SRA_{}.csv".format(input_arg))
+            # Fetch and write the metadata for this SRP accession.
+            Accession(input_arg).fetch_metadata(file_sra)
+            if just_metadata:
+                return
+            # Read the Run identifiers to download.
+            run_ids = []
+            with open(file_sra, 'r') as f:
+                for l in f:
+                    if l.startswith("SRR"):
+                        r_id = l.split(",")[0]
+                        run_ids.append(r_id)
+            print("{} run(s)".format(len(run_ids)))
+            for r_id in run_ids:
+                subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
+            # Early return if we've just handled SRP accession directly.
+            return
+        else:
+            acc_GSE = input_arg
+            acc_GSE_list[acc_GSE] = OrderedDict()
+    else:
+        print("Input: Accession list file found: '{}'".format(input_arg))
+    
+        # Read input file line by line.
+        for line in open(input_arg, 'r'):
+            if (not line) or (line[0] in ["#", "\n", "\t"]):
+                continue
+            fields = [x.rstrip() for x in line.split("\t")]
+            gse = fields[0]
+            if not gse:
+                continue
+    
+            gse = gse.rstrip()
 
-			if len(fields) > 1:
-				gsm = fields[1]
-		
-				if len(fields) > 2 and gsm != "":
-					# There must have been a limit (GSM specified)
-					# include a name if it doesn't already exist
-					sample_name = fields[2].rstrip()
-				else:
-					sample_name = gsm
-	
-				if acc_GSE_list.has_key(gse):  # GSE already has a GSM; add the next one
-					acc_GSE_list[gse][gsm] = sample_name
-				else:
-					acc_GSE_list[gse] = OrderedDict({gsm: sample_name})
-			else:
-				# No GSM limit; use empty dict.
-				acc_GSE_list[gse] = {}
-	
-	return acc_GSE_list
+            if len(fields) > 1:
+                gsm = fields[1]
+        
+                if len(fields) > 2 and gsm != "":
+                    # There must have been a limit (GSM specified)
+                    # include a name if it doesn't already exist
+                    sample_name = fields[2].rstrip()
+                else:
+                    sample_name = gsm
+    
+                if acc_GSE_list.has_key(gse):  # GSE already has a GSM; add the next one
+                    acc_GSE_list[gse][gsm] = sample_name
+                else:
+                    acc_GSE_list[gse] = OrderedDict({gsm: sample_name})
+            else:
+                # No GSM limit; use empty dict.
+                acc_GSE_list[gse] = {}
+    
+    return acc_GSE_list
 
 
 def run_geofetch(cmdl):
 
-	args = _parse_cmdl(cmdl)
+    args = _parse_cmdl(cmdl)
 
-	if args.name:
-		project_name = args.name
-	else:
-		project_name = os.path.splitext(os.path.basename(args.input))[0]
+    if args.name:
+        project_name = args.name
+    else:
+        project_name = os.path.splitext(os.path.basename(args.input))[0]
 
-	metadata_expanded = os.path.expandvars(args.metadata_folder)
-	print("Given metadata folder: {}".format(args.metadata_folder))
-	if os.path.isabs(metadata_expanded):
-		metadata_raw = args.metadata_folder
-	else:
-		metadata_expanded = os.path.abspath(metadata_expanded)
-		metadata_raw = os.path.abspath(args.metadata_folder)
+    def render_env_var(ev):
+        return "{} ({})".format(ev, expandpath(ev))
 
-	print("Initial raw metadata folder: {}".format(metadata_raw))
-	if not args.no_subfolder:
-		metadata_expanded = os.path.join(metadata_expanded, project_name)
-		metadata_raw = os.path.join(metadata_raw, project_name)
-	print("Final raw metadata folder: {}".format(metadata_raw))
+    metadata_expanded = expandpath(args.metadata_folder)
+    print("Given metadata folder: {} ({})".format(args.metadata_folder, metadata_expanded))
+    if os.path.isabs(metadata_expanded):
+        metadata_raw = args.metadata_folder
+    else:
+        metadata_expanded = os.path.abspath(metadata_expanded)
+        metadata_raw = os.path.abspath(args.metadata_folder)
 
-	# Some sanity checks before proceeding
-	if args.bam_folder and not which("samtools"):
-		raise SystemExit("samtools not found")
+    print("Initial raw metadata folder: {}".format(render_env_var(metadata_raw)))
+    if not args.no_subfolder:
+        metadata_expanded = os.path.join(metadata_expanded, project_name)
+        metadata_raw = os.path.join(metadata_raw, project_name)
+    print("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
 
-	acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)
-	
-	# Loop through each accession.
-	# This will process that accession, produce metadata and download files for
-	# the GSM #s included in the list for each GSE#.
-	# acc_GSE = "GSE61150" # example
-	
-	# This loop populates a list of metadata.
-	metadata_dict = OrderedDict()
-	subannotation_dict = OrderedDict()
+    # Some sanity checks before proceeding
+    if args.bam_folder and not which("samtools"):
+        raise SystemExit("samtools not found")
 
-	for acc_GSE in acc_GSE_list.keys():
-		print("Processing accession: " + acc_GSE)
-		if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
-			print(len(re.findall(GSE_PATTERN, acc_GSE)))
-			print("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
-	
-		# Get GSM#s (away from sample_name)
-		GSM_limit_list = acc_GSE_list[acc_GSE].keys() #[x[1] for x in acc_GSE_list[acc_GSE]]
-	
-		print("Limit to: " + str(acc_GSE_list[acc_GSE])) # a list of GSM#s
-		#print("Limit to: " + str(GSM_limit_list)) # a list of GSM#s
-		if args.refresh_metadata:
-			print("Refreshing metadata...")
-		# For each GSE acc, produce a series of metadata files
-		file_gse = os.path.join(metadata_expanded, acc_GSE + '_GSE.soft')
-		file_gsm = os.path.join(metadata_expanded, acc_GSE + '_GSM.soft')
-		file_sra = os.path.join(metadata_expanded, acc_GSE + '_SRA.csv')
-		file_srafilt = os.path.join(metadata_expanded, acc_GSE + '_SRA_filt.csv')
-	
-	
-		# Grab the GSE and GSM SOFT files from GEO.
-		# The GSE file has metadata describing the experiment, which includes
-		# The SRA number we need to download the raw data from SRA
-		# The GSM file has metadata describing each sample, which we will use to
-		# produce a sample annotation sheet.
-		if not os.path.isfile(file_gse) or args.refresh_metadata:
-			Accession(acc_GSE).fetch_metadata(file_gse)
-		else:
-			print("  Found previous GSE file: " + file_gse)
-	
-		if not os.path.isfile(file_gsm) or args.refresh_metadata:
-			Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM")
-		else:
-			print("  Found previous GSM file: " + file_gsm)
-	
-		# A simple state machine to parse SOFT formatted files (Here, the GSM file)
-		#gsm_metadata = {}
-		gsm_metadata = OrderedDict()
-		# For multi samples (samples with multiple runs), we keep track of these
-		# relations in a separate table, which is called the subannotation table.
-		gsm_multi_table = OrderedDict()
-		# save the state
-		current_sample_id = None
-		current_sample_srx = False
-		for line in open(file_gsm, 'r'):
-			line = line.rstrip()
-			if line[0] is "^":
-				pl = parse_SOFT_line(line)
-				if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
-					#sys.stdout.write("  Skipping " + a['SAMPLE'] + ".")
-					current_sample_id = None
-					continue
-				current_sample_id = pl['SAMPLE']
-				current_sample_srx = False
-				columns_init = [("sample_name",""), ("protocol",""),
-								("organism",""), ("read_type",""),
-								("data_source", None), ("SRR", None), ("SRX",None)]
-				gsm_metadata[current_sample_id] = OrderedDict(columns_init)
+    acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)
+    
+    # Loop through each accession.
+    # This will process that accession, produce metadata and download files for
+    # the GSM #s included in the list for each GSE#.
+    # acc_GSE = "GSE61150" # example
+    
+    # This loop populates a list of metadata.
+    metadata_dict = OrderedDict()
+    subannotation_dict = OrderedDict()
 
-				sys.stdout.write ("  Found sample " + current_sample_id)
-			elif current_sample_id is not None:
-				pl = parse_SOFT_line(line)
-				gsm_metadata[current_sample_id].update(pl)
-	
-				# For processed data, here's where we would download it
-				if args.processed and not args.just_metadata:
-					found = re.findall(SUPP_FILE_PATTERN, line)
-					if found:
-						print(pl[pl.keys()[0]])
-	
-				# Now convert the ids GEO accessions into SRX accessions
-				if not current_sample_srx:
-					found = re.findall(EXPERIMENT_PATTERN, line)
-					if found:
-						print(" (SRX accession: {})".format(found[0]))
-						srx_id = found[0]
-						gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
-						gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
-						current_sample_id = srx_id
-						current_sample_srx = True
-	
-		# GSM SOFT file parsed, save it in a list
-		metadata_dict[acc_GSE] = gsm_metadata
-	
-		# Parse out the SRA project identifier from the GSE file
-		acc_SRP = None
-		for line in open(file_gse, 'r'):
-			found = re.findall(PROJECT_PATTERN, line)
-			if found:
-				acc_SRP = found[0]
-				print("\n  Found SRA Project accession: {}\n".format(acc_SRP))
-				break
-			# For processed data, here's where we would download it
-			if args.processed and not args.just_metadata:
-				found = re.findall(SER_SUPP_FILE_PATTERN, line)
-				if found:
-					pl = parse_SOFT_line(line)
-					file_url = pl[pl.keys()[0]].rstrip()
-					print("File: " + str( file_url ))
-					# download file
-					if args.geofolder:
-						data_folder = os.path.join(args.geofolder, acc_GSE)
-						print(file_url, data_folder)
-						subprocess.call(['wget', file_url, '-P', data_folder])
+    for acc_GSE in acc_GSE_list.keys():
+        print("Processing accession: " + acc_GSE)
+        if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
+            print(len(re.findall(GSE_PATTERN, acc_GSE)))
+            print("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
+    
+        # Get GSM#s (away from sample_name)
+        GSM_limit_list = acc_GSE_list[acc_GSE].keys() #[x[1] for x in acc_GSE_list[acc_GSE]]
+    
+        print("Limit to: " + str(acc_GSE_list[acc_GSE])) # a list of GSM#s
+        #print("Limit to: " + str(GSM_limit_list)) # a list of GSM#s
+        if args.refresh_metadata:
+            print("Refreshing metadata...")
+        # For each GSE acc, produce a series of metadata files
+        file_gse = os.path.join(metadata_expanded, acc_GSE + '_GSE.soft')
+        file_gsm = os.path.join(metadata_expanded, acc_GSE + '_GSM.soft')
+        file_sra = os.path.join(metadata_expanded, acc_GSE + '_SRA.csv')
+        file_srafilt = os.path.join(metadata_expanded, acc_GSE + '_SRA_filt.csv')
+    
+    
+        # Grab the GSE and GSM SOFT files from GEO.
+        # The GSE file has metadata describing the experiment, which includes
+        # The SRA number we need to download the raw data from SRA
+        # The GSM file has metadata describing each sample, which we will use to
+        # produce a sample annotation sheet.
+        if not os.path.isfile(file_gse) or args.refresh_metadata:
+            Accession(acc_GSE).fetch_metadata(file_gse)
+        else:
+            print("  Found previous GSE file: " + file_gse)
+    
+        if not os.path.isfile(file_gsm) or args.refresh_metadata:
+            Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM")
+        else:
+            print("  Found previous GSM file: " + file_gsm)
+    
+        # A simple state machine to parse SOFT formatted files (Here, the GSM file)
+        #gsm_metadata = {}
+        gsm_metadata = OrderedDict()
+        # For multi samples (samples with multiple runs), we keep track of these
+        # relations in a separate table, which is called the subannotation table.
+        gsm_multi_table = OrderedDict()
+        # save the state
+        current_sample_id = None
+        current_sample_srx = False
+        for line in open(file_gsm, 'r'):
+            line = line.rstrip()
+            if line[0] is "^":
+                pl = parse_SOFT_line(line)
+                if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
+                    #sys.stdout.write("  Skipping " + a['SAMPLE'] + ".")
+                    current_sample_id = None
+                    continue
+                current_sample_id = pl['SAMPLE']
+                current_sample_srx = False
+                columns_init = [("sample_name", ""), ("protocol", ""),
+                                ("organism", ""), ("read_type", ""),
+                                ("data_source", None), ("SRR", None), ("SRX", None)]
+                gsm_metadata[current_sample_id] = OrderedDict(columns_init)
 
-		if not acc_SRP:
-			# If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
-			# as part of this GEO submission. Can't proceed.
-			print("  \033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
-			# but wait; another possibility: there's no SRP linked to the GSE, but there
-			# could still be an SRX linked to the (each) GSM.
-			if len(gsm_metadata) == 1:
-				print("But the GSM has an SRX number; ")
-				acc_SRP = gsm_metadata.keys()[0]
-				print("Instead of an SRP, using SRX identifier for this sample:  " + acc_SRP)
-			else:
-				# More than one sample? not sure what to do here. Does this even happen?
-				continue
-	
-		# Now we have an SRA number, grab the SraRunInfo Metadata sheet:
-		# The SRARunInfo sheet has additional sample metadata, which we will combine
-		# with the GSM file to produce a single sample a
-		if not os.path.isfile(file_sra) or args.refresh_metadata:
-			Accession(acc_SRP).fetch_metadata(file_sra)
-		else:
-			print("  Found previous SRA file: " + file_sra)
-	
-		print("SRP: {}".format(acc_SRP))
-	
-	
-		# Parse metadata from SRA
-		# Produce an annotated output from the GSM and SRARunInfo files.
-		# This will merge the GSM and SRA sample metadata into a dict of dicts,
-		# with one entry per sample.
-		# NB: There may be multiple SRA Runs (and thus lines in the RunInfo file)
-		# Corresponding to each sample.
-		if not args.processed:
-			file_read = open(file_sra, 'rb')
-			file_write = open(file_srafilt, 'wb')
-			print("Parsing SRA file to download SRR records")
-			initialized = False
-			
-			input_file = csv.DictReader(file_read)
-			for line in input_file:
-				if not initialized:
-					initialized = True
-					w = csv.DictWriter(file_write, line.keys())
-					w.writeheader()
-				#print(line)
-				#print(gsm_metadata[line['SampleName']])
-				# SampleName is not necessarily the GSM number, though frequently it is
-				#gsm_metadata[line['SampleName']].update(line)
-	
-				# Only download if it's in the include list:
-				experiment = line["Experiment"]
-				run_name = line["Run"]
-				if experiment not in gsm_metadata:
-					# print("Skipping: {}".format(experiment))
-					continue
-	
-				# local convenience variable
-				# possibly set in the input tsv file
-				sample_name = None  # initialize to empty
-				try:
-					sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
-				except KeyError:
-					pass
-				if not sample_name or sample_name is "":
-					temp = gsm_metadata[experiment]['Sample_title']
-					# Now do a series of transformations to cleanse the sample name
-					temp = temp.replace(" ", "_")
-					# Do people put commas in their sample names? Yes.
-					temp = temp.replace(",", "_")
-					temp = temp.replace("__", "_")
-					sample_name = temp
-	
-				# Otherwise, record that there's SRA data for this run.
-				# And set a few columns that are used as input to the Looper
-				# print("Updating columns for looper")
-				update_columns(gsm_metadata, experiment, sample_name=sample_name,
-								read_type=line['LibraryLayout'])
+                sys.stdout.write ("  Found sample " + current_sample_id)
+            elif current_sample_id is not None:
+                pl = parse_SOFT_line(line)
+                gsm_metadata[current_sample_id].update(pl)
+    
+                # For processed data, here's where we would download it
+                if args.processed and not args.just_metadata:
+                    found = re.findall(SUPP_FILE_PATTERN, line)
+                    if found:
+                        print(pl[pl.keys()[0]])
+    
+                # Now convert the ids GEO accessions into SRX accessions
+                if not current_sample_srx:
+                    found = re.findall(EXPERIMENT_PATTERN, line)
+                    if found:
+                        print(" (SRX accession: {})".format(found[0]))
+                        srx_id = found[0]
+                        gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
+                        gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
+                        current_sample_id = srx_id
+                        current_sample_srx = True
+    
+        # GSM SOFT file parsed, save it in a list
+        metadata_dict[acc_GSE] = gsm_metadata
+    
+        # Parse out the SRA project identifier from the GSE file
+        acc_SRP = None
+        for line in open(file_gse, 'r'):
+            found = re.findall(PROJECT_PATTERN, line)
+            if found:
+                acc_SRP = found[0]
+                print("\n  Found SRA Project accession: {}\n".format(acc_SRP))
+                break
+            # For processed data, here's where we would download it
+            if args.processed and not args.just_metadata:
+                found = re.findall(SER_SUPP_FILE_PATTERN, line)
+                if found:
+                    pl = parse_SOFT_line(line)
+                    file_url = pl[pl.keys()[0]].rstrip()
+                    print("File: " + str( file_url ))
+                    # download file
+                    if args.geofolder:
+                        data_folder = os.path.join(args.geofolder, acc_GSE)
+                        print(file_url, data_folder)
+                        subprocess.call(['wget', file_url, '-P', data_folder])
 
-				# Some experiments are flagged in SRA as having multiple runs.
-				if gsm_metadata[experiment].get("SRR") is not None:
-					# This SRX number already has an entry in the table.
-					print("  Found additional run: {} ({})".format(run_name, experiment))
-	
-					if isinstance(gsm_metadata[experiment]["SRR"], basestring) \
-							and not gsm_multi_table.has_key(experiment):
-						# Only one has been stuck in so far, make a list
-						gsm_multi_table[experiment] = []
-						# Add first the original one, which was stored as a string
-						# previously
-						gsm_multi_table[experiment].append(
-							[sample_name, experiment, gsm_metadata[experiment]["SRR"]])
-						# Now append the current SRR number in a list as [SRX, SRR]
-						gsm_multi_table[experiment].append([sample_name, experiment, run_name])
-					else:
-						# this is the 3rd or later sample; the first two are done,
-						# so just add it.
-						gsm_multi_table[experiment].append([sample_name, experiment, run_name])
-	
-					if args.split_experiments:
-						# Duplicate the gsm metadata for this experiment (copy to make sure
-						# it's not just an alias).
-						rep_number = len(gsm_multi_table[experiment])
-						new_SRX = experiment + "_" + str(rep_number)
-						gsm_metadata[new_SRX] = copy.copy(gsm_metadata[experiment])
-						# gsm_metadata[new_SRX]["SRX"] = new_SRX
-						gsm_metadata[new_SRX]["sample_name"] += "_" + str(rep_number)
-						gsm_metadata[new_SRX]["SRR"] = run_name
-					else:
-						# Either way, set the srr code to multi in the main table.
-						gsm_metadata[experiment]["SRR"] = "multi"
-				else:
-					# The first SRR for this SRX is added to GSM metadata
-					gsm_metadata[experiment]["SRR"] = run_name
-	
-				#gsm_metadata[experiment].update(line)
-	
-				# Write to filtered SRA Runinfo file
-				w.writerow(line)
-				print("Get SRR: {} ({})".format(run_name, experiment))
-				bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
-	
-				# TODO: sam-dump has a built-in prefetch. I don't have to do
-				# any of this stuff... This also solves the bad sam-dump issues.
-	
-				if os.path.exists(bam_file):
-					print("  BAM found:" + bam_file)
-				else:
-					if not args.just_metadata:
-						# Use the 'prefetch' utility from the SRA Toolkit
-						# to download the raw reads.
-						# (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
-						subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
-					else:
-						print("  Dry run (no data download)")
-	
-					if args.bam_conversion and args.bam_folder is not '':
-						print("  Converting to bam: " + run_name)
-						sra_file = os.path.join(args.sra_folder, run_name + ".sra")
-						if not os.path.exists(sra_file):
-							print("SRA file doesn't exist, please download it first: " + sra_file)
-							continue
-	
-						# The -u here allows unaligned reads, and seems to be
-						# required for some sra files regardless of aligned state
-						cmd = "sam-dump -u " + \
-							  os.path.join(args.sra_folder, run_name + ".sra") + \
-							  " | samtools view -bS - > " + bam_file
-						#sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
-	
-						print(cmd)
-						subprocess.call(cmd, shell=True)
-	
-				# check to make sure it worked
-				# NS: Sometimes sam-dump fails, yielding an empty bam file, but
-				# a fastq-dump works. This happens on files with bad quality
-				# encodings. I contacted GEO about it in December 2015
-				# Here we check the file size and use fastq -> bam conversion
-				# if the sam-dump failed.
-				if args.bam_conversion and args.bam_folder is not '':
-					st = os.stat(bam_file)
-					# print("File size: " + str(st.st_size))
-					if st.st_size < 100:
-						print("Bam conversion failed with sam-dump. Trying fastq-dump...")
-						# recreate?
-						cmd = "fastq-dump --split-3 -O " + \
-							  os.path.realpath(args.sra_folder) + " " + \
-							  os.path.join(args.sra_folder, run_name + ".sra")
-						print(cmd)
-						subprocess.call(cmd, shell=True)
-						if not args.picard_path:
-							print("Can't convert the fastq to bam without picard path")
-						else:
-							# was it paired data? you have to process it differently
-							# so it knows it's paired end
-							fastq0 = os.path.join(args.sra_folder, run_name + ".fastq")
-							fastq1 = os.path.join(args.sra_folder, run_name + "_1.fastq")
-							fastq2 = os.path.join(args.sra_folder, run_name + "_2.fastq")
-		
-							cmd = "java -jar " + args.picard_path + " FastqToSam"
-							if os.path.exists(fastq1) and os.path.exists(fastq2):
-								cmd += " FASTQ=" + fastq1
-								cmd += " FASTQ2=" +  fastq2
-							else:
-								cmd += " FASTQ=" +  fastq0
-							cmd += " OUTPUT=" + bam_file
-							cmd += " SAMPLE_NAME=" + run_name
-							cmd += " QUIET=true"
-							print(cmd)
-							subprocess.call(cmd, shell=True)
-	
-	
-			file_read.close()
-			file_write.close()
-	
-		# accumulate subannotations
-		subannotation_dict[acc_GSE] = gsm_multi_table
+        if not acc_SRP:
+            # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
+            # as part of this GEO submission. Can't proceed.
+            print("  \033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
+            # but wait; another possibility: there's no SRP linked to the GSE, but there
+            # could still be an SRX linked to the (each) GSM.
+            if len(gsm_metadata) == 1:
+                print("But the GSM has an SRX number; ")
+                acc_SRP = gsm_metadata.keys()[0]
+                print("Instead of an SRP, using SRX identifier for this sample:  " + acc_SRP)
+            else:
+                # More than one sample? not sure what to do here. Does this even happen?
+                continue
+    
+        # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
+        # The SRARunInfo sheet has additional sample metadata, which we will combine
+        # with the GSM file to produce a single sample a
+        if not os.path.isfile(file_sra) or args.refresh_metadata:
+            Accession(acc_SRP).fetch_metadata(file_sra)
+        else:
+            print("  Found previous SRA file: " + file_sra)
+    
+        print("SRP: {}".format(acc_SRP))
+    
+    
+        # Parse metadata from SRA
+        # Produce an annotated output from the GSM and SRARunInfo files.
+        # This will merge the GSM and SRA sample metadata into a dict of dicts,
+        # with one entry per sample.
+        # NB: There may be multiple SRA Runs (and thus lines in the RunInfo file)
+        # Corresponding to each sample.
+        if not args.processed:
+            file_read = open(file_sra, 'rb')
+            file_write = open(file_srafilt, 'wb')
+            print("Parsing SRA file to download SRR records")
+            initialized = False
+            
+            input_file = csv.DictReader(file_read)
+            for line in input_file:
+                if not initialized:
+                    initialized = True
+                    w = csv.DictWriter(file_write, line.keys())
+                    w.writeheader()
+                #print(line)
+                #print(gsm_metadata[line['SampleName']])
+                # SampleName is not necessarily the GSM number, though frequently it is
+                #gsm_metadata[line['SampleName']].update(line)
+    
+                # Only download if it's in the include list:
+                experiment = line["Experiment"]
+                run_name = line["Run"]
+                if experiment not in gsm_metadata:
+                    # print("Skipping: {}".format(experiment))
+                    continue
+    
+                # local convenience variable
+                # possibly set in the input tsv file
+                sample_name = None  # initialize to empty
+                try:
+                    sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
+                except KeyError:
+                    pass
+                if not sample_name or sample_name is "":
+                    temp = gsm_metadata[experiment]['Sample_title']
+                    # Now do a series of transformations to cleanse the sample name
+                    temp = temp.replace(" ", "_")
+                    # Do people put commas in their sample names? Yes.
+                    temp = temp.replace(",", "_")
+                    temp = temp.replace("__", "_")
+                    sample_name = temp
+    
+                # Otherwise, record that there's SRA data for this run.
+                # And set a few columns that are used as input to the Looper
+                # print("Updating columns for looper")
+                update_columns(gsm_metadata, experiment, sample_name=sample_name,
+                                read_type=line['LibraryLayout'])
 
-	# Combine individual accessions into project-level annotations, and write
-	# individual accession files (if requested)
+                # Some experiments are flagged in SRA as having multiple runs.
+                if gsm_metadata[experiment].get("SRR") is not None:
+                    # This SRX number already has an entry in the table.
+                    print("  Found additional run: {} ({})".format(run_name, experiment))
+    
+                    if isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES) \
+                            and experiment not in gsm_multi_table:
+                        # Only one has been stuck in so far, make a list
+                        gsm_multi_table[experiment] = []
+                        # Add first the original one, which was stored as a string
+                        # previously
+                        gsm_multi_table[experiment].append(
+                            [sample_name, experiment, gsm_metadata[experiment]["SRR"]])
+                        # Now append the current SRR number in a list as [SRX, SRR]
+                        gsm_multi_table[experiment].append([sample_name, experiment, run_name])
+                    else:
+                        # this is the 3rd or later sample; the first two are done,
+                        # so just add it.
+                        gsm_multi_table[experiment].append([sample_name, experiment, run_name])
+    
+                    if args.split_experiments:
+                        # Duplicate the gsm metadata for this experiment (copy to make sure
+                        # it's not just an alias).
+                        rep_number = len(gsm_multi_table[experiment])
+                        new_SRX = experiment + "_" + str(rep_number)
+                        gsm_metadata[new_SRX] = copy.copy(gsm_metadata[experiment])
+                        # gsm_metadata[new_SRX]["SRX"] = new_SRX
+                        gsm_metadata[new_SRX]["sample_name"] += "_" + str(rep_number)
+                        gsm_metadata[new_SRX]["SRR"] = run_name
+                    else:
+                        # Either way, set the srr code to multi in the main table.
+                        gsm_metadata[experiment]["SRR"] = "multi"
+                else:
+                    # The first SRR for this SRX is added to GSM metadata
+                    gsm_metadata[experiment]["SRR"] = run_name
+    
+                #gsm_metadata[experiment].update(line)
+    
+                # Write to filtered SRA Runinfo file
+                w.writerow(line)
+                print("Get SRR: {} ({})".format(run_name, experiment))
+                bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
+    
+                # TODO: sam-dump has a built-in prefetch. I don't have to do
+                # any of this stuff... This also solves the bad sam-dump issues.
+    
+                if os.path.exists(bam_file):
+                    print("  BAM found:" + bam_file)
+                else:
+                    if not args.just_metadata:
+                        # Use the 'prefetch' utility from the SRA Toolkit
+                        # to download the raw reads.
+                        # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+                        subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+                    else:
+                        print("  Dry run (no data download)")
+    
+                    if args.bam_conversion and args.bam_folder is not '':
+                        print("  Converting to bam: " + run_name)
+                        sra_file = os.path.join(args.sra_folder, run_name + ".sra")
+                        if not os.path.exists(sra_file):
+                            print("SRA file doesn't exist, please download it first: " + sra_file)
+                            continue
+    
+                        # The -u here allows unaligned reads, and seems to be
+                        # required for some sra files regardless of aligned state
+                        cmd = "sam-dump -u " + \
+                              os.path.join(args.sra_folder, run_name + ".sra") + \
+                              " | samtools view -bS - > " + bam_file
+                        #sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
+    
+                        print(cmd)
+                        subprocess.call(cmd, shell=True)
+    
+                # check to make sure it worked
+                # NS: Sometimes sam-dump fails, yielding an empty bam file, but
+                # a fastq-dump works. This happens on files with bad quality
+                # encodings. I contacted GEO about it in December 2015
+                # Here we check the file size and use fastq -> bam conversion
+                # if the sam-dump failed.
+                if args.bam_conversion and args.bam_folder is not '':
+                    st = os.stat(bam_file)
+                    # print("File size: " + str(st.st_size))
+                    if st.st_size < 100:
+                        print("Bam conversion failed with sam-dump. Trying fastq-dump...")
+                        # recreate?
+                        cmd = "fastq-dump --split-3 -O " + \
+                              os.path.realpath(args.sra_folder) + " " + \
+                              os.path.join(args.sra_folder, run_name + ".sra")
+                        print(cmd)
+                        subprocess.call(cmd, shell=True)
+                        if not args.picard_path:
+                            print("Can't convert the fastq to bam without picard path")
+                        else:
+                            # was it paired data? you have to process it differently
+                            # so it knows it's paired end
+                            fastq0 = os.path.join(args.sra_folder, run_name + ".fastq")
+                            fastq1 = os.path.join(args.sra_folder, run_name + "_1.fastq")
+                            fastq2 = os.path.join(args.sra_folder, run_name + "_2.fastq")
+        
+                            cmd = "java -jar " + args.picard_path + " FastqToSam"
+                            if os.path.exists(fastq1) and os.path.exists(fastq2):
+                                cmd += " FASTQ=" + fastq1
+                                cmd += " FASTQ2=" +  fastq2
+                            else:
+                                cmd += " FASTQ=" +  fastq0
+                            cmd += " OUTPUT=" + bam_file
+                            cmd += " SAMPLE_NAME=" + run_name
+                            cmd += " QUIET=true"
+                            print(cmd)
+                            subprocess.call(cmd, shell=True)
+    
+    
+            file_read.close()
+            file_write.close()
+    
+        # accumulate subannotations
+        subannotation_dict[acc_GSE] = gsm_multi_table
 
-	metadata_dict_combined = OrderedDict()
-	for acc_GSE, gsm_metadata in metadata_dict.iteritems():
-		file_annotation = os.path.join(metadata_expanded, acc_GSE + '_annotation.csv')
-		if args.acc_anno:
-			write_annotation(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
-		metadata_dict_combined.update(gsm_metadata)
+    # Combine individual accessions into project-level annotations, and write
+    # individual accession files (if requested)
 
-	subannotation_dict_combined = OrderedDict()
-	for acc_GSE, gsm_multi_table in subannotation_dict.iteritems():
-		file_subannotation = os.path.join(metadata_expanded, acc_GSE + '_subannotation.csv')
-		if args.acc_anno:
-			write_subannotation(gsm_multi_table, file_subannotation)
-		subannotation_dict_combined.update(gsm_multi_table)
+    metadata_dict_combined = OrderedDict()
+    for acc_GSE, gsm_metadata in metadata_dict.iteritems():
+        file_annotation = os.path.join(metadata_expanded, acc_GSE + '_annotation.csv')
+        if args.acc_anno:
+            write_annotation(gsm_metadata, file_annotation, use_key_subset=args.use_key_subset)
+        metadata_dict_combined.update(gsm_metadata)
 
-	print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
+    subannotation_dict_combined = OrderedDict()
+    for acc_GSE, gsm_multi_table in subannotation_dict.iteritems():
+        file_subannotation = os.path.join(metadata_expanded, acc_GSE + '_subannotation.csv')
+        if args.acc_anno:
+            write_subannotation(gsm_multi_table, file_subannotation)
+        subannotation_dict_combined.update(gsm_multi_table)
 
-	# if user specified a pipeline interface path, add it into the project config
-	if args.pipeline_interfaces:
-		file_pipeline_interfaces = args.pipeline_interfaces
-	else:
-		file_pipeline_interfaces = "null"
+    print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
 
-	print("Creating complete project annotation sheets and config file...")
-	# If the project included more than one GSE, we can now output combined
-	# annotation tables for the entire project.
+    # if user specified a pipeline interface path, add it into the project config
+    if args.pipeline_interfaces:
+        file_pipeline_interfaces = args.pipeline_interfaces
+    else:
+        file_pipeline_interfaces = "null"
 
-	# Write combined annotation sheet
-	file_annotation = os.path.join(metadata_raw, project_name + '_annotation.csv')
-	write_annotation(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
-	
-	# Write combined subannotation table
-	if len(subannotation_dict_combined) > 0:
-		file_subannotation = os.path.join(metadata_raw, project_name + '_subannotation.csv')
-		write_subannotation(subannotation_dict_combined, file_subannotation)
-	else:
-		file_subannotation = "null"
-	
-	# Write project config file
+    print("Creating complete project annotation sheets and config file...")
+    # If the project included more than one GSE, we can now output combined
+    # annotation tables for the entire project.
 
-	if not args.config_template:
-		geofetchdir = os.path.dirname(sys.argv[0])
-		args.config_template = os.path.join(geofetchdir, "config_template.yaml")
+    # Write combined annotation sheet
+    file_annotation = os.path.join(metadata_raw, project_name + '_annotation.csv')
+    write_annotation(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
+    
+    # Write combined subannotation table
+    if len(subannotation_dict_combined) > 0:
+        file_subannotation = os.path.join(metadata_raw, project_name + '_subannotation.csv')
+        write_subannotation(subannotation_dict_combined, file_subannotation)
+    else:
+        file_subannotation = "null"
+    
+    # Write project config file
 
-	with open(args.config_template, 'r') as template_file:
-		template = template_file.read()
+    if not args.config_template:
+        geofetchdir = os.path.dirname(__file__)
+        args.config_template = os.path.join(geofetchdir, "config_template.yaml")
 
-	template_values = {"project_name": project_name,
-						"annotation": file_annotation,
-						"subannotation": file_subannotation,
-						"pipeline_interfaces": file_pipeline_interfaces}
+    with open(args.config_template, 'r') as template_file:
+        template = template_file.read()
 
-	for k, v in template_values.items():
-		placeholder = "{" + str(k) + "}"
-		template = template.replace(placeholder, str(v))
+    template_values = {"project_name": project_name,
+                        "annotation": file_annotation,
+                        "subannotation": file_subannotation,
+                        "pipeline_interfaces": file_pipeline_interfaces}
 
-	config = os.path.join(metadata_raw, project_name + "_config.yaml")
-	print("  Config file: " + config)
-	with open(os.path.expandvars(config), 'w') as config_file:
-		config_file.write(template)
+    for k, v in template_values.items():
+        placeholder = "{" + str(k) + "}"
+        template = template.replace(placeholder, str(v))
+
+    config = os.path.join(metadata_raw, project_name + "_config.yaml")
+    print("  Config file: " + config)
+    with open(os.path.expandvars(config), 'w') as config_file:
+        config_file.write(template)
 
 
 def main():
-	run_geofetch(sys.argv[1:])
+    run_geofetch(sys.argv[1:])
 
 
 if __name__ == "__main__":
-	main()
+    main()

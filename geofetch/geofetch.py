@@ -20,17 +20,24 @@ import argparse
 from collections import OrderedDict
 import copy
 import csv
+import logging
 import os
 import re
 import subprocess
 import sys
-from .utils import Accession, expandpath
-from ._version import __version__
 
 if sys.version_info[0] == 2:
     _STRING_TYPES = basestring
 else:
     _STRING_TYPES = str
+
+from .utils import Accession, expandpath
+from ._version import __version__
+
+from logmuse import setup_logger
+
+
+_LOGGER = None
 
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking
@@ -739,7 +746,7 @@ def run_geofetch(cmdl):
             write_subannotation(gsm_multi_table, file_subannotation)
         subannotation_dict_combined.update(gsm_multi_table)
 
-    print("Finished processing {n} accessions".format(n=len(acc_GSE_list)))
+    _LOGGER.info("Finished processing {} accession()".format(len(acc_GSE_list)))
 
     # if user specified a pipeline interface path, add it into the project config
     if args.pipeline_interfaces:
@@ -747,7 +754,7 @@ def run_geofetch(cmdl):
     else:
         file_pipeline_interfaces = "null"
 
-    print("Creating complete project annotation sheets and config file...")
+    _LOGGER.info("Creating complete project annotation sheets and config file...")
     # If the project included more than one GSE, we can now output combined
     # annotation tables for the entire project.
 
@@ -783,12 +790,21 @@ def run_geofetch(cmdl):
         template = template.replace(placeholder, str(v))
 
     config = os.path.join(metadata_raw, project_name + "_config.yaml")
-    print("  Config file: " + config)
-    with open(os.path.expandvars(config), 'w') as config_file:
-        config_file.write(template)
+    _write(config, template, "  Config file: ")
+    _LOGGER.info("  Config file: " + config)
+
+
+def _write(f_var_value, content, msg_pre=None):
+    _LOGGER.info((msg_pre or "") + f_var_value)
+    fp = os.path.expanduser(os.path.expandvars(f_var_value))
+    with open(fp, 'w') as f:
+        f.write(content)
 
 
 def main():
+    """ Run the script. """
+    global _LOGGER
+    _LOGGER = setup_logger("geofetch", level=logging.INFO)
     run_geofetch(sys.argv[1:])
 
 

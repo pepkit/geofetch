@@ -51,7 +51,6 @@ SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
 SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
 
-
 def _parse_cmdl(cmdl):
     parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
 
@@ -154,9 +153,7 @@ def _parse_cmdl(cmdl):
             # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
             help=argparse.SUPPRESS)
 
-    
     return parser.parse_args(cmdl)
-
 
 
 def parse_SOFT_line(l):
@@ -168,7 +165,6 @@ def parse_SOFT_line(l):
     """
     elems = l[1:].split("=")
     return {elems[0].rstrip(): elems[1].lstrip()}
-
 
 
 def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
@@ -295,11 +291,17 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 
 def parse_accessions(input_arg, metadata_folder, just_metadata=False):
     """
-    Create a list of GSE accession numbers, either from file or a single value
-    from the command line This will be a dict, with the GSE# as the key, and
+    Create a list of GSE accessions, either from file or a single value.
+
+    This will be a dict, with the GSE# as the key, and
     corresponding value is a list of GSM# specifying the samples we're
     interested in from that GSE#. An empty sample list means we should get all
     samples from that GSE#. This loop will create this dict.
+
+    :param input_arg:
+    :param str metadata_folder: path to folder for accession metadata
+    :param bool just_metadata: whether to only process metadata, not the
+        actual data associated with the accession
     """
 
     acc_GSE_list = OrderedDict()
@@ -368,6 +370,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
 
 
 def run_geofetch(cmdl):
+    """ Main script driver/workflow """
 
     args = _parse_cmdl(cmdl)
 

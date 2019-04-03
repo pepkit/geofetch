@@ -58,7 +58,6 @@ def _parse_cmdl(cmdl):
             "-V", "--version",
             action="version",
             version="%(prog)s {v}".format(v=__version__))
- 
 
     # Required
     parser.add_argument(
@@ -75,17 +74,15 @@ def _parse_cmdl(cmdl):
             dest="metadata_folder",
             default="${SRAMETA}",
             help="Specify a location to store metadata "
-                "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
-    
+                 "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+
     parser.add_argument(
             "-f", "--no-subfolder", action="store_true",
             help="Don't automatically put metadata into a subfolder named with project name")
 
-    
     parser.add_argument(
             "--just-metadata", action="store_true",
             help="If set, don't actually run downloads, just create metadata")
-
 
     parser.add_argument(
             "-r", "--refresh-metadata", action="store_true",
@@ -132,7 +129,7 @@ def _parse_cmdl(cmdl):
     parser.add_argument(
             "-P", "--pipeline_interfaces", default=None,
             help="Optional: Specify the filepath of a pipeline interface yaml file. "
-                "[Default: null]")
+                 "[Default: null]")
     
     # Deprecated; these are for bam conversion which now happens in sra_convert
     # it still works here but I hide it so people don't use it, because it's confusing.
@@ -159,6 +156,7 @@ def _parse_cmdl(cmdl):
 def parse_SOFT_line(l):
     """
     Parse SOFT formatted line, returning a dictionary with the key-value pair.
+
     :param str l: A SOFT-formatted line to parse ( !key = value )
     :return dict[str, str]: A python Dict object representing the key-value.
     :raise InvalidSoftLineException: if given line can't be parsed as SOFT line
@@ -177,43 +175,56 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
     :param bool use_key_subset: whether to use the keys present in the
         metadata object given (False), or instead use a fixed set of keys
         defined within this module (True)
+    :return str: path to file written
     """
     print("  Sample annotation sheet:" + file_annotation)
-
-    if use_key_subset:
-        # Use complete data
-        keys = ANNOTATION_SHEET_KEYS
-    else:
-        keys = gsm_metadata[gsm_metadata.iterkeys().next()].keys()
-
-    with open(os.path.expandvars(file_annotation), 'wb') as of:
+    keys = ANNOTATION_SHEET_KEYS if use_key_subset else \
+        gsm_metadata[gsm_metadata.iterkeys().next()].keys()
+    fp = os.path.expandvars(file_annotation)
+    with open(fp, 'wb') as of:
         w = csv.DictWriter(of, keys, extrasaction='ignore')
         w.writeheader()
         for item in gsm_metadata:
             w.writerow(gsm_metadata[item])
+    return fp
 
 
 def write_subannotation(tabular_data, filepath, column_names=None):
     """
     Writes one or more tables to a given CSV filepath.
-    """
 
-    print("  Sample subannotation sheet:" + filepath)
-    with open(os.path.expandvars(filepath), 'w') as openfile:
+    :param Mapping | Iterable[Mapping] single KV pair collection, or collection
+        of such collections, to write to disk as tabular data
+    :param str filepath: path to file to write, possibly with environment
+        variables included, e.g. from a config file
+    :param Iterable[str] column_names: collection of names for columns to
+        write
+    :return str: path to file written
+    """
+    print("  Sample subannotation sheet: " + filepath)
+    fp = os.path.expandvars(filepath)
+    print("  Writing: {}".format(fp))
+    with open(fp, 'w') as openfile:
         writer = csv.writer(openfile, delimiter=",")
         # write header
         writer.writerow(column_names or ["sample_name", "SRX", "SRR"])
         if not isinstance(tabular_data, list):
             tabular_data = [tabular_data]
-
         for table in tabular_data:
             for key, values in table.items():
                 # print(key, values)
                 writer.writerows(values)
+    return fp
 
 
 class InvalidSoftLineException(Exception):
+    """ Exception related to parsing SOFT line. """
     def __init__(self, l):
+        """
+        Create the exception by providing the problematic line.
+
+        :param str l: the problematic SOFT line
+        """
         super(self, "{}".format(l))
 
 
@@ -237,11 +248,9 @@ def which(program):
                 return exe_file
 
 
-
 def safe_echo(var):
     """ Returns an environment variable if it exists, or an empty string if not"""
     return os.getenv(var, "")
-
 
 
 def update_columns(metadata, experiment_name, sample_name, read_type):

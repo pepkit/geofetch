@@ -184,10 +184,11 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
         defined within this module (True)
     :return str: path to file written
     """
-    print("  Sample annotation sheet:" + file_annotation)
     keys = ANNOTATION_SHEET_KEYS if use_key_subset else \
         gsm_metadata[gsm_metadata.iterkeys().next()].keys()
+    _LOGGER.info("Sample annotation sheet: {}".format(file_annotation))
     fp = os.path.expandvars(file_annotation)
+    _LOGGER.info("Writing: {}".format(fp))
     with open(fp, 'wb') as of:
         w = csv.DictWriter(of, keys, extrasaction='ignore')
         w.writeheader()
@@ -208,9 +209,9 @@ def write_subannotation(tabular_data, filepath, column_names=None):
         write
     :return str: path to file written
     """
-    print("  Sample subannotation sheet: " + filepath)
+    _LOGGER.info("Sample subannotation sheet: {}".format(filepath))
     fp = os.path.expandvars(filepath)
-    print("  Writing: {}".format(fp))
+    _LOGGER.info("Writing: {}".format(fp))
     with open(fp, 'w') as openfile:
         writer = csv.writer(openfile, delimiter=",")
         # write header
@@ -219,7 +220,7 @@ def write_subannotation(tabular_data, filepath, column_names=None):
             tabular_data = [tabular_data]
         for table in tabular_data:
             for key, values in table.items():
-                # print(key, values)
+                _LOGGER.debug("{}: {}".format(key, values))
                 writer.writerows(values)
     return fp
 
@@ -323,7 +324,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
     acc_GSE_list = OrderedDict()
 
     if not os.path.isfile(input_arg):
-        print("Input: No file named {}; trying it as an accession...".format(input_arg))
+        _LOGGER.info("Trying {} (not a file) as accession...".format(input_arg))
         # No limits accepted on command line, so keep an empty list.
         if input_arg.startswith("SRP"):
             base, ext = os.path.splitext(input_arg)
@@ -342,7 +343,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                     if l.startswith("SRR"):
                         r_id = l.split(",")[0]
                         run_ids.append(r_id)
-            print("{} run(s)".format(len(run_ids)))
+            _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
                 subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
             # Early return if we've just handled SRP accession directly.
@@ -351,7 +352,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
             acc_GSE = input_arg
             acc_GSE_list[acc_GSE] = OrderedDict()
     else:
-        print("Input: Accession list file found: '{}'".format(input_arg))
+        _LOGGER.info("Accession list file found: {}".format(input_arg))
     
         # Read input file line by line.
         for line in open(input_arg, 'r'):
@@ -399,22 +400,24 @@ def run_geofetch(cmdl):
         return "{} ({})".format(ev, expandpath(ev))
 
     metadata_expanded = expandpath(args.metadata_folder)
-    print("Given metadata folder: {} ({})".format(args.metadata_folder, metadata_expanded))
+    _LOGGER.info("Given metadata folder: {} ({})".
+                 format(args.metadata_folder, metadata_expanded))
     if os.path.isabs(metadata_expanded):
         metadata_raw = args.metadata_folder
     else:
         metadata_expanded = os.path.abspath(metadata_expanded)
         metadata_raw = os.path.abspath(args.metadata_folder)
 
-    print("Initial raw metadata folder: {}".format(render_env_var(metadata_raw)))
+    _LOGGER.info("Initial raw metadata folder: {}".
+                 format(render_env_var(metadata_raw)))
     if not args.no_subfolder:
         metadata_expanded = os.path.join(metadata_expanded, project_name)
         metadata_raw = os.path.join(metadata_raw, project_name)
-    print("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
+    _LOGGER.info("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
 
     # Some sanity checks before proceeding
     if args.bam_folder and not which("samtools"):
-        raise SystemExit("samtools not found")
+        raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
     acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)
     
@@ -428,18 +431,18 @@ def run_geofetch(cmdl):
     subannotation_dict = OrderedDict()
 
     for acc_GSE in acc_GSE_list.keys():
-        print("Processing accession: " + acc_GSE)
+        _LOGGER.info("Processing accession: " + acc_GSE)
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
-            print("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
+            _LOGGER.warning("This does not appear to be a correctly formatted "
+                            "GSE accession! Continue anyway...")
     
         # Get GSM#s (away from sample_name)
-        GSM_limit_list = acc_GSE_list[acc_GSE].keys() #[x[1] for x in acc_GSE_list[acc_GSE]]
+        GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())    #[x[1] for x in acc_GSE_list[acc_GSE]]
     
-        print("Limit to: " + str(acc_GSE_list[acc_GSE])) # a list of GSM#s
-        #print("Limit to: " + str(GSM_limit_list)) # a list of GSM#s
+        _LOGGER.info("Limit to: {}".format(list(acc_GSE_list[acc_GSE])))    # a list of GSM#s
         if args.refresh_metadata:
-            print("Refreshing metadata...")
+            _LOGGER.info("Refreshing metadata...")
         # For each GSE acc, produce a series of metadata files
         file_gse = os.path.join(metadata_expanded, acc_GSE + '_GSE.soft')
         file_gsm = os.path.join(metadata_expanded, acc_GSE + '_GSM.soft')
@@ -455,15 +458,14 @@ def run_geofetch(cmdl):
         if not os.path.isfile(file_gse) or args.refresh_metadata:
             Accession(acc_GSE).fetch_metadata(file_gse)
         else:
-            print("  Found previous GSE file: " + file_gse)
+            _LOGGER.info("Found previous GSE file: " + file_gse)
     
         if not os.path.isfile(file_gsm) or args.refresh_metadata:
             Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM")
         else:
-            print("  Found previous GSM file: " + file_gsm)
+            _LOGGER.info("Found previous GSM file: " + file_gsm)
     
         # A simple state machine to parse SOFT formatted files (Here, the GSM file)
-        #gsm_metadata = {}
         gsm_metadata = OrderedDict()
         # For multi samples (samples with multiple runs), we keep track of these
         # relations in a separate table, which is called the subannotation table.
@@ -501,7 +503,7 @@ def run_geofetch(cmdl):
                 if not current_sample_srx:
                     found = re.findall(EXPERIMENT_PATTERN, line)
                     if found:
-                        print(" (SRX accession: {})".format(found[0]))
+                        _LOGGER.info("(SRX accession: {})".format(found[0]))
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
                         gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
@@ -517,7 +519,7 @@ def run_geofetch(cmdl):
             found = re.findall(PROJECT_PATTERN, line)
             if found:
                 acc_SRP = found[0]
-                print("\n  Found SRA Project accession: {}\n".format(acc_SRP))
+                _LOGGER.info("Found SRA Project accession: {}".format(acc_SRP))
                 break
             # For processed data, here's where we would download it
             if args.processed and not args.just_metadata:
@@ -525,7 +527,7 @@ def run_geofetch(cmdl):
                 if found:
                     pl = parse_SOFT_line(line)
                     file_url = pl[pl.keys()[0]].rstrip()
-                    print("File: " + str( file_url ))
+                    _LOGGER.info("File: " + str(file_url))
                     # download file
                     if args.geofolder:
                         data_folder = os.path.join(args.geofolder, acc_GSE)
@@ -535,13 +537,13 @@ def run_geofetch(cmdl):
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
             # as part of this GEO submission. Can't proceed.
-            print("  \033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
+            _LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
             # but wait; another possibility: there's no SRP linked to the GSE, but there
             # could still be an SRX linked to the (each) GSM.
             if len(gsm_metadata) == 1:
-                print("But the GSM has an SRX number; ")
                 acc_SRP = gsm_metadata.keys()[0]
-                print("Instead of an SRP, using SRX identifier for this sample:  " + acc_SRP)
+                _LOGGER.warning("But the GSM has an SRX number; instead of an "
+                                "SRP, using SRX identifier for this sample: " + acc_SRP)
             else:
                 # More than one sample? not sure what to do here. Does this even happen?
                 continue
@@ -552,11 +554,10 @@ def run_geofetch(cmdl):
         if not os.path.isfile(file_sra) or args.refresh_metadata:
             Accession(acc_SRP).fetch_metadata(file_sra)
         else:
-            print("  Found previous SRA file: " + file_sra)
+            _LOGGER.info("Found previous SRA file: " + file_sra)
     
-        print("SRP: {}".format(acc_SRP))
-    
-    
+        _LOGGER.info("SRP: {}".format(acc_SRP))
+
         # Parse metadata from SRA
         # Produce an annotated output from the GSM and SRARunInfo files.
         # This will merge the GSM and SRA sample metadata into a dict of dicts,
@@ -566,7 +567,7 @@ def run_geofetch(cmdl):
         if not args.processed:
             file_read = open(file_sra, 'rb')
             file_write = open(file_srafilt, 'wb')
-            print("Parsing SRA file to download SRR records")
+            _LOGGER.info("Parsing SRA file to download SRR records")
             initialized = False
             
             input_file = csv.DictReader(file_read)
@@ -612,7 +613,7 @@ def run_geofetch(cmdl):
                 # Some experiments are flagged in SRA as having multiple runs.
                 if gsm_metadata[experiment].get("SRR") is not None:
                     # This SRX number already has an entry in the table.
-                    print("  Found additional run: {} ({})".format(run_name, experiment))
+                    _LOGGER.info("Found additional run: {} ({})".format(run_name, experiment))
     
                     if isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES) \
                             and experiment not in gsm_multi_table:
@@ -649,14 +650,14 @@ def run_geofetch(cmdl):
     
                 # Write to filtered SRA Runinfo file
                 w.writerow(line)
-                print("Get SRR: {} ({})".format(run_name, experiment))
+                _LOGGER.info("Get SRR: {} ({})".format(run_name, experiment))
                 bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
     
                 # TODO: sam-dump has a built-in prefetch. I don't have to do
                 # any of this stuff... This also solves the bad sam-dump issues.
     
                 if os.path.exists(bam_file):
-                    print("  BAM found:" + bam_file)
+                    _LOGGER.info("BAM found:" + bam_file)
                 else:
                     if not args.just_metadata:
                         # Use the 'prefetch' utility from the SRA Toolkit
@@ -664,13 +665,14 @@ def run_geofetch(cmdl):
                         # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
                         subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
                     else:
-                        print("  Dry run (no data download)")
+                        _LOGGER.info("Dry run (no data download)")
     
                     if args.bam_conversion and args.bam_folder is not '':
-                        print("  Converting to bam: " + run_name)
+                        _LOGGER.info("Converting to bam: " + run_name)
                         sra_file = os.path.join(args.sra_folder, run_name + ".sra")
                         if not os.path.exists(sra_file):
-                            print("SRA file doesn't exist, please download it first: " + sra_file)
+                            _LOGGER.info("SRA file doesn't exist, please "
+                                         "download it first: " + sra_file)
                             continue
     
                         # The -u here allows unaligned reads, and seems to be
@@ -680,7 +682,7 @@ def run_geofetch(cmdl):
                               " | samtools view -bS - > " + bam_file
                         #sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
     
-                        print(cmd)
+                        _LOGGER.info("Conversion command: {}".format(cmd))
                         subprocess.call(cmd, shell=True)
     
                 # check to make sure it worked
@@ -693,15 +695,15 @@ def run_geofetch(cmdl):
                     st = os.stat(bam_file)
                     # print("File size: " + str(st.st_size))
                     if st.st_size < 100:
-                        print("Bam conversion failed with sam-dump. Trying fastq-dump...")
+                        _LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
                         # recreate?
                         cmd = "fastq-dump --split-3 -O " + \
                               os.path.realpath(args.sra_folder) + " " + \
                               os.path.join(args.sra_folder, run_name + ".sra")
-                        print(cmd)
+                        _LOGGER.info("Command: {}".format(cmd))
                         subprocess.call(cmd, shell=True)
                         if not args.picard_path:
-                            print("Can't convert the fastq to bam without picard path")
+                            _LOGGER.warning("Can't convert the fastq to bam without picard path")
                         else:
                             # was it paired data? you have to process it differently
                             # so it knows it's paired end
@@ -718,10 +720,9 @@ def run_geofetch(cmdl):
                             cmd += " OUTPUT=" + bam_file
                             cmd += " SAMPLE_NAME=" + run_name
                             cmd += " QUIET=true"
-                            print(cmd)
+                            _LOGGER.info("Conversion command: {}".format(cmd))
                             subprocess.call(cmd, shell=True)
-    
-    
+
             file_read.close()
             file_write.close()
     

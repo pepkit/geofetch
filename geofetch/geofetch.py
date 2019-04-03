@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Nathan Sheffield"
-__all__ = ["parse_accessions"]
+
 
 # Outline:
 # INPUT: A list of GSE ids, optionally including GSM ids to limit to.
@@ -31,10 +31,10 @@ if sys.version_info[0] == 2:
 else:
     _STRING_TYPES = str
 
-from .utils import Accession, expandpath
+from .utils import Accession, expandpath, parse_accessions, parse_SOFT_line
 from ._version import __version__
 
-from logmuse import setup_logger
+from logmuse import add_logging_options, logger_via_cli
 
 
 _LOGGER = None
@@ -157,19 +157,8 @@ def _parse_cmdl(cmdl):
             # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
             help=argparse.SUPPRESS)
 
+    parser = add_logging_options(parser)
     return parser.parse_args(cmdl)
-
-
-def parse_SOFT_line(l):
-    """
-    Parse SOFT formatted line, returning a dictionary with the key-value pair.
-
-    :param str l: A SOFT-formatted line to parse ( !key = value )
-    :return dict[str, str]: A python Dict object representing the key-value.
-    :raise InvalidSoftLineException: if given line can't be parsed as SOFT line
-    """
-    elems = l[1:].split("=")
-    return {elems[0].rstrip(): elems[1].lstrip()}
 
 
 def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
@@ -306,90 +295,12 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
     return exp
 
 
-def parse_accessions(input_arg, metadata_folder, just_metadata=False):
-    """
-    Create a list of GSE accessions, either from file or a single value.
-
-    This will be a dict, with the GSE# as the key, and
-    corresponding value is a list of GSM# specifying the samples we're
-    interested in from that GSE#. An empty sample list means we should get all
-    samples from that GSE#. This loop will create this dict.
-
-    :param input_arg:
-    :param str metadata_folder: path to folder for accession metadata
-    :param bool just_metadata: whether to only process metadata, not the
-        actual data associated with the accession
-    """
-
-    acc_GSE_list = OrderedDict()
-
-    if not os.path.isfile(input_arg):
-        _LOGGER.info("Trying {} (not a file) as accession...".format(input_arg))
-        # No limits accepted on command line, so keep an empty list.
-        if input_arg.startswith("SRP"):
-            base, ext = os.path.splitext(input_arg)
-            if ext:
-                raise ValueError("SRP-like input must be an SRP accession")
-            file_sra = os.path.join(
-                metadata_folder, "SRA_{}.csv".format(input_arg))
-            # Fetch and write the metadata for this SRP accession.
-            Accession(input_arg).fetch_metadata(file_sra)
-            if just_metadata:
-                return
-            # Read the Run identifiers to download.
-            run_ids = []
-            with open(file_sra, 'r') as f:
-                for l in f:
-                    if l.startswith("SRR"):
-                        r_id = l.split(",")[0]
-                        run_ids.append(r_id)
-            _LOGGER.info("{} run(s)".format(len(run_ids)))
-            for r_id in run_ids:
-                subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
-            # Early return if we've just handled SRP accession directly.
-            return
-        else:
-            acc_GSE = input_arg
-            acc_GSE_list[acc_GSE] = OrderedDict()
-    else:
-        _LOGGER.info("Accession list file found: {}".format(input_arg))
-    
-        # Read input file line by line.
-        for line in open(input_arg, 'r'):
-            if (not line) or (line[0] in ["#", "\n", "\t"]):
-                continue
-            fields = [x.rstrip() for x in line.split("\t")]
-            gse = fields[0]
-            if not gse:
-                continue
-    
-            gse = gse.rstrip()
-
-            if len(fields) > 1:
-                gsm = fields[1]
-        
-                if len(fields) > 2 and gsm != "":
-                    # There must have been a limit (GSM specified)
-                    # include a name if it doesn't already exist
-                    sample_name = fields[2].rstrip()
-                else:
-                    sample_name = gsm
-    
-                if acc_GSE_list.has_key(gse):  # GSE already has a GSM; add the next one
-                    acc_GSE_list[gse][gsm] = sample_name
-                else:
-                    acc_GSE_list[gse] = OrderedDict({gsm: sample_name})
-            else:
-                # No GSM limit; use empty dict.
-                acc_GSE_list[gse] = {}
-    
-    return acc_GSE_list
-
-
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
 
     args = _parse_cmdl(cmdl)
+    global _LOGGER
+    _LOGGER = logger_via_cli(args)
 
     if args.name:
         project_name = args.name
@@ -488,9 +399,16 @@ def run_geofetch(cmdl):
                                 ("data_source", None), ("SRR", None), ("SRX", None)]
                 gsm_metadata[current_sample_id] = OrderedDict(columns_init)
 
-                sys.stdout.write ("  Found sample " + current_sample_id)
+                _LOGGER.info("Found sample: {}".format(current_sample_id))
             elif current_sample_id is not None:
-                pl = parse_SOFT_line(line)
+                try:
+                    pl = parse_SOFT_line(line)
+                except IndexError:
+                    # TODO: do we "fail the current sample" here and remove it
+                    # from gsm_metadata? Or just skip the line?
+                    _LOGGER.debug("Failed to parse alleged SOFT line for sample "
+                                  "ID {}; line: {}".format(current_sample_id, line))
+                    continue
                 gsm_metadata[current_sample_id].update(pl)
     
                 # For processed data, here's where we would download it
@@ -804,10 +722,8 @@ def _write(f_var_value, content, msg_pre=None):
 
 def main():
     """ Run the script. """
-    global _LOGGER
-    _LOGGER = setup_logger("geofetch", level=logging.INFO)
     run_geofetch(sys.argv[1:])
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

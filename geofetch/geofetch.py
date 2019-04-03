@@ -196,7 +196,7 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
             w.writerow(gsm_metadata[item])
 
 
-def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SRX", "SRR"]):
+def write_subannotation(tabular_data, filepath, column_names=None):
     """
     Writes one or more tables to a given CSV filepath.
     """
@@ -205,7 +205,7 @@ def write_subannotation(tabular_data, filepath, column_names=["sample_name", "SR
     with open(os.path.expandvars(filepath), 'w') as openfile:
         writer = csv.writer(openfile, delimiter=",")
         # write header
-        writer.writerow(column_names)
+        writer.writerow(column_names or ["sample_name", "SRX", "SRR"])
         if not isinstance(tabular_data, list):
             tabular_data = [tabular_data]
 

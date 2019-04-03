@@ -101,7 +101,8 @@ def _parse_cmdl(cmdl):
             "--use-key-subset", action="store_true",
             help="Use just the keys defined in this module when writing out metadata.")
 
-    parser.add_argument( "-x", "--split-experiments", action="store_true", 
+    parser.add_argument(
+        "-x", "--split-experiments", action="store_true",
         help="""Split SRR runs into individual samples. By default, SRX
             experiments with multiple SRR Runs will have a single entry in the
             annotation table, with each run as a separate row in the
@@ -720,7 +721,8 @@ def run_geofetch(cmdl):
 
     subannotation_dict_combined = OrderedDict()
     for acc_GSE, gsm_multi_table in subannotation_dict.iteritems():
-        file_subannotation = os.path.join(metadata_expanded, acc_GSE + '_subannotation.csv')
+        file_subannotation = os.path.join(
+            metadata_expanded, acc_GSE + '_subannotation.csv')
         if args.acc_anno:
             write_subannotation(gsm_multi_table, file_subannotation)
         subannotation_dict_combined.update(gsm_multi_table)
@@ -739,11 +741,13 @@ def run_geofetch(cmdl):
 
     # Write combined annotation sheet
     file_annotation = os.path.join(metadata_raw, project_name + '_annotation.csv')
-    write_annotation(metadata_dict_combined, file_annotation, use_key_subset=args.use_key_subset)
+    write_annotation(metadata_dict_combined, file_annotation,
+                     use_key_subset=args.use_key_subset)
     
     # Write combined subannotation table
     if len(subannotation_dict_combined) > 0:
-        file_subannotation = os.path.join(metadata_raw, project_name + '_subannotation.csv')
+        file_subannotation = os.path.join(
+            metadata_raw, project_name + '_subannotation.csv')
         write_subannotation(subannotation_dict_combined, file_subannotation)
     else:
         file_subannotation = "null"
@@ -757,10 +761,10 @@ def run_geofetch(cmdl):
     with open(args.config_template, 'r') as template_file:
         template = template_file.read()
 
-    template_values = {"project_name": project_name,
-                        "annotation": file_annotation,
-                        "subannotation": file_subannotation,
-                        "pipeline_interfaces": file_pipeline_interfaces}
+    template_values = {
+        "project_name": project_name, "annotation": file_annotation,
+        "subannotation": file_subannotation,
+        "pipeline_interfaces": file_pipeline_interfaces}
 
     for k, v in template_values.items():
         placeholder = "{" + str(k) + "}"

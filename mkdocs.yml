@@ -1,7 +1,6 @@
 site_name: Geofetch
-site_logo: img/geofetch_logo_dark.svg
 site_url: http://code.databio.org/geofetch/
-pypi_name: geofetch
+repo_name: geofetch
 repo_url: http://github.com/pepkit/geofetch
 
 nav:
@@ -24,6 +23,8 @@ theme: databio
 plugins:
   - search
   - databio:
+      site_logo: img/geofetch_logo_dark.svg
+      pypi_name: geofetch
       autodoc_modules: null
       autodoc_build: "docs_build"
       usage_template: "docs/usage_template.md"

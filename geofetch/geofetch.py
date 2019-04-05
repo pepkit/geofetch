@@ -20,7 +20,6 @@ import argparse
 from collections import OrderedDict
 import copy
 import csv
-import logging
 import os
 import re
 import subprocess
@@ -300,7 +299,7 @@ def run_geofetch(cmdl):
 
     args = _parse_cmdl(cmdl)
     global _LOGGER
-    _LOGGER = logger_via_cli(args)
+    _LOGGER = logger_via_cli(args, name="geofetch")
 
     if args.name:
         project_name = args.name
@@ -665,7 +664,7 @@ def run_geofetch(cmdl):
             write_subannotation(gsm_multi_table, file_subannotation)
         subannotation_dict_combined.update(gsm_multi_table)
 
-    _LOGGER.info("Finished processing {} accession()".format(len(acc_GSE_list)))
+    _LOGGER.info("Finished processing {} accession(s)".format(len(acc_GSE_list)))
 
     # if user specified a pipeline interface path, add it into the project config
     if args.pipeline_interfaces:

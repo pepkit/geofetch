@@ -1,6 +1,5 @@
 site_name: Geofetch
 site_url: http://code.databio.org/geofetch/
-repo_name: geofetch
 repo_url: http://github.com/pepkit/geofetch
 site_logo: img/geofetch_logo_dark.svg
 pypi_name: geofetch

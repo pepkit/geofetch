@@ -189,7 +189,7 @@ def write_subannotation(tabular_data, filepath, column_names=None):
     """
     Writes one or more tables to a given CSV filepath.
 
-    :param Mapping | Iterable[Mapping] single KV pair collection, or collection
+    :param Mapping | Iterable[Mapping]: single KV pair collection, or collection
         of such collections, to write to disk as tabular data
     :param str filepath: path to file to write, possibly with environment
         variables included, e.g. from a config file

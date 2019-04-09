@@ -25,7 +25,7 @@ plugins:
   - databio:
       site_logo: img/geofetch_logo_dark.svg
       pypi_name: geofetch
-      autodoc_modules: null
+      autodoc_package: geofetch
       autodoc_build: "docs_build"
       usage_template: "docs/usage_template.md"
       usage_cmds:

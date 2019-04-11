@@ -13,6 +13,7 @@ nav:
     - How to control data location: howto-location.md
   - Reference:
     - Usage: usage.md
+    - API: autodoc_build/geofetch.md
     - FAQ: faq.md
     - Support: support.md
     - Contributing: contributing.md
@@ -25,7 +26,7 @@ plugins:
   - search
   - databio:
       autodoc_package: geofetch
-      autodoc_build: "docs_build"
+      autodoc_build: "docs/autodoc_build"
       usage_template: "docs/usage_template.md"
       usage_cmds:
         -"geofetch --help

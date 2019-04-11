@@ -17,7 +17,7 @@ nav:
     - FAQ: faq.md
     - Support: support.md
     - Contributing: contributing.md
-  - Changelog: changelog.md
+    - Changelog: changelog.md
 
 theme: databio
 

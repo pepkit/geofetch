@@ -711,11 +711,13 @@ def run_geofetch(cmdl):
     _write(config, template, msg_pre="  Config file: ")
 
 
-def _write(f_var_value, content, msg_pre=None):
+def _write(f_var_value, content, msg_pre=None, omit_newline=False):
     fp = expandpath(f_var_value)
     _LOGGER.info((msg_pre or "") + fp)
     with open(fp, 'w') as f:
         f.write(content)
+        if not omit_newline:
+            f.write("\n")
 
 
 def main():

@@ -709,7 +709,7 @@ def run_geofetch(cmdl):
 
     config = os.path.join(metadata_raw, project_name + "_config.yaml")
     _write(config, template, "  Config file: ")
-    _LOGGER.info("  Config file: " + config)
+    _LOGGER.info("  Config file: " + expandpath(config))
 
 
 def _write(f_var_value, content, msg_pre=None):

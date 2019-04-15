@@ -27,6 +27,6 @@ implied_columns:
 subprojects:
   sra_convert:
     metadata:
-      pipeline_interfaces: ${CODEBASE}sra_convert/pipeline_interface_convert.yaml
+      pipeline_interfaces: ${CODE}/sra_convert/pipeline_interface_convert.yaml
     data_sources:
      SRA: "${SRARAW}/{SRR}.sra"

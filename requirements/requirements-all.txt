@@ -1,6 +1,5 @@
 attmap>=0.1.8
 colorama>=0.3.9
-pyyaml>=3.12
 peppy>=0.19.1
 logmuse>=0.0.2
 

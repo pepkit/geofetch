@@ -175,7 +175,7 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
     keys = ANNOTATION_SHEET_KEYS if use_key_subset else \
         gsm_metadata[gsm_metadata.iterkeys().next()].keys()
     _LOGGER.info("Sample annotation sheet: {}".format(file_annotation))
-    fp = os.path.expandvars(file_annotation)
+    fp = expandpath(file_annotation)
     _LOGGER.info("Writing: {}".format(fp))
     with open(fp, 'wb') as of:
         w = csv.DictWriter(of, keys, extrasaction='ignore')
@@ -198,7 +198,7 @@ def write_subannotation(tabular_data, filepath, column_names=None):
     :return str: path to file written
     """
     _LOGGER.info("Sample subannotation sheet: {}".format(filepath))
-    fp = os.path.expandvars(filepath)
+    fp = expandpath(filepath)
     _LOGGER.info("Writing: {}".format(fp))
     with open(fp, 'w') as openfile:
         writer = csv.writer(openfile, delimiter=",")
@@ -714,7 +714,7 @@ def run_geofetch(cmdl):
 
 def _write(f_var_value, content, msg_pre=None):
     _LOGGER.info((msg_pre or "") + f_var_value)
-    fp = os.path.expanduser(os.path.expandvars(f_var_value))
+    fp = expandpath(f_var_value)
     with open(fp, 'w') as f:
         f.write(content)
 
@@ -725,4 +725,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

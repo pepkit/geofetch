@@ -708,13 +708,12 @@ def run_geofetch(cmdl):
         template = template.replace(placeholder, str(v))
 
     config = os.path.join(metadata_raw, project_name + "_config.yaml")
-    _write(config, template, "  Config file: ")
-    _LOGGER.info("  Config file: " + expandpath(config))
+    _write(config, template, msg_pre="  Config file: ")
 
 
 def _write(f_var_value, content, msg_pre=None):
-    _LOGGER.info((msg_pre or "") + f_var_value)
     fp = expandpath(f_var_value)
+    _LOGGER.info((msg_pre or "") + fp)
     with open(fp, 'w') as f:
         f.write(content)
 

@@ -134,8 +134,9 @@ def _parse_cmdl(cmdl):
 
     parser.add_argument(
             "-P", "--pipeline_interfaces", default=None,
-            help="Optional: Specify the filepath of a pipeline interface yaml file. "
-                 "[Default: null]")
+            help="Optional: Specify one or more filepaths to pipeline interface yaml files. "
+                 "These will be added to the project config file to make it immediately "
+                 "compatible with looper. [Default: null]")
     
     # Deprecated; these are for bam conversion which now happens in sra_convert
     # it still works here but I hide it so people don't use it, because it's confusing.

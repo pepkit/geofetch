@@ -486,7 +486,7 @@ def run_geofetch(cmdl):
         # NB: There may be multiple SRA Runs (and thus lines in the RunInfo file)
         # Corresponding to each sample.
         if not args.processed:
-            file_read = open(file_sra, 'rb')
+            file_read = open(file_sra, 'r')
             file_write = open(file_srafilt, 'wb')
             _LOGGER.info("Parsing SRA file to download SRR records")
             initialized = False

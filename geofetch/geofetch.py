@@ -587,7 +587,7 @@ def run_geofetch(cmdl):
 
                         # Set up a simple loop to try a few times in case of failure
                         tries = 3
-                        for try in range(1, tries):
+                        for t in range(1, tries):
                             subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
                             if subprocess_return == 0:
                                 break

@@ -354,7 +354,7 @@ def run_geofetch(cmdl):
 
         if (len(acc_GSE_list[acc_GSE]) > 0):
             _LOGGER.info("Limit to: {}".format(list(acc_GSE_list[acc_GSE])))    # a list of GSM#s
-            
+
         if args.refresh_metadata:
             _LOGGER.info("Refreshing metadata...")
         # For each GSE acc, produce a series of metadata files
@@ -584,9 +584,19 @@ def run_geofetch(cmdl):
                         # Use the 'prefetch' utility from the SRA Toolkit
                         # to download the raw reads.
                         # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
-                        subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+
+                        # Set up a simple loop to try a few times in case of failure
+                        tries = 3
+                        for try in range(1, tries):
+                            subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+                            if subprocess_return == 0:
+                                break
+                            _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
+                            time.sleep(5)
                     else:
                         _LOGGER.info("Dry run (no data download)")
+
+
     
                     if args.bam_conversion and args.bam_folder is not '':
                         _LOGGER.info("Converting to bam: " + run_name)

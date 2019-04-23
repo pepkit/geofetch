@@ -3,6 +3,7 @@
 ## geofetch v0.5 (Unreleased)
 
 - `geofetch` will now re-try a failed prefetch 3 times and warn if unsuccessful.
+- Fixed a bug that prevented writing metadata in python3.
 
 ## geofetch v0.4 (2019-03-13)
 

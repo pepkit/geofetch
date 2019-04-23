@@ -351,7 +351,10 @@ def run_geofetch(cmdl):
         # Get GSM#s (away from sample_name)
         GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())    #[x[1] for x in acc_GSE_list[acc_GSE]]
     
-        _LOGGER.info("Limit to: {}".format(list(acc_GSE_list[acc_GSE])))    # a list of GSM#s
+
+        if (len(acc_GSE_list[acc_GSE]) > 0):
+            _LOGGER.info("Limit to: {}".format(list(acc_GSE_list[acc_GSE])))    # a list of GSM#s
+            
         if args.refresh_metadata:
             _LOGGER.info("Refreshing metadata...")
         # For each GSE acc, produce a series of metadata files

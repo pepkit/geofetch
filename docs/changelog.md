@@ -1,5 +1,9 @@
 # Changelog
 
+## geofetch v0.5 (Unreleased)
+
+- `geofetch` will now re-try a failed prefetch 3 times and warn if unsuccessful.
+
 ## geofetch v0.4 (2019-03-13)
 
 - Fixed a bug with default generic config template

@@ -57,6 +57,9 @@ GSE_PATTERN = re.compile("(GSE\d{4,8})")
 SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
 SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
+# How many times should we retry failing prefetch call?
+NUM_RETRIES = 3
+
 
 def _parse_cmdl(cmdl):
     parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
@@ -341,6 +344,7 @@ def run_geofetch(cmdl):
     # This loop populates a list of metadata.
     metadata_dict = OrderedDict()
     subannotation_dict = OrderedDict()
+    failed_runs = []
 
     for acc_GSE in acc_GSE_list.keys():
         _LOGGER.info("Processing accession: " + acc_GSE)
@@ -587,13 +591,18 @@ def run_geofetch(cmdl):
                         # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
 
                         # Set up a simple loop to try a few times in case of failure
-                        tries = 3
-                        for t in range(1, tries):
+                        t = 0
+                        while True:
+                            t = t+1
                             subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
                             if subprocess_return == 0:
                                 break
+                            if t >= NUM_RETRIES:
+                                _LOGGER.info("Prefetch retries failed. Try this sample later")
+                                failed_runs.append(run_name)
+                                break
                             _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
-                            time.sleep(t)
+                            time.sleep(t*2)
                     else:
                         _LOGGER.info("Dry run (no data download)")
 
@@ -680,6 +689,9 @@ def run_geofetch(cmdl):
         subannotation_dict_combined.update(gsm_multi_table)
 
     _LOGGER.info("Finished processing {} accession(s)".format(len(acc_GSE_list)))
+
+    if (len(failed_runs) > 0):
+        _LOGGER.warn("The following samples could not be downloaded: {}".format(failed_runs))
 
     # if user specified a pipeline interface path, add it into the project config
     if args.pipeline_interfaces:

@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 if sys.version_info[0] == 2:
     _STRING_TYPES = basestring
@@ -178,7 +179,7 @@ def write_annotation(gsm_metadata, file_annotation, use_key_subset=False):
     _LOGGER.info("Sample annotation sheet: {}".format(file_annotation))
     fp = expandpath(file_annotation)
     _LOGGER.info("Writing: {}".format(fp))
-    with open(fp, 'wb') as of:
+    with open(fp, 'w') as of:
         w = csv.DictWriter(of, keys, extrasaction='ignore')
         w.writeheader()
         for item in gsm_metadata:
@@ -487,7 +488,7 @@ def run_geofetch(cmdl):
         # Corresponding to each sample.
         if not args.processed:
             file_read = open(file_sra, 'r')
-            file_write = open(file_srafilt, 'wb')
+            file_write = open(file_srafilt, 'w')
             _LOGGER.info("Parsing SRA file to download SRR records")
             initialized = False
             
@@ -592,7 +593,7 @@ def run_geofetch(cmdl):
                             if subprocess_return == 0:
                                 break
                             _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
-                            time.sleep(5)
+                            time.sleep(t)
                     else:
                         _LOGGER.info("Dry run (no data download)")
 

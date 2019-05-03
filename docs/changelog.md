@@ -1,9 +1,11 @@
 # Changelog
 
-## [0.5.0] -- (Unreleased)
+## [0.5.0] -- 2019-05-03
 
 - `geofetch` will now re-try a failed prefetch 3 times and warn if unsuccessful.
 - Fixed a bug that prevented writing metadata in python3.
+- More robust SOFT line parsing
+- Use [`logmuse`](http://logmuse.databio.org/en/latest/) for messaging
 
 ## [0.4.0] -- (2019-03-13)
 

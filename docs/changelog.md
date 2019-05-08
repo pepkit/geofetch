@@ -6,6 +6,8 @@
 - Fixed a bug that prevented writing metadata in python3.
 - More robust SOFT line parsing
 - Use [`logmuse`](http://logmuse.databio.org/en/latest/) for messaging
+- Improve modularity to facilitate non-CLI use if desired
+- Better documentation
 
 ## [0.4.0] -- (2019-03-13)
 

@@ -25,9 +25,6 @@ theme: databio
 plugins:
   - search
   - databio:
-      autodoc_package: geofetch
-      autodoc_build: "docs/autodoc_build"
-      no_top_level: true
       usage_template: "docs/usage_template.md"
       usage_cmds:
         -"geofetch --help

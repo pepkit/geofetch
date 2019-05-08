@@ -31,10 +31,11 @@ if sys.version_info[0] == 2:
 else:
     _STRING_TYPES = str
 
-from .utils import Accession, expandpath, parse_accessions, parse_SOFT_line
+from .utils import Accession, parse_accessions, parse_SOFT_line
 from ._version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
+from ubiquerg import expandpath
 
 
 _LOGGER = None

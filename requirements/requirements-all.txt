@@ -2,4 +2,4 @@ attmap>=0.1.8
 colorama>=0.3.9
 peppy>=0.19.1
 logmuse>=0.0.2
-
+ubiquerg>=0.0.5

@@ -1,12 +1,15 @@
 """ Independently-importable utilities to circumvent true scripts. """
 
+from collections import OrderedDict
 import logging
 import os
 import subprocess
 
 
-__author__ = "Vince Reuter"
+__author__ = ["Vince Reuter", "Nathan Sheffield"]
 __email__ = "vreuter@virginia.edu"
+
+__all__ = ["parse_accessions"]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,16 +25,6 @@ URL_BY_ACC = {
     "SRP": "http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}",
     "SRX": "http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}"
 }
-
-
-def expandpath(path):
-    """
-    Expand a filesystem path that may or may not contain user/env vars.
-
-    :param str path: path to expand
-    :return str: expanded version of input path
-    """
-    return os.path.expandvars(os.path.expanduser(path)).replace("//", "/")
 
 
 def is_known_type(accn=None, typename=None):
@@ -55,6 +48,97 @@ def is_known_type(accn=None, typename=None):
         return False
 
 
+def parse_accessions(input_arg, metadata_folder, just_metadata=False):
+    """
+    Create a list of GSE accessions, either from file or a single value.
+
+    This will be a dict, with the GSE# as the key, and
+    corresponding value is a list of GSM# specifying the samples we're
+    interested in from that GSE#. An empty sample list means we should get all
+    samples from that GSE#. This loop will create this dict.
+
+    :param input_arg:
+    :param str metadata_folder: path to folder for accession metadata
+    :param bool just_metadata: whether to only process metadata, not the
+        actual data associated with the accession
+    """
+
+    acc_GSE_list = OrderedDict()
+
+    if not os.path.isfile(input_arg):
+        _LOGGER.info("Trying {} (not a file) as accession...".format(input_arg))
+        # No limits accepted on command line, so keep an empty list.
+        if input_arg.startswith("SRP"):
+            base, ext = os.path.splitext(input_arg)
+            if ext:
+                raise ValueError("SRP-like input must be an SRP accession")
+            file_sra = os.path.join(
+                metadata_folder, "SRA_{}.csv".format(input_arg))
+            # Fetch and write the metadata for this SRP accession.
+            Accession(input_arg).fetch_metadata(file_sra)
+            if just_metadata:
+                return
+            # Read the Run identifiers to download.
+            run_ids = []
+            with open(file_sra, 'r') as f:
+                for l in f:
+                    if l.startswith("SRR"):
+                        r_id = l.split(",")[0]
+                        run_ids.append(r_id)
+            _LOGGER.info("{} run(s)".format(len(run_ids)))
+            for r_id in run_ids:
+                subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
+            # Early return if we've just handled SRP accession directly.
+            return
+        else:
+            acc_GSE = input_arg
+            acc_GSE_list[acc_GSE] = OrderedDict()
+    else:
+        _LOGGER.info("Accession list file found: {}".format(input_arg))
+
+        # Read input file line by line.
+        for line in open(input_arg, 'r'):
+            if (not line) or (line[0] in ["#", "\n", "\t"]):
+                continue
+            fields = [x.rstrip() for x in line.split("\t")]
+            gse = fields[0]
+            if not gse:
+                continue
+
+            gse = gse.rstrip()
+
+            if len(fields) > 1:
+                gsm = fields[1]
+
+                if len(fields) > 2 and gsm != "":
+                    # There must have been a limit (GSM specified)
+                    # include a name if it doesn't already exist
+                    sample_name = fields[2].rstrip()
+                else:
+                    sample_name = gsm
+
+                if acc_GSE_list.has_key(gse):  # GSE already has a GSM; add the next one
+                    acc_GSE_list[gse][gsm] = sample_name
+                else:
+                    acc_GSE_list[gse] = OrderedDict({gsm: sample_name})
+            else:
+                # No GSM limit; use empty dict.
+                acc_GSE_list[gse] = {}
+
+    return acc_GSE_list
+
+
+def parse_SOFT_line(l):
+    """
+    Parse SOFT formatted line, returning a dictionary with the key-value pair.
+
+    :param str l: A SOFT-formatted line to parse ( !key = value )
+    :return dict[str, str]: A python Dict object representing the key-value.
+    :raise InvalidSoftLineException: if given line can't be parsed as SOFT line
+    """
+    elems = l[1:].split("=")
+    return {elems[0].rstrip(): elems[1].lstrip()}
+
 
 class AccessionException(Exception):
     """ Exceptional condition(s) dealing with accession number(s). """
@@ -67,7 +151,6 @@ class AccessionException(Exception):
             could not be interpreted as an accession
         """
         super(AccessionException, self).__init__(reason)
-
 
 
 class Accession(object):
@@ -95,7 +178,6 @@ class Accession(object):
                             accn, typename, URL_BY_ACC.keys()))
         self.accn = accn
         self.typename = typename.upper()
-
 
     def fetch_metadata(self, outpath=None, typename=None):
         """
@@ -141,7 +223,6 @@ class Accession(object):
 
         subprocess.call(cmd.split(" "))
 
-
     @staticmethod
     def _validate(accn):
         """ Determine if given value looks like an accession. """
@@ -177,7 +258,6 @@ class Accession(object):
             message = "{}; known types: {}".format(
                 message, URL_BY_ACC.keys())
         return AccessionException(message)
-
 
 
 def split_accn(accn):

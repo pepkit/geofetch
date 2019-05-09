@@ -1,8 +1,8 @@
 site_name: Geofetch
-site_logo: img/geofetch_logo_dark.svg
 site_url: http://code.databio.org/geofetch/
-pypi_name: geofetch
 repo_url: http://github.com/pepkit/geofetch
+site_logo: img/geofetch_logo_dark.svg
+pypi_name: geofetch
 
 nav:
   - Getting started:
@@ -13,10 +13,11 @@ nav:
     - How to control data location: howto-location.md
   - Reference:
     - Usage: usage.md
+    - API: autodoc_build/geofetch.md
     - FAQ: faq.md
     - Support: support.md
     - Contributing: contributing.md
-  - Changelog: changelog.md
+    - Changelog: changelog.md
 
 theme: databio
 
@@ -24,8 +25,6 @@ theme: databio
 plugins:
   - search
   - databio:
-      autodoc_modules: null
-      autodoc_build: "docs_build"
       usage_template: "docs/usage_template.md"
       usage_cmds:
         -"geofetch --help

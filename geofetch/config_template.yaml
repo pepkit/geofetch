@@ -5,7 +5,7 @@ name: {project_name}
 metadata:
   sample_annotation: {annotation}
   sample_subannotation: {subannotation}
-  output_dir: ${PROCESSED}{project_name}
+  output_dir: ${PROCESSED}/{project_name}
   pipeline_interfaces: {pipeline_interfaces}
 
 derived_columns: [data_source]
@@ -27,6 +27,6 @@ implied_columns:
 subprojects:
   sra_convert:
     metadata:
-      pipeline_interfaces: ${CODEBASE}sra_convert/pipeline_interface_convert.yaml
+      pipeline_interfaces: ${CODE}/sra_convert/pipeline_interface_convert.yaml
     data_sources:
      SRA: "${SRARAW}/{SRR}.sra"

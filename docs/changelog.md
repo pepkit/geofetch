@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased] 
+
+
 ## [0.5.0] -- 2019-05-09
 
 - `geofetch` will now re-try a failed prefetch 3 times and warn if unsuccessful.

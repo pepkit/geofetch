@@ -10,11 +10,12 @@ nav:
     - Install and configure: install.md
     - Tutorial: tutorial.md
   - How-to Guides:
-    - How to specify multiple accessions: howto-limit.md
+    - Specifying samples to download: file-specification.md
   - Reference:
+    - Metadata output: metadata_output.md
     - Usage: usage.md
     - FAQ: faq.md
-    - Support: support.md
+    - Support: http://github.com/pepkit/geofetch/issues
     - Contributing: contributing.md
     - Changelog: changelog.md
 

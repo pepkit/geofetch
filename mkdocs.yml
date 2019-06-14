@@ -7,13 +7,12 @@ pypi_name: geofetch
 nav:
   - Getting started:
     - Introduction: README.md
+    - Install and configure: install.md
     - Tutorial: tutorial.md
   - How-to Guides:
     - How to specify multiple accessions: howto-limit.md
-    - How to control data location: howto-location.md
   - Reference:
     - Usage: usage.md
-    - API: autodoc_build/geofetch.md
     - FAQ: faq.md
     - Support: support.md
     - Contributing: contributing.md

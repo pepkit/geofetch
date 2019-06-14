@@ -1,12 +1,8 @@
 # <img src="../img/geofetch_logo.svg" class="img-header">  tutorial
 
-## Prerequisites
-
-You must have the `sratoolkit` from NCBI installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them. For more information, see [how to change sratools download location](howto-location.md).
-
 ## Download SRA data using `geofetch`
 
-To see full options, see the help menu with:
+Before starting, make sure you've followed the [installation instructions](install.md). To see your options, display the help menu:
 
 ```console
 geofetch -h

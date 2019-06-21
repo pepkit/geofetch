@@ -462,8 +462,8 @@ def run_geofetch(cmdl):
                     file_url = pl[pl.keys()[0]].rstrip()
                     _LOGGER.info("File: " + str(file_url))
                     # download file
-                    if args.geofolder:
-                        data_folder = os.path.join(args.geofolder, acc_GSE)
+                    if args.geo_folder:
+                        data_folder = os.path.join(args.geo_folder, acc_GSE)
                         print(file_url, data_folder)
                         subprocess.call(['wget', file_url, '-P', data_folder])
 

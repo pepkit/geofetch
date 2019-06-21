@@ -2,6 +2,10 @@
 
 ## [Unreleased] 
 
+## [0.6.0] -- 2019-06-20
+- Fixed a bug with specifying a processed data output folder
+- Added a pre-check and warning message for `prefetch` command 
+
 
 ## [0.5.0] -- 2019-05-09
 

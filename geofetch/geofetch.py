@@ -310,8 +310,9 @@ def run_geofetch(cmdl):
     _LOGGER = logger_via_cli(args, name="geofetch")
 
     # check to make sure prefetch is callable
-    if not is_command_callable("prefetch"):
-        raise SystemExit("You must first install the sratoolkit, with prefetch in your PATH.")
+    if not args.just_metadata and not args.processed:
+        if not is_command_callable("prefetch"):
+            raise SystemExit("You must first install the sratoolkit, with prefetch in your PATH.")
 
     if args.name:
         project_name = args.name

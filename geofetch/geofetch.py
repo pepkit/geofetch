@@ -35,7 +35,7 @@ from .utils import Accession, parse_accessions, parse_SOFT_line
 from ._version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
-from ubiquerg import expandpath
+from ubiquerg import expandpath, is_command_callable
 
 
 _LOGGER = None
@@ -303,9 +303,16 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
 
+
+
     args = _parse_cmdl(cmdl)
     global _LOGGER
     _LOGGER = logger_via_cli(args, name="geofetch")
+
+    # check to make sure prefetch is callable
+    if not args.just_metadata and not args.processed:
+        if not is_command_callable("prefetch"):
+            raise SystemExit("You must first install the sratoolkit, with prefetch in your PATH.")
 
     if args.name:
         project_name = args.name
@@ -456,8 +463,8 @@ def run_geofetch(cmdl):
                     file_url = pl[pl.keys()[0]].rstrip()
                     _LOGGER.info("File: " + str(file_url))
                     # download file
-                    if args.geofolder:
-                        data_folder = os.path.join(args.geofolder, acc_GSE)
+                    if args.geo_folder:
+                        data_folder = os.path.join(args.geo_folder, acc_GSE)
                         print(file_url, data_folder)
                         subprocess.call(['wget', file_url, '-P', data_folder])
 

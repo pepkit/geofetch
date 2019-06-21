@@ -1,12 +1,8 @@
 # <img src="../img/geofetch_logo.svg" class="img-header">  tutorial
 
-## Prerequisites
-
-You must have the `sratoolkit` from NCBI installed, with tools in your `PATH` (check to make sure you can run `prefetch`). Make sure it's configured to store `sra` files where you want them. For more information, see [how to change sratools download location](howto-location.md).
-
 ## Download SRA data using `geofetch`
 
-To see full options, see the help menu with:
+Before starting, make sure you've followed the [installation instructions](install.md). To see your options, display the help menu:
 
 ```console
 geofetch -h
@@ -24,10 +20,16 @@ This will do 3 things:
 2. produce a sample annotation sheet, `PROJECT_NAME_annotation.csv`, in your metadata folder
 3. produce a project configuration file, `PROJECT_NAME_config.yaml`, in your metadata folder.
 
+Complete details about geofetch outputs is cataloged in the [metadata outputs reference](metadata_output.md).
 
 ## Finalize the project config and sample annotation
 
 That's basically it! `Geofetch` will have produced a general-purpose PEP for you, but you'll need to modify it for whatever purpose you have. For example, one common thing is to link to the pipeline you want to use by adding a `pipeline_interface` to the project config file. You may also need to adjust the `sample_annotation` file to make sure you have the right column names and attributes needed by the pipeline you're using. GEO submitters are notoriously bad at getting the metadata correct.
+
+## Selecting samples to download.
+
+By default, `geofetch` downloads all the data for one accession of interest. If you need more fine-grained control, either because you have multiple accessions or you need a subset of samples within them, you can use the [file-based sample specification](file-specification.md).
+
 
 ## A few real-world examples
 

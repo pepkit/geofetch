@@ -1,0 +1,31 @@
+protocol_mapping:
+  "*": convert
+
+pipelines:
+  convert:
+    name: convert
+    path: sraconvert
+    required_input_files: SRR_files
+    arguments:
+      "--srr": SRR_files
+    resources:
+      default:
+        file_size: "0"
+        cores: "1"
+        mem: "4000"
+        time: "0-06:00:00"
+      package1:
+        file_size: "15"
+        cores: "1"
+        mem: "4000"
+        time: "0-12:00:00"
+      package2:
+        file_size: "100"
+        cores: "1"
+        mem: "4000"
+        time: "1-00:00:00"
+      package3:
+        file_size: "300"
+        cores: "1"
+        mem: "4000"
+        time: "2-00:00:00"

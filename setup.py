@@ -72,7 +72,8 @@ setup(
     license="BSD2",
     entry_points={
         "console_scripts": [
-            "{p} = {p}.{p}:main".format(p=PACKAGE)
+            "geofetch = geofetch.geofetch:main",
+            "sraconvert = geofetch.sraconvert:main"
         ],
     },
     package_data={PACKAGE: ['templates/*']},

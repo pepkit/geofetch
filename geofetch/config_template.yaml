@@ -8,7 +8,7 @@ metadata:
   output_dir: ${PROCESSED}/{project_name}
   pipeline_interfaces: {pipeline_interfaces}
 
-derived_columns: [data_source]
+derived_columns: [read1, read2, SRR_files]
 
 data_sources:
   SRA: "${SRABAM}/{SRR}.bam"
@@ -23,10 +23,21 @@ implied_columns:
       genome: rn6
     "Drosophila melanogaster":
       genome: dm3
+  read_type:
+    "PAIRED":
+      read1: FQ1
+      read2: FQ2
+    "SINGLE":
+      read1: FQ
 
 subprojects:
   sra_convert:
     metadata:
-      pipeline_interfaces: ${CODE}/sra_convert/pipeline_interface_convert.yaml
+      pipeline_interfaces: ${CODE}/geofetch/pipeline_interface_convert.yaml
     data_sources:
      SRA: "${SRARAW}/{SRR}.sra"
+     FQ: "${SRAFQ}/{SRR}.fastq.gz"
+     FQ1: "${SRAFQ}/{SRR}_1.fastq.gz"
+     FQ2: "${SRAFQ}/{SRR}_2.fastq.gz"
+    constant_attributes:
+      SRR_files: SRA

@@ -5,10 +5,9 @@ When you install geofetch, you also get a second utility called `sraconvert` tha
 The basic advantages over just using prefetch are:
 
 - it provides the same interface to either download or delete sra files
-- it uses the same intervace to delete converted files, if desired
+- it uses the same interface to delete converted files, if desired
 - it can automatically delete sra data that has been already converted
-- it allows a more flexibile specification of locations, using either
-  environment variables or command-line arguments.
+- it allows a more flexible specification of locations, using either environment variables or command-line arguments.
 
 This effectively makes it easier to interact with *project-level* management of sra and fastq data using [looper](http://looper.databio.org) and PEP-compatible projects.
 
@@ -41,4 +40,11 @@ looper run /home/nsheff/code/geofetch/sandbox/dr_rrbs/dr_rrbs_config.yaml --sp s
 And finally, run the pipeline:
 ```
 looper run /home/nsheff/code/geofetch/sandbox/dr_rrbs/dr_rrbs_config.yaml
+```
+
+
+## Here's how to use sraconvert to delete the sra data after processing
+
+```
+looper run /project/shefflab/data/sra_meta/GSE47966/GSE47966_config.yaml --sp sra_convert --mode delete_sra --compute local
 ```

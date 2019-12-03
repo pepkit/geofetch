@@ -339,7 +339,7 @@ def run_geofetch(cmdl):
     _LOGGER.info("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
 
     # Some sanity checks before proceeding
-    if args.bam_folder and not which("samtools"):
+    if args.bam_conversion and not args.just_metadata and not which("samtools"):
         raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
     acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)

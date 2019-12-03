@@ -1,6 +1,7 @@
 # Changelog
 
-## [Unreleased] 
+## [0.7.0] -- unreleased
+- Fixed user interface for bam conversions 
 
 ## [0.6.0] -- 2019-06-20
 - Fixed a bug with specifying a processed data output folder

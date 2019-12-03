@@ -308,7 +308,15 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
 
 def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
     """
-    Given a url for a file, download it, and extract anything passing the filter
+    Given a url for a file, download it, and extract anything passing the filter.
+    :param str file_url: the URL of the file to download
+    :param str data_folder: the local folder where the file should be saved
+    :param re.Pattern tar_re: a regulator expression (produced from re.compile)
+        that pulls out filenames with .tar in them
+    :param re.Pattern filter_re: a regular expression (produced from
+        re.compile) to filter filenames of interest.
+    :return bool: True if the file is downloaded successfully; false if it does
+        not pass filters and is not downloaded.
     """
     # download file
 

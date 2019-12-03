@@ -127,6 +127,11 @@ def _parse_cmdl(cmdl):
             help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
+            "--filter",
+            default=None,
+            help="Filter regex for processed filenames [Default: None].")
+
+    parser.add_argument(
             "-g", "--geo-folder", default=safe_echo("GEODATA"),
             help="Optional: Specify a location to store processed GEO files "
                 "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
@@ -319,6 +324,15 @@ def run_geofetch(cmdl):
     else:
         project_name = os.path.splitext(os.path.basename(args.input))[0]
 
+
+    if args.filter:
+        filter_re = re.compile(args.filter)
+        tar_re = re.compile(r".*\.tar$")
+        import tarfile
+    else:
+        filter_re = None
+        tar_re = None        
+
     def render_env_var(ev):
         return "{} ({})".format(ev, expandpath(ev))
 
@@ -355,7 +369,7 @@ def run_geofetch(cmdl):
     failed_runs = []
 
     for acc_GSE in acc_GSE_list.keys():
-        _LOGGER.info("Processing accession: " + acc_GSE)
+        _LOGGER.info("\033[38;5;228mProcessing accession: " + acc_GSE + "\033[0m")
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
             _LOGGER.warning("This does not appear to be a correctly formatted "
@@ -402,6 +416,8 @@ def run_geofetch(cmdl):
         current_sample_srx = False
         for line in open(file_gsm, 'r'):
             line = line.rstrip()
+            if len(line) == 0:  # Apparently SOFT files can contain blank lines
+                continue
             if line[0] is "^":
                 pl = parse_SOFT_line(line)
                 if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
@@ -431,7 +447,7 @@ def run_geofetch(cmdl):
                 if args.processed and not args.just_metadata:
                     found = re.findall(SUPP_FILE_PATTERN, line)
                     if found:
-                        print(pl[pl.keys()[0]])
+                        _LOGGER.info("Processed GSM file: " + pl[pl.keys()[0]])
     
                 # Now convert the ids GEO accessions into SRX accessions
                 if not current_sample_srx:
@@ -461,12 +477,54 @@ def run_geofetch(cmdl):
                 if found:
                     pl = parse_SOFT_line(line)
                     file_url = pl[pl.keys()[0]].rstrip()
-                    _LOGGER.info("File: " + str(file_url))
+                    _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
                     # download file
                     if args.geo_folder:
                         data_folder = os.path.join(args.geo_folder, acc_GSE)
-                        print(file_url, data_folder)
-                        subprocess.call(['wget', file_url, '-P', data_folder])
+                        _LOGGER.info("Data folder: " + data_folder)
+                        time.sleep(0.5)
+                        if args.filter:
+                            filename = os.path.basename(file_url)
+                            if tar_re.search(filename):
+                                _LOGGER.info("\033[92mDownloading tar archive\033[0m")
+                           
+                                ntry = 0
+                                while ntry < 10:
+                                    try:
+                                        print("\033[38;5;242m")  # set color to gray
+                                        subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+                                        tar_filename = os.path.join(data_folder, filename)
+                                        print("\033[0m") # Reset to default terminal color
+                                        t = tarfile.open(tar_filename, 'r')
+                                        _LOGGER.info("Extracting matching files...")
+                                        t.extractall(data_folder,
+                                            members=[m for m in t.getmembers() if filter_re.search(m.name)])
+                                        if False:  # Delete archive?
+                                            os.unlink(tar_filename)
+                                        break
+                                    except IOError as e:
+                                        _LOGGER.error(str(e))
+                                        # The server times out if we are hitting it too frequently,
+                                        # so we should sleep a bit to reduce frequency
+                                        time.sleep((ntry + 1)^2)
+                                        ntry += 1
+                                        if ntry > 4:
+                                            raise e
+                            elif filter_re.search(filename):
+                                _LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
+                                _LOGGER.info("\033[38;5;242m")  # set color to gray
+                                subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+                                _LOGGER.info("\033[0m") # Reset to default terminal color
+                            else:
+                                _LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
+                                continue
+                        else:
+                            _LOGGER.info("No filter regex, downloading")
+                            _LOGGER.info("\033[38;5;242m")  # set color to gray
+                            subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+                            _LOGGER.info("\033[0m") # Reset to default terminal color
+
+
 
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA

@@ -1,7 +1,8 @@
 # Changelog
 
 ## [0.7.0] -- unreleased
-- Fixed user interface for bam conversions 
+- Fixed user interface for bam conversions
+- Added regex filter for processed data filenames, which will also auto-extract from tar archives
 
 ## [0.6.0] -- 2019-06-20
 - Fixed a bug with specifying a processed data output folder

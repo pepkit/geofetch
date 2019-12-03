@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import tarfile
 import time
 
 if sys.version_info[0] == 2:
@@ -305,11 +306,74 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
     return exp
 
 
+def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
+    """
+    Given a url for a file, download it, and extract anything passing the filter
+    """
+    # download file
+
+    def download_file(file_url, data_folder, sleep_after=0.5):
+        filename = os.path.basename(file_url)
+        full_filepath = os.path.join(data_folder, filename)        
+        _LOGGER.info("\033[38;5;242m")  # set color to gray
+        if not os.path.exists(full_filepath):
+            ret = subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+            time.sleep(sleep_after)
+        else:
+            _LOGGER.info("File {} exists.".format(full_filepath))
+        _LOGGER.info("\033[0m") # Reset to default terminal color
+
+
+
+    def pass_filt(filter_re, data_folder, fn):
+        return filter_re.search(fn) and not os.path.exists(os.path.join(data_folder, fn))
+
+
+    filename = os.path.basename(file_url)
+    full_filepath = os.path.join(data_folder, filename)
+    ntry = 0
+    while ntry < 10:
+        try:
+            if tar_re.search(filename):
+                _LOGGER.info("\033[92mDownloading tar archive\033[0m")
+                download_file(file_url, data_folder)
+                t = tarfile.open(full_filepath, 'r')
+                if filter_re:
+                    files_to_extract = [m for m in t.getmembers() if pass_filt(filter_re, data_folder, m.name)]
+                else:
+                    files_to_extract = t.getmembers()
+
+                _LOGGER.info("Extracting {} matching files...".format(len(files_to_extract)))
+                if len(files_to_extract) > 0:
+                    t.extractall(data_folder, members=files_to_extract)
+                else:
+                    _LOGGER.info("No files left to extract.")
+                if False:  # Delete archive?
+                    os.unlink(full_filepath)
+                return True
+            if not filter_re:
+                _LOGGER.info("No filter regex, downloading")
+                download_file(file_url, data_folder)
+                return True
+            elif filter_re.search(filename):
+                _LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
+                download_file(file_url, data_folder)
+                return True
+            else:
+                _LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
+                return False
+        except IOError as e:
+            _LOGGER.error(str(e))
+            # The server times out if we are hitting it too frequently,
+            # so we should sleep a bit to reduce frequency
+            time.sleep((ntry + 1)^2)
+            ntry += 1
+            if ntry > 4:
+                raise e
+
+
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
-
-
-
     args = _parse_cmdl(cmdl)
     global _LOGGER
     _LOGGER = logger_via_cli(args, name="geofetch")
@@ -328,7 +392,6 @@ def run_geofetch(cmdl):
     if args.filter:
         filter_re = re.compile(args.filter)
         tar_re = re.compile(r".*\.tar$")
-        import tarfile
     else:
         filter_re = None
         tar_re = None        
@@ -368,8 +431,13 @@ def run_geofetch(cmdl):
     subannotation_dict = OrderedDict()
     failed_runs = []
 
+    acc_GSE_keys = acc_GSE_list.keys()
+    nkeys = len(acc_GSE_keys)
+    ncount = 0
     for acc_GSE in acc_GSE_list.keys():
-        _LOGGER.info("\033[38;5;228mProcessing accession: " + acc_GSE + "\033[0m")
+        ncount += 1
+        _LOGGER.info("\033[38;5;228mProcessing accession {} of {}: '{}'\033[0m".format(
+            ncount, nkeys, acc_GSE))
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
             _LOGGER.warning("This does not appear to be a correctly formatted "
@@ -463,6 +531,7 @@ def run_geofetch(cmdl):
         # GSM SOFT file parsed, save it in a list
         metadata_dict[acc_GSE] = gsm_metadata
     
+
         # Parse out the SRA project identifier from the GSE file
         acc_SRP = None
         for line in open(file_gse, 'r'):
@@ -473,56 +542,17 @@ def run_geofetch(cmdl):
                 break
             # For processed data, here's where we would download it
             if args.processed and not args.just_metadata:
+                if not args.geo_folder:
+                    _LOGGER.error("You must provide a geo_folder to download processed data.")
+                    Sys.exit
                 found = re.findall(SER_SUPP_FILE_PATTERN, line)
                 if found:
                     pl = parse_SOFT_line(line)
                     file_url = pl[pl.keys()[0]].rstrip()
+                    data_folder = os.path.join(args.geo_folder, acc_GSE)
                     _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
-                    # download file
-                    if args.geo_folder:
-                        data_folder = os.path.join(args.geo_folder, acc_GSE)
-                        _LOGGER.info("Data folder: " + data_folder)
-                        time.sleep(0.5)
-                        if args.filter:
-                            filename = os.path.basename(file_url)
-                            if tar_re.search(filename):
-                                _LOGGER.info("\033[92mDownloading tar archive\033[0m")
-                           
-                                ntry = 0
-                                while ntry < 10:
-                                    try:
-                                        print("\033[38;5;242m")  # set color to gray
-                                        subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
-                                        tar_filename = os.path.join(data_folder, filename)
-                                        print("\033[0m") # Reset to default terminal color
-                                        t = tarfile.open(tar_filename, 'r')
-                                        _LOGGER.info("Extracting matching files...")
-                                        t.extractall(data_folder,
-                                            members=[m for m in t.getmembers() if filter_re.search(m.name)])
-                                        if False:  # Delete archive?
-                                            os.unlink(tar_filename)
-                                        break
-                                    except IOError as e:
-                                        _LOGGER.error(str(e))
-                                        # The server times out if we are hitting it too frequently,
-                                        # so we should sleep a bit to reduce frequency
-                                        time.sleep((ntry + 1)^2)
-                                        ntry += 1
-                                        if ntry > 4:
-                                            raise e
-                            elif filter_re.search(filename):
-                                _LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
-                                _LOGGER.info("\033[38;5;242m")  # set color to gray
-                                subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
-                                _LOGGER.info("\033[0m") # Reset to default terminal color
-                            else:
-                                _LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
-                                continue
-                        else:
-                            _LOGGER.info("No filter regex, downloading")
-                            _LOGGER.info("\033[38;5;242m")  # set color to gray
-                            subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
-                            _LOGGER.info("\033[0m") # Reset to default terminal color
+                    _LOGGER.info("Data folder: " + data_folder)
+                    download_processed_files(file_url, data_folder, tar_re, filter_re)
 
 
 

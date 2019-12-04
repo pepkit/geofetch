@@ -323,18 +323,15 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
     def download_file(file_url, data_folder, sleep_after=0.5):
         filename = os.path.basename(file_url)
         full_filepath = os.path.join(data_folder, filename)        
-        _LOGGER.info("\033[38;5;242m")  # set color to gray
         if not os.path.exists(full_filepath):
+            _LOGGER.info("\033[38;5;242m")  # set color to gray
             ret = subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
             time.sleep(sleep_after)
+            _LOGGER.info("\033[0m") # Reset to default terminal color
         else:
-            _LOGGER.info("File {} exists.".format(full_filepath))
-        _LOGGER.info("\033[0m") # Reset to default terminal color
+            _LOGGER.info("\033[38;5;242mFile {} exists.\033[0m".format(full_filepath))
 
 
-
-    def pass_filt(filter_re, data_folder, fn):
-        return filter_re.search(fn) and not os.path.exists(os.path.join(data_folder, fn))
 
 
     filename = os.path.basename(file_url)
@@ -346,16 +343,21 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
                 _LOGGER.info("\033[92mDownloading tar archive\033[0m")
                 download_file(file_url, data_folder)
                 t = tarfile.open(full_filepath, 'r')
+                members = t.getmembers()
+                
                 if filter_re:
-                    files_to_extract = [m for m in t.getmembers() if pass_filt(filter_re, data_folder, m.name)]
+                    pass_filt = [m for m in members if filter_re.search(m.name)]
                 else:
-                    files_to_extract = t.getmembers()
+                    pass_filt = t.getmembers() 
 
-                _LOGGER.info("Extracting {} matching files...".format(len(files_to_extract)))
+                files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
+                
+                msg = "Files in archive: {}; passed filter: {}; not existing: {}.".format(
+                    len(members), len(pass_filt), len(files_to_extract))
+                _LOGGER.info(msg)
                 if len(files_to_extract) > 0:
                     t.extractall(data_folder, members=files_to_extract)
-                else:
-                    _LOGGER.info("No files left to extract.")
+
                 if False:  # Delete archive?
                     os.unlink(full_filepath)
                 return True
@@ -374,7 +376,9 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
             _LOGGER.error(str(e))
             # The server times out if we are hitting it too frequently,
             # so we should sleep a bit to reduce frequency
-            time.sleep((ntry + 1)^2)
+            sleeptime = (ntry + 1)**3 
+            _LOGGER.info("Sleeping for {} seconds".format(sleeptime))
+            time.sleep(sleeptime)
             ntry += 1
             if ntry > 4:
                 raise e
@@ -490,6 +494,7 @@ def run_geofetch(cmdl):
         # save the state
         current_sample_id = None
         current_sample_srx = False
+        samples_list = []
         for line in open(file_gsm, 'r'):
             line = line.rstrip()
             if len(line) == 0:  # Apparently SOFT files can contain blank lines
@@ -507,7 +512,8 @@ def run_geofetch(cmdl):
                                 ("data_source", None), ("SRR", None), ("SRX", None)]
                 gsm_metadata[current_sample_id] = OrderedDict(columns_init)
 
-                _LOGGER.info("Found sample: {}".format(current_sample_id))
+                _LOGGER.debug("Found sample: {}".format(current_sample_id))
+                samples_list.append(current_sample_id)
             elif current_sample_id is not None:
                 try:
                     pl = parse_SOFT_line(line)
@@ -523,13 +529,13 @@ def run_geofetch(cmdl):
                 if args.processed and not args.just_metadata:
                     found = re.findall(SUPP_FILE_PATTERN, line)
                     if found:
-                        _LOGGER.info("Processed GSM file: " + pl[pl.keys()[0]])
+                        _LOGGER.debug("Processed GSM file: " + pl[pl.keys()[0]])
     
                 # Now convert the ids GEO accessions into SRX accessions
                 if not current_sample_srx:
                     found = re.findall(EXPERIMENT_PATTERN, line)
                     if found:
-                        _LOGGER.info("(SRX accession: {})".format(found[0]))
+                        _LOGGER.debug("(SRX accession: {})".format(found[0]))
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
                         gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
@@ -537,6 +543,7 @@ def run_geofetch(cmdl):
                         current_sample_srx = True
     
         # GSM SOFT file parsed, save it in a list
+        _LOGGER.info("Processed {} samples.".format(len(samples_list)))
         metadata_dict[acc_GSE] = gsm_metadata
     
 
@@ -559,7 +566,7 @@ def run_geofetch(cmdl):
                     file_url = pl[pl.keys()[0]].rstrip()
                     data_folder = os.path.join(args.geo_folder, acc_GSE)
                     _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
-                    _LOGGER.info("Data folder: " + data_folder)
+                    _LOGGER.debug("Data folder: " + data_folder)
                     download_processed_files(file_url, data_folder, tar_re, filter_re)
 
 

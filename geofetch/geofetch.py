@@ -128,6 +128,12 @@ def _parse_cmdl(cmdl):
             help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
+            "-s", "--skip",
+            default=0,
+            type=int,
+            help="Skip some accessions. [Default: no skip].")
+
+    parser.add_argument(
             "--filter",
             default=None,
             help="Filter regex for processed filenames [Default: None].")
@@ -354,6 +360,7 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
                 
                 msg = "Files in archive: {}; passed filter: {}; not existing: {}.".format(
                     len(members), len(pass_filt), len(files_to_extract))
+
                 _LOGGER.info(msg)
                 if len(files_to_extract) > 0:
                     t.extractall(data_folder, members=files_to_extract)
@@ -448,6 +455,10 @@ def run_geofetch(cmdl):
     ncount = 0
     for acc_GSE in acc_GSE_list.keys():
         ncount += 1
+        if ncount <= args.skip:
+            continue
+        elif ncount == args.skip + 1:
+            _LOGGER.info("Skipped {} accessions. Starting now.".format(args.skip))
         _LOGGER.info("\033[38;5;228mProcessing accession {} of {}: '{}'\033[0m".format(
             ncount, nkeys, acc_GSE))
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:

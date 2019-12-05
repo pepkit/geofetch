@@ -128,7 +128,7 @@ def _parse_cmdl(cmdl):
             help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
-            "-s", "--skip",
+            "-k", "--skip",
             default=0,
             type=int,
             help="Skip some accessions. [Default: no skip].")

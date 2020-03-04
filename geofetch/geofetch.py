@@ -84,7 +84,7 @@ def _parse_cmdl(cmdl):
     parser.add_argument(
             "-m", "--metadata-folder",
             dest="metadata_folder",
-            default="${SRAMETA}",
+            default= safe_echo("SRAMETA"),
             help="Specify a location to store metadata "
                  "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 

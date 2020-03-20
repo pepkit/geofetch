@@ -89,7 +89,7 @@ def _parse_cmdl(cmdl):
                  "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 
     parser.add_argument(
-            "-f", "--no-subfolder", action="store_true",
+            "-u", "--no-subfolder", action="store_true",
             help="Don't automatically put metadata into a subfolder named with project name")
 
     parser.add_argument(
@@ -148,6 +148,12 @@ def _parse_cmdl(cmdl):
             help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
             [Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
+
+    parser.add_argument(
+            "-f", "--fq-folder", dest="fq_folder", default=safe_echo("SRAFQ"),
+            help="""Optional: Specify folder of fastq files. Geofetch will not
+            download sra files when corresponding fastq files already exist.
+            [Default: $SRAFQ:""" + safe_echo("SRAFQ") + "]")
 
     parser.add_argument(
             "-P", "--pipeline_interfaces", default=None,
@@ -700,12 +706,15 @@ def run_geofetch(cmdl):
                 w.writerow(line)
                 _LOGGER.info("Get SRR: {} ({})".format(run_name, experiment))
                 bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
+                fq_file = "" if args.fq_folder == "" else os.path.join(args.fq_folder, run_name + "_1.fq")
     
                 # TODO: sam-dump has a built-in prefetch. I don't have to do
                 # any of this stuff... This also solves the bad sam-dump issues.
     
                 if os.path.exists(bam_file):
                     _LOGGER.info("BAM found:" + bam_file)
+                elif os.path.exists(fq_file):
+                    _LOGGER.info("FQ found:" + fq_file)
                 else:
                     if not args.just_metadata:
                         # Use the 'prefetch' utility from the SRA Toolkit

@@ -80,9 +80,9 @@ def main():
     """ Run the script. """
     cmdl = sys.argv[1:]
     args = _parse_cmdl(cmdl)
-   global _LOGGER
+    global _LOGGER
     _LOGGER = logmuse.logger_via_cli(args)
-
+    delete_sra = False  # initialize to False
     # Name the pipeline run after the first element to convert.
     # Maybe we should just have a separate pipeline for each file?
 
@@ -110,11 +110,6 @@ def main():
         bamfile = os.path.join(args.bamfolder, srr_acc + ".bam")
         fq_prefix = os.path.join(args.fqfolder, srr_acc)
         
-        if args.mode =="delete_sra" or not args.keep_sra:
-            delete_sra = True
-        else:
-            delete_sra = False
-
         if args.mode == "convert":
             infile = args.srr[i]
             if not os.path.isfile(infile):
@@ -150,9 +145,21 @@ def main():
             fq_prefix = os.path.join(args.fqfolder, srr_acc)
             pm.clean_add("{fq_prefix}.fastq.gz".format(fq_prefix=fq_prefix))
             pm.clean_add("{fq_prefix}_[0-9].fastq.gz".format(fq_prefix=fq_prefix))
+        elif args.mode =="delete_sra":
+            delete_sra = True
+            # if specifically requested to delete sra files
+
+        if not args.keep_sra and os.path.isfile(outfile):
+            # Only delete if the output file was created...
+            # we can't trust the sra toolkit return codes because they 
+            # can return 0 even if the command didn't complete, causing us to
+            # delete the sra file when we have no other copy of that data.
+            delete_sra = True
+
         if delete_sra:
             pm.timestamp("Cleaning sra file: {}".format(infile))
             pm.clean_add(infile)
+
 
     if len(failed_files) > 0:
         pm.fail_pipeline(Exception("Unable to locate the following files: {}".format(",".join(failed_files))))

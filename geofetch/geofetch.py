@@ -869,8 +869,9 @@ def run_geofetch(cmdl):
         template = template_file.read()
 
     template_values = {
-        "project_name": project_name, "annotation": file_annotation,
-        "subannotation": file_subannotation,
+        "project_name": project_name,
+        "annotation": os.path.basename(file_annotation),
+        "subannotation": os.path.basename(file_subannotation),
         "pipeline_interfaces": file_pipeline_interfaces}
 
     for k, v in template_values.items():

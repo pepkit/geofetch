@@ -82,15 +82,18 @@ def _parse_cmdl(cmdl):
             help="Specify a project name. Defaults to GSE number")
 
     parser.add_argument(
-            "-m", "--metadata-folder",
-            dest="metadata_folder",
+            "-m", "--metadata-root",
+            dest="metadata_root",
             default= safe_echo("SRAMETA"),
-            help="Specify a location to store metadata "
+            help="Specify a parent folder location to store metadata. "
+                "The project name will be added as a subfolder"
                  "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 
     parser.add_argument(
-            "-u", "--no-subfolder", action="store_true",
-            help="Don't automatically put metadata into a subfolder named with project name")
+            "-u", "--metadata-folder",
+            help="Specify an absolute folder location to store metadata"
+            "No subfolder will be added. Overrides value of --metadata-root"
+            "Default: Not used (--metadata-root is used by default)")
 
     parser.add_argument(
             "--just-metadata", action="store_true",
@@ -424,21 +427,30 @@ def run_geofetch(cmdl):
     def render_env_var(ev):
         return "{} ({})".format(ev, expandpath(ev))
 
-    metadata_expanded = expandpath(args.metadata_folder)
-    _LOGGER.info("Given metadata folder: {} ({})".
-                 format(args.metadata_folder, metadata_expanded))
-    if os.path.isabs(metadata_expanded):
+    if args.metadata_folder:
+        metadata_expanded = expandpath(args.metadata_folder)
+        if os.path.isabs(metadata_expanded):
+            metadata_raw = args.metadata_folder
+        else:
+            metadata_expanded = os.path.abspath(metadata_expanded)
+            metadata_raw = os.path.abspath(args.metadata_root)        
         metadata_raw = args.metadata_folder
     else:
-        metadata_expanded = os.path.abspath(metadata_expanded)
-        metadata_raw = os.path.abspath(args.metadata_folder)
+        metadata_expanded = expandpath(args.metadata_root)
+        if os.path.isabs(metadata_expanded):
+            metadata_raw = args.metadata_root
+        else:
+            metadata_expanded = os.path.abspath(metadata_expanded)
+            metadata_raw = os.path.abspath(args.metadata_root)
 
-    _LOGGER.info("Initial raw metadata folder: {}".
-                 format(render_env_var(metadata_raw)))
-    if not args.no_subfolder:
+        # Postpend the project name as a subfolder (only for -m option)
         metadata_expanded = os.path.join(metadata_expanded, project_name)
         metadata_raw = os.path.join(metadata_raw, project_name)
-    _LOGGER.info("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
+
+    _LOGGER.info("Metadata folder: {}".format(metadata_expanded))
+
+
+
 
     # Some sanity checks before proceeding
     if args.bam_conversion and not args.just_metadata and not which("samtools"):

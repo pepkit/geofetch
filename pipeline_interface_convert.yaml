@@ -6,6 +6,7 @@ sample_pipeline:
   command_template: >
     {pipeline.path} --srr {sample.SRR_files}
     {% if sample.SRX is defined %} --sample-name {sample.SRX} {% endif %}
+    {% if sample.fqfolder is defined %} --fqfolder {sample.fqfolder} {% endif %}
     -O {looper.output_folder}
   compute:
     bulker_crate: databio/sra_convert

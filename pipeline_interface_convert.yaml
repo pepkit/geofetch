@@ -2,7 +2,7 @@ pipeline_name: sra_convert
 sample_pipeline:
   name: convert
   path: sraconvert
-  schema: sra_convert_schema.yaml
+  input_schema: sra_convert_schema.yaml
   command_template: >
     {pipeline.path} --srr {sample.SRR_files}
     {% if sample.SRX is defined %} --sample-name {sample.SRX} {% endif %}

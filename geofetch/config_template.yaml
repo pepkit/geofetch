@@ -42,6 +42,8 @@ sample_modifiers:
 project_modifiers:
   amend:
     sra_convert:
+      looper:
+        results_subdir: sra_convert_results      
       sample_modifiers:
         append:
           SRR_files: SRA

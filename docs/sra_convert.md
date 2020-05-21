@@ -15,36 +15,4 @@ This effectively makes it easier to interact with *project-level* management of 
 
 ## Tutorial
 
-The [GSE67303 data set](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE67303) has about 250 mb of data across 4 samples, so it's a quick download for a test case. 
-
-Create the metadata:
-```
-geofetch -i GSE59916 -n dr_rrbs -m 'sandbox' --just-metadata \
-	-P $CODE/dnameth_pipelines/pipeline_interface.yaml
-```
-
-Grab the actual data with prefetch (you can skip the above step if you want to):
-
-```
-geofetch -i GSE59916 -n dr_rrbs -m 'sandbox' -P $CODE/dnameth_pipelines/pipeline_interface.yaml
-```
-
-Now, convert the prefetched sra data into fastq format:
-
-```
-export SRARAW=$HOME/ncbi/public/sra/
-export SRAFQ=sandbox/fq
-looper run dr_rrbs/dr_rrbs_config.yaml -a sra_convert
-```
-
-And finally, run the pipeline:
-```
-looper run dr_rrbs/dr_rrbs_config.yaml
-```
-
-
-## Here's how to use sraconvert to delete the sra data after processing
-
-```
-looper run /project/shefflab/data/sra_meta/GSE47966/GSE47966_config.yaml --sp sra_convert --mode delete_sra --package local
-```
+See the [tutorial](tutorial.md) for an example of how to use `sraconvert`.

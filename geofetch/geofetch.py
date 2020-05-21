@@ -64,7 +64,7 @@ NUM_RETRIES = 3
 
 
 def _parse_cmdl(cmdl):
-    parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
+    parser = argparse.ArgumentParser(description="Automatic GEO and SRA data downloader")
 
     parser.add_argument(
             "-V", "--version",

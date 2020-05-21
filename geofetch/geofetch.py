@@ -91,9 +91,9 @@ def _parse_cmdl(cmdl):
 
     parser.add_argument(
             "-u", "--metadata-folder",
-            help="Specify an absolute folder location to store metadata"
-            "No subfolder will be added. Overrides value of --metadata-root"
-            "Default: Not used (--metadata-root is used by default)")
+            help="Specify an absolute folder location to store metadata. "
+            "No subfolder will be added. Overrides value of --metadata-root "
+            "[Default: Not used (--metadata-root is used by default)]")
 
     parser.add_argument(
             "--just-metadata", action="store_true",

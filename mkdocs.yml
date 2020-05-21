@@ -26,6 +26,8 @@ theme: databio
 plugins:
   - search
   - databio:
+      jupyter_source: "docs_jupyter"
+      jupyter_build: "docs_jupyter/build"
       usage_template: "docs/usage_template.md"
       usage_cmds:
         -"geofetch --help

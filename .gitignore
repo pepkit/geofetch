@@ -86,3 +86,6 @@ peppy.egg-info/
 *.egg-info*
 
 
+*.sra
+docs_jupyter/*
+!docs_jupyter/*.ipynb

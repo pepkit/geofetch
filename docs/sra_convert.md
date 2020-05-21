@@ -15,18 +15,18 @@ This effectively makes it easier to interact with *project-level* management of 
 
 ## Tutorial
 
-This [data set](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE59916) one only has about 1GB of data across 4 samples:
+The [GSE67303 data set](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE67303) has about 250 mb of data across 4 samples, so it's a quick download for a test case. 
 
-Grab the actual data with prefetch:
-
-```
-geofetch -i GSE59916 -n dr_rrbs -m 'sandbox' -P $CODE/dnameth_pipelines/pipeline_interface.yaml
-```
-
-Create the metadata (you can do this all at once if you want to):
+Create the metadata:
 ```
 geofetch -i GSE59916 -n dr_rrbs -m 'sandbox' --just-metadata \
 	-P $CODE/dnameth_pipelines/pipeline_interface.yaml
+```
+
+Grab the actual data with prefetch (you can skip the above step if you want to):
+
+```
+geofetch -i GSE59916 -n dr_rrbs -m 'sandbox' -P $CODE/dnameth_pipelines/pipeline_interface.yaml
 ```
 
 Now, convert the prefetched sra data into fastq format:
@@ -34,17 +34,17 @@ Now, convert the prefetched sra data into fastq format:
 ```
 export SRARAW=$HOME/ncbi/public/sra/
 export SRAFQ=sandbox/fq
-looper run /home/nsheff/code/geofetch/sandbox/dr_rrbs/dr_rrbs_config.yaml --sp sra_convert
+looper run dr_rrbs/dr_rrbs_config.yaml -a sra_convert
 ```
 
 And finally, run the pipeline:
 ```
-looper run /home/nsheff/code/geofetch/sandbox/dr_rrbs/dr_rrbs_config.yaml
+looper run dr_rrbs/dr_rrbs_config.yaml
 ```
 
 
 ## Here's how to use sraconvert to delete the sra data after processing
 
 ```
-looper run /project/shefflab/data/sra_meta/GSE47966/GSE47966_config.yaml --sp sra_convert --mode delete_sra --compute local
+looper run /project/shefflab/data/sra_meta/GSE47966/GSE47966_config.yaml --sp sra_convert --mode delete_sra --package local
 ```

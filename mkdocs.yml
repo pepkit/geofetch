@@ -9,7 +9,7 @@ nav:
     - Introduction: README.md
     - Install and configure: install.md
     - Tutorial: tutorial.md
-    - Sra-convert: sra_convert.md
+    - SRA convert: sra_convert.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md
   - Reference:

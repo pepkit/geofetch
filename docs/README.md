@@ -4,10 +4,9 @@
 
 `geofetch` is a command-line tool that downloads and organizes data and metadata from GEO and SRA. When given one or more GEO/SRA accessions, `geofetch` will:
 
-  - Download either raw or processed data from either GEO or SRA
-  - Produces a standardized [PEP](http://pepkit.github.io) sample annotation sheet of public metadata. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
-
-You can use it with the [sra_convert](http://github.com/pepkit/sra_convert) pipeline, a [pypiper](http://pypiper.readthedocs.io) pipeline that converts SRA files into BAM files.
+  - Download either raw or processed data from either SRA or GEO
+  - Produce a standardized [PEP](http://pepkit.github.io) sample table. This makes it really easy to run [looper](https://pepkit.github.io/docs/looper/)-compatible pipelines on public datasets by handling data acquisition and metadata formatting and standardization for you.
+  - Prepare a project to run with [sraconvert](sra_convert.md) to convert SRA files into FASTQ files.
 
 ## Quick demo
 
@@ -24,3 +23,6 @@ geofetch -i GSE95654 --just-metadata
 ```
 
 For more details, check out the [usage](usage.md) reference, [installation instructions](install.md), or head on over to the [tutorial](tutorial.md) for a detailed walkthrough.
+
+
+

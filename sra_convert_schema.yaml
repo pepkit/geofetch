@@ -1,0 +1,27 @@
+description: A PEP for converting SRA files into fastq or bam format.
+imports:
+  - http://schema.databio.org/pep/2.0.0.yaml
+properties:
+  samples:
+    type: array
+    items:
+      type: object
+      properties:
+        sample_name: 
+          type: string
+          description: "Name of the sample"
+        protocol: 
+          type: string
+          description: "Can be anything"
+        SRR_files:
+          type: string
+          description: "SRR files"
+      required_files:
+        - SRR_files
+      files:
+        - SRR_files
+      required:
+        - sample_name
+        - SRR_files
+required:
+  - samples

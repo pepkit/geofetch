@@ -1,6 +1,13 @@
 # Changelog
 
-## [Unreleased] 
+## [0.7.0] -- 2020-05-21
+- Fixed user interface for bam conversions
+- Added regex filter for processed data filenames, which will also auto-extract from tar archives
+- Updated output to PEP 2.0
+- Added `--skip` argument
+- Added more control over where to store results.
+- Integrate `sraconvert` into geofetch package.
+
 
 ## [0.6.0] -- 2019-06-20
 - Fixed a bug with specifying a processed data output folder

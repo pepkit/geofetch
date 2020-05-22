@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import tarfile
 import time
 
 if sys.version_info[0] == 2:
@@ -63,7 +64,7 @@ NUM_RETRIES = 3
 
 
 def _parse_cmdl(cmdl):
-    parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
+    parser = argparse.ArgumentParser(description="Automatic GEO and SRA data downloader")
 
     parser.add_argument(
             "-V", "--version",
@@ -81,15 +82,18 @@ def _parse_cmdl(cmdl):
             help="Specify a project name. Defaults to GSE number")
 
     parser.add_argument(
-            "-m", "--metadata-folder",
-            dest="metadata_folder",
-            default="${SRAMETA}",
-            help="Specify a location to store metadata "
+            "-m", "--metadata-root",
+            dest="metadata_root",
+            default= safe_echo("SRAMETA"),
+            help="Specify a parent folder location to store metadata. "
+                "The project name will be added as a subfolder"
                  "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 
     parser.add_argument(
-            "-f", "--no-subfolder", action="store_true",
-            help="Don't automatically put metadata into a subfolder named with project name")
+            "-u", "--metadata-folder",
+            help="Specify an absolute folder location to store metadata. "
+            "No subfolder will be added. Overrides value of --metadata-root "
+            "[Default: Not used (--metadata-root is used by default)]")
 
     parser.add_argument(
             "--just-metadata", action="store_true",
@@ -127,6 +131,17 @@ def _parse_cmdl(cmdl):
             help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
+            "-k", "--skip",
+            default=0,
+            type=int,
+            help="Skip some accessions. [Default: no skip].")
+
+    parser.add_argument(
+            "--filter",
+            default=None,
+            help="Filter regex for processed filenames [Default: None].")
+
+    parser.add_argument(
             "-g", "--geo-folder", default=safe_echo("GEODATA"),
             help="Optional: Specify a location to store processed GEO files "
                 "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
@@ -136,6 +151,12 @@ def _parse_cmdl(cmdl):
             help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
             [Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
+
+    parser.add_argument(
+            "-f", "--fq-folder", dest="fq_folder", default=safe_echo("SRAFQ"),
+            help="""Optional: Specify folder of fastq files. Geofetch will not
+            download sra files when corresponding fastq files already exist.
+            [Default: $SRAFQ:""" + safe_echo("SRAFQ") + "]")
 
     parser.add_argument(
             "-P", "--pipeline_interfaces", default=None,
@@ -300,11 +321,87 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
     return exp
 
 
+def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
+    """
+    Given a url for a file, download it, and extract anything passing the filter.
+    :param str file_url: the URL of the file to download
+    :param str data_folder: the local folder where the file should be saved
+    :param re.Pattern tar_re: a regulator expression (produced from re.compile)
+        that pulls out filenames with .tar in them
+    :param re.Pattern filter_re: a regular expression (produced from
+        re.compile) to filter filenames of interest.
+    :return bool: True if the file is downloaded successfully; false if it does
+        not pass filters and is not downloaded.
+    """
+    # download file
+
+    def download_file(file_url, data_folder, sleep_after=0.5):
+        filename = os.path.basename(file_url)
+        full_filepath = os.path.join(data_folder, filename)        
+        if not os.path.exists(full_filepath):
+            _LOGGER.info("\033[38;5;242m")  # set color to gray
+            ret = subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+            time.sleep(sleep_after)
+            _LOGGER.info("\033[0m") # Reset to default terminal color
+        else:
+            _LOGGER.info("\033[38;5;242mFile {} exists.\033[0m".format(full_filepath))
+
+
+
+
+    filename = os.path.basename(file_url)
+    full_filepath = os.path.join(data_folder, filename)
+    ntry = 0
+    while ntry < 10:
+        try:
+            if tar_re.search(filename):
+                _LOGGER.info("\033[92mDownloading tar archive\033[0m")
+                download_file(file_url, data_folder)
+                t = tarfile.open(full_filepath, 'r')
+                members = t.getmembers()
+                
+                if filter_re:
+                    pass_filt = [m for m in members if filter_re.search(m.name)]
+                else:
+                    pass_filt = t.getmembers() 
+
+                files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
+                
+                msg = "Files in archive: {}; passed filter: {}; not existing: {}.".format(
+                    len(members), len(pass_filt), len(files_to_extract))
+
+                _LOGGER.info(msg)
+                if len(files_to_extract) > 0:
+                    t.extractall(data_folder, members=files_to_extract)
+
+                if False:  # Delete archive?
+                    os.unlink(full_filepath)
+                return True
+            if not filter_re:
+                _LOGGER.info("No filter regex, downloading")
+                download_file(file_url, data_folder)
+                return True
+            elif filter_re.search(filename):
+                _LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
+                download_file(file_url, data_folder)
+                return True
+            else:
+                _LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
+                return False
+        except IOError as e:
+            _LOGGER.error(str(e))
+            # The server times out if we are hitting it too frequently,
+            # so we should sleep a bit to reduce frequency
+            sleeptime = (ntry + 1)**3 
+            _LOGGER.info("Sleeping for {} seconds".format(sleeptime))
+            time.sleep(sleeptime)
+            ntry += 1
+            if ntry > 4:
+                raise e
+
+
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
-
-
-
     args = _parse_cmdl(cmdl)
     global _LOGGER
     _LOGGER = logger_via_cli(args, name="geofetch")
@@ -319,27 +416,44 @@ def run_geofetch(cmdl):
     else:
         project_name = os.path.splitext(os.path.basename(args.input))[0]
 
+
+    if args.filter:
+        filter_re = re.compile(args.filter)
+        tar_re = re.compile(r".*\.tar$")
+    else:
+        filter_re = None
+        tar_re = None        
+
     def render_env_var(ev):
         return "{} ({})".format(ev, expandpath(ev))
 
-    metadata_expanded = expandpath(args.metadata_folder)
-    _LOGGER.info("Given metadata folder: {} ({})".
-                 format(args.metadata_folder, metadata_expanded))
-    if os.path.isabs(metadata_expanded):
+    if args.metadata_folder:
+        metadata_expanded = expandpath(args.metadata_folder)
+        if os.path.isabs(metadata_expanded):
+            metadata_raw = args.metadata_folder
+        else:
+            metadata_expanded = os.path.abspath(metadata_expanded)
+            metadata_raw = os.path.abspath(args.metadata_root)        
         metadata_raw = args.metadata_folder
     else:
-        metadata_expanded = os.path.abspath(metadata_expanded)
-        metadata_raw = os.path.abspath(args.metadata_folder)
+        metadata_expanded = expandpath(args.metadata_root)
+        if os.path.isabs(metadata_expanded):
+            metadata_raw = args.metadata_root
+        else:
+            metadata_expanded = os.path.abspath(metadata_expanded)
+            metadata_raw = os.path.abspath(args.metadata_root)
 
-    _LOGGER.info("Initial raw metadata folder: {}".
-                 format(render_env_var(metadata_raw)))
-    if not args.no_subfolder:
+        # Postpend the project name as a subfolder (only for -m option)
         metadata_expanded = os.path.join(metadata_expanded, project_name)
         metadata_raw = os.path.join(metadata_raw, project_name)
-    _LOGGER.info("Final raw metadata folder: {}".format(render_env_var(metadata_raw)))
+
+    _LOGGER.info("Metadata folder: {}".format(metadata_expanded))
+
+
+
 
     # Some sanity checks before proceeding
-    if args.bam_folder and not which("samtools"):
+    if args.bam_conversion and not args.just_metadata and not which("samtools"):
         raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
     acc_GSE_list = parse_accessions(args.input, metadata_expanded, args.just_metadata)
@@ -354,8 +468,17 @@ def run_geofetch(cmdl):
     subannotation_dict = OrderedDict()
     failed_runs = []
 
+    acc_GSE_keys = acc_GSE_list.keys()
+    nkeys = len(acc_GSE_keys)
+    ncount = 0
     for acc_GSE in acc_GSE_list.keys():
-        _LOGGER.info("Processing accession: " + acc_GSE)
+        ncount += 1
+        if ncount <= args.skip:
+            continue
+        elif ncount == args.skip + 1:
+            _LOGGER.info("Skipped {} accessions. Starting now.".format(args.skip))
+        _LOGGER.info("\033[38;5;228mProcessing accession {} of {}: '{}'\033[0m".format(
+            ncount, nkeys, acc_GSE))
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
             _LOGGER.warning("This does not appear to be a correctly formatted "
@@ -400,8 +523,11 @@ def run_geofetch(cmdl):
         # save the state
         current_sample_id = None
         current_sample_srx = False
+        samples_list = []
         for line in open(file_gsm, 'r'):
             line = line.rstrip()
+            if len(line) == 0:  # Apparently SOFT files can contain blank lines
+                continue
             if line[0] is "^":
                 pl = parse_SOFT_line(line)
                 if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
@@ -415,7 +541,8 @@ def run_geofetch(cmdl):
                                 ("data_source", None), ("SRR", None), ("SRX", None)]
                 gsm_metadata[current_sample_id] = OrderedDict(columns_init)
 
-                _LOGGER.info("Found sample: {}".format(current_sample_id))
+                _LOGGER.debug("Found sample: {}".format(current_sample_id))
+                samples_list.append(current_sample_id)
             elif current_sample_id is not None:
                 try:
                     pl = parse_SOFT_line(line)
@@ -431,13 +558,13 @@ def run_geofetch(cmdl):
                 if args.processed and not args.just_metadata:
                     found = re.findall(SUPP_FILE_PATTERN, line)
                     if found:
-                        print(pl[pl.keys()[0]])
+                        _LOGGER.debug("Processed GSM file: " + pl[pl.keys()[0]])
     
                 # Now convert the ids GEO accessions into SRX accessions
                 if not current_sample_srx:
                     found = re.findall(EXPERIMENT_PATTERN, line)
                     if found:
-                        _LOGGER.info("(SRX accession: {})".format(found[0]))
+                        _LOGGER.debug("(SRX accession: {})".format(found[0]))
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
                         gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
@@ -445,8 +572,10 @@ def run_geofetch(cmdl):
                         current_sample_srx = True
     
         # GSM SOFT file parsed, save it in a list
+        _LOGGER.info("Processed {} samples.".format(len(samples_list)))
         metadata_dict[acc_GSE] = gsm_metadata
     
+
         # Parse out the SRA project identifier from the GSE file
         acc_SRP = None
         for line in open(file_gse, 'r'):
@@ -457,16 +586,19 @@ def run_geofetch(cmdl):
                 break
             # For processed data, here's where we would download it
             if args.processed and not args.just_metadata:
+                if not args.geo_folder:
+                    _LOGGER.error("You must provide a geo_folder to download processed data.")
+                    Sys.exit
                 found = re.findall(SER_SUPP_FILE_PATTERN, line)
                 if found:
                     pl = parse_SOFT_line(line)
                     file_url = pl[pl.keys()[0]].rstrip()
-                    _LOGGER.info("File: " + str(file_url))
-                    # download file
-                    if args.geo_folder:
-                        data_folder = os.path.join(args.geo_folder, acc_GSE)
-                        print(file_url, data_folder)
-                        subprocess.call(['wget', file_url, '-P', data_folder])
+                    data_folder = os.path.join(args.geo_folder, acc_GSE)
+                    _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
+                    _LOGGER.debug("Data folder: " + data_folder)
+                    download_processed_files(file_url, data_folder, tar_re, filter_re)
+
+
 
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
@@ -586,12 +718,15 @@ def run_geofetch(cmdl):
                 w.writerow(line)
                 _LOGGER.info("Get SRR: {} ({})".format(run_name, experiment))
                 bam_file = "" if args.bam_folder == "" else os.path.join(args.bam_folder, run_name + ".bam")
+                fq_file = "" if args.fq_folder == "" else os.path.join(args.fq_folder, run_name + "_1.fq")
     
                 # TODO: sam-dump has a built-in prefetch. I don't have to do
                 # any of this stuff... This also solves the bad sam-dump issues.
     
                 if os.path.exists(bam_file):
                     _LOGGER.info("BAM found:" + bam_file)
+                elif os.path.exists(fq_file):
+                    _LOGGER.info("FQ found:" + fq_file)
                 else:
                     if not args.just_metadata:
                         # Use the 'prefetch' utility from the SRA Toolkit
@@ -734,8 +869,9 @@ def run_geofetch(cmdl):
         template = template_file.read()
 
     template_values = {
-        "project_name": project_name, "annotation": file_annotation,
-        "subannotation": file_subannotation,
+        "project_name": project_name,
+        "annotation": os.path.basename(file_annotation),
+        "subannotation": os.path.basename(file_subannotation),
         "pipeline_interfaces": file_pipeline_interfaces}
 
     for k, v in template_values.items():

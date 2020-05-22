@@ -9,7 +9,6 @@ tests/test/*
 
 # toy/experimental files
 *.csv
-*.tsv
 *.pkl
 
 # ignore eggs
@@ -78,7 +77,6 @@ open_pipelines/
 *RESERVE*
 
 # Build-related stuff
-build/
 dist/
 peppy.egg-info/
 
@@ -87,3 +85,7 @@ peppy.egg-info/
 *.egg-info*
 
 
+*.sra
+docs_jupyter/*
+!docs_jupyter/*.ipynb
+!docs_jupyter/build/*

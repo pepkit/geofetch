@@ -64,7 +64,7 @@ NUM_RETRIES = 3
 
 
 def _parse_cmdl(cmdl):
-    parser = argparse.ArgumentParser(description="Automatic GEO SRA data downloader")
+    parser = argparse.ArgumentParser(description="Automatic GEO and SRA data downloader")
 
     parser.add_argument(
             "-V", "--version",
@@ -86,14 +86,14 @@ def _parse_cmdl(cmdl):
             dest="metadata_root",
             default= safe_echo("SRAMETA"),
             help="Specify a parent folder location to store metadata. "
-                "The project name will be added as a subfolder"
-                 "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+                "The project name will be added as a subfolder "
+                "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 
     parser.add_argument(
             "-u", "--metadata-folder",
-            help="Specify an absolute folder location to store metadata"
-            "No subfolder will be added. Overrides value of --metadata-root"
-            "Default: Not used (--metadata-root is used by default)")
+            help="Specify an absolute folder location to store metadata. "
+            "No subfolder will be added. Overrides value of --metadata-root "
+            "[Default: Not used (--metadata-root is used by default)]")
 
     parser.add_argument(
             "--just-metadata", action="store_true",

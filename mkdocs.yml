@@ -9,7 +9,7 @@ nav:
     - Introduction: README.md
     - Install and configure: install.md
     - Tutorial: tutorial.md
-    - Sra-convert: sra_convert.md
+    - SRA convert: sra_convert.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md
   - Reference:
@@ -26,6 +26,8 @@ theme: databio
 plugins:
   - search
   - databio:
+      jupyter_source: "docs_jupyter"
+      jupyter_build: "docs_jupyter/build"
       usage_template: "docs/usage_template.md"
       usage_cmds:
         -"geofetch --help

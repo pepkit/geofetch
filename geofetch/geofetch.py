@@ -86,8 +86,8 @@ def _parse_cmdl(cmdl):
             dest="metadata_root",
             default= safe_echo("SRAMETA"),
             help="Specify a parent folder location to store metadata. "
-                "The project name will be added as a subfolder"
-                 "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+                "The project name will be added as a subfolder "
+                "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
 
     parser.add_argument(
             "-u", "--metadata-folder",

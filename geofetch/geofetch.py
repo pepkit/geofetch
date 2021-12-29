@@ -420,7 +420,7 @@ def run_geofetch(cmdl):
         tar_re = None
 
     def render_env_var(ev):
-        return "{} ({})".format(ev, expandpath(ev))
+        return f"{ev} ({expandpath(ev)})"
 
     if args.metadata_folder:
         metadata_expanded = expandpath(args.metadata_folder)
@@ -442,7 +442,7 @@ def run_geofetch(cmdl):
         metadata_expanded = os.path.join(metadata_expanded, project_name)
         metadata_raw = os.path.join(metadata_raw, project_name)
 
-    _LOGGER.info("Metadata folder: {}".format(metadata_expanded))
+    _LOGGER.info(f"Metadata folder: {metadata_expanded}")
 
     # Some sanity checks before proceeding
     if args.bam_conversion and not args.just_metadata and not which("samtools"):
@@ -473,14 +473,14 @@ def run_geofetch(cmdl):
             ncount, nkeys, acc_GSE))
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
-            _LOGGER.warning("This does not appear to be a correctly formatted "
-                            "GSE accession! Continue anyway...")
+            _LOGGER.warning("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
+        #                    "")
 
         # Get GSM#s (away from sample_name)
         GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())  # [x[1] for x in acc_GSE_list[acc_GSE]]
 
-        if (len(acc_GSE_list[acc_GSE]) > 0):
-            _LOGGER.info("Limit to: {}".format(list(acc_GSE_list[acc_GSE])))  # a list of GSM#s
+        if len(acc_GSE_list[acc_GSE]) > 0:
+            _LOGGER.info(f"Limit to: {list(acc_GSE_list[acc_GSE])}") # a list of GSM#s
 
         if args.refresh_metadata:
             _LOGGER.info("Refreshing metadata...")
@@ -498,18 +498,16 @@ def run_geofetch(cmdl):
         if not os.path.isfile(file_gse) or args.refresh_metadata:
             Accession(acc_GSE).fetch_metadata(file_gse)
         else:
-            _LOGGER.info("Found previous GSE file: " + file_gse)
+            _LOGGER.info(f"Found previous GSE file: {file_gse}")
 
         if not os.path.isfile(file_gsm) or args.refresh_metadata:
             Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM")
         else:
-            _LOGGER.info("Found previous GSM file: " + file_gsm)
+            _LOGGER.info(f"Found previous GSM file: {file_gsm}")
 
         # A simple state machine to parse SOFT formatted files (Here, the GSM file)
         gsm_metadata = OrderedDict()
-        # For multi samples (samples with multiple runs), we keep track of these
-        # relations in a separate table, which is called the subannotation table.
-        gsm_multi_table = OrderedDict()
+
         # save the state
         current_sample_id = None
         current_sample_srx = False
@@ -617,6 +615,11 @@ def run_geofetch(cmdl):
         # with one entry per sample.
         # NB: There may be multiple SRA Runs (and thus lines in the RunInfo file)
         # Corresponding to each sample.
+
+        # For multi samples (samples with multiple runs), we keep track of these
+        # relations in a separate table, which is called the subannotation table.
+        gsm_multi_table = OrderedDict()
+
         if not args.processed:
             file_read = open(file_sra, 'r')
             file_write = open(file_srafilt, 'w')
@@ -648,7 +651,7 @@ def run_geofetch(cmdl):
                     sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
                 except KeyError:
                     pass
-                if not sample_name or sample_name is "":
+                if not sample_name or sample_name == "":
                     temp = gsm_metadata[experiment]['Sample_title']
                     # Now do a series of transformations to cleanse the sample name
                     temp = temp.replace(" ", "_")
@@ -726,6 +729,9 @@ def run_geofetch(cmdl):
                             t = t + 1
                             subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
                             if subprocess_return == 0:
+                                break
+                            if subprocess_return == 3:
+                                _LOGGER.info(f"File {run_name} already exist. Breaking...")
                                 break
                             if t >= NUM_RETRIES:
                                 _LOGGER.info("Prefetch retries failed. Try this sample later")

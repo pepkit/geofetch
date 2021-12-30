@@ -32,7 +32,6 @@ from _version import __version__
 from logmuse import add_logging_options, logger_via_cli
 from ubiquerg import expandpath, is_command_callable
 
-
 _STRING_TYPES = str
 _LOGGER = None
 
@@ -396,6 +395,69 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
                 raise e
 
 
+def get_gsm_metadata(acc_GSE, acc_GSE_list, args, file_gsm):
+    """
+    A simple state machine to parse SOFT formatted files (Here, the GSM file)
+    """
+    gsm_metadata = OrderedDict()
+
+    # Get GSM#s (away from sample_name)
+    GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())
+
+    # save the state
+    current_sample_id = None
+    current_sample_srx = False
+    samples_list = []
+    for line in open(file_gsm, 'r'):
+        line = line.rstrip()
+        if len(line) == 0:  # Apparently SOFT files can contain blank lines
+            continue
+        if line[0] == "^":
+            pl = parse_SOFT_line(line)
+            if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
+                # sys.stdout.write("  Skipping " + a['SAMPLE'] + ".")
+                current_sample_id = None
+                continue
+            current_sample_id = pl['SAMPLE']
+            current_sample_srx = False
+            columns_init = [("sample_name", ""), ("protocol", ""),
+                            ("organism", ""), ("read_type", ""),
+                            ("data_source", None), ("SRR", None), ("SRX", None)]
+            gsm_metadata[current_sample_id] = OrderedDict(columns_init)
+
+            _LOGGER.debug(f"Found sample: {current_sample_id}")
+            samples_list.append(current_sample_id)
+        elif current_sample_id is not None:
+            try:
+                pl = parse_SOFT_line(line)
+            except IndexError:
+                # TODO: do we "fail the current sample" here and remove it
+                # from gsm_metadata? Or just skip the line?
+                _LOGGER.debug(f"Failed to parse alleged SOFT line for sample ID {current_sample_id}; line: {line}")
+                continue
+            gsm_metadata[current_sample_id].update(pl)
+
+            # For processed data, here's where we would download it
+            if args.processed and not args.just_metadata:
+                found = re.findall(SUPP_FILE_PATTERN, line)
+                if found:
+                    _LOGGER.debug(f"Processed GSM file: {pl[pl.keys()[0]]}")
+
+            # Now convert the ids GEO accessions into SRX accessions
+            if not current_sample_srx:
+                found = re.findall(EXPERIMENT_PATTERN, line)
+                if found:
+                    _LOGGER.debug("(SRX accession: {})".format(found[0]))
+                    srx_id = found[0]
+                    gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
+                    gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
+                    current_sample_id = srx_id
+                    current_sample_srx = True
+    # GSM SOFT file parsed, save it in a list
+    _LOGGER.info(f"Processed {len(samples_list)} samples.")
+    return gsm_metadata
+
+
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
     args = _parse_cmdl(cmdl)
@@ -474,13 +536,9 @@ def run_geofetch(cmdl):
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
             _LOGGER.warning("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
-        #                    "")
-
-        # Get GSM#s (away from sample_name)
-        GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())  # [x[1] for x in acc_GSE_list[acc_GSE]]
 
         if len(acc_GSE_list[acc_GSE]) > 0:
-            _LOGGER.info(f"Limit to: {list(acc_GSE_list[acc_GSE])}") # a list of GSM#s
+            _LOGGER.info(f"Limit to: {list(acc_GSE_list[acc_GSE])}")  # a list of GSM#s
 
         if args.refresh_metadata:
             _LOGGER.info("Refreshing metadata...")
@@ -505,109 +563,10 @@ def run_geofetch(cmdl):
         else:
             _LOGGER.info(f"Found previous GSM file: {file_gsm}")
 
-        # A simple state machine to parse SOFT formatted files (Here, the GSM file)
-        gsm_metadata = OrderedDict()
-
-        # save the state
-        current_sample_id = None
-        current_sample_srx = False
-        samples_list = []
-        for line in open(file_gsm, 'r'):
-            line = line.rstrip()
-            if len(line) == 0:  # Apparently SOFT files can contain blank lines
-                continue
-            if line[0] == "^":
-                pl = parse_SOFT_line(line)
-                if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
-                    # sys.stdout.write("  Skipping " + a['SAMPLE'] + ".")
-                    current_sample_id = None
-                    continue
-                current_sample_id = pl['SAMPLE']
-                current_sample_srx = False
-                columns_init = [("sample_name", ""), ("protocol", ""),
-                                ("organism", ""), ("read_type", ""),
-                                ("data_source", None), ("SRR", None), ("SRX", None)]
-                gsm_metadata[current_sample_id] = OrderedDict(columns_init)
-
-                _LOGGER.debug("Found sample: {}".format(current_sample_id))
-                samples_list.append(current_sample_id)
-            elif current_sample_id is not None:
-                try:
-                    pl = parse_SOFT_line(line)
-                except IndexError:
-                    # TODO: do we "fail the current sample" here and remove it
-                    # from gsm_metadata? Or just skip the line?
-                    _LOGGER.debug("Failed to parse alleged SOFT line for sample "
-                                  "ID {}; line: {}".format(current_sample_id, line))
-                    continue
-                gsm_metadata[current_sample_id].update(pl)
-
-                # For processed data, here's where we would download it
-                if args.processed and not args.just_metadata:
-                    found = re.findall(SUPP_FILE_PATTERN, line)
-                    if found:
-                        _LOGGER.debug("Processed GSM file: " + pl[pl.keys()[0]])
-
-                # Now convert the ids GEO accessions into SRX accessions
-                if not current_sample_srx:
-                    found = re.findall(EXPERIMENT_PATTERN, line)
-                    if found:
-                        _LOGGER.debug("(SRX accession: {})".format(found[0]))
-                        srx_id = found[0]
-                        gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
-                        gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
-                        current_sample_id = srx_id
-                        current_sample_srx = True
-
-        # GSM SOFT file parsed, save it in a list
-        _LOGGER.info("Processed {} samples.".format(len(samples_list)))
+        gsm_metadata = get_gsm_metadata(acc_GSE, acc_GSE_list, args, file_gsm)
         metadata_dict[acc_GSE] = gsm_metadata
 
-        # Parse out the SRA project identifier from the GSE file
-        acc_SRP = None
-        for line in open(file_gse, 'r'):
-            found = re.findall(PROJECT_PATTERN, line)
-            if found:
-                acc_SRP = found[0]
-                _LOGGER.info("Found SRA Project accession: {}".format(acc_SRP))
-                break
-            # For processed data, here's where we would download it
-            if args.processed and not args.just_metadata:
-                if not args.geo_folder:
-                    _LOGGER.error("You must provide a geo_folder to download processed data.")
-                    sys.exit(1)
-                found = re.findall(SER_SUPP_FILE_PATTERN, line)
-                if found:
-                    pl = parse_SOFT_line(line)
-                    file_url = pl[pl.keys()[0]].rstrip()
-                    data_folder = os.path.join(args.geo_folder, acc_GSE)
-                    _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
-                    _LOGGER.debug("Data folder: " + data_folder)
-                    download_processed_files(file_url, data_folder, tar_re, filter_re)
-
-        if not acc_SRP:
-            # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
-            # as part of this GEO submission. Can't proceed.
-            _LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
-            # but wait; another possibility: there's no SRP linked to the GSE, but there
-            # could still be an SRX linked to the (each) GSM.
-            if len(gsm_metadata) == 1:
-                acc_SRP = gsm_metadata.keys()[0]
-                _LOGGER.warning("But the GSM has an SRX number; instead of an "
-                                "SRP, using SRX identifier for this sample: " + acc_SRP)
-            else:
-                # More than one sample? not sure what to do here. Does this even happen?
-                continue
-
-        # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
-        # The SRARunInfo sheet has additional sample metadata, which we will combine
-        # with the GSM file to produce a single sample a
-        if not os.path.isfile(file_sra) or args.refresh_metadata:
-            Accession(acc_SRP).fetch_metadata(file_sra)
-        else:
-            _LOGGER.info("Found previous SRA file: " + file_sra)
-
-        _LOGGER.info("SRP: {}".format(acc_SRP))
+        get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter_re)
 
         # Parse metadata from SRA
         # Produce an annotated output from the GSM and SRARunInfo files.
@@ -719,84 +678,15 @@ def run_geofetch(cmdl):
                     _LOGGER.info("FQ found:" + fq_file)
                 else:
                     if not args.just_metadata:
-                        # Use the 'prefetch' utility from the SRA Toolkit
-                        # to download the raw reads.
-                        # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
-
-                        # Set up a simple loop to try a few times in case of failure
-                        t = 0
-                        while True:
-                            t = t + 1
-                            subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
-                            if subprocess_return == 0:
-                                break
-                            if subprocess_return == 3:
-                                _LOGGER.info(f"File {run_name} already exist. Breaking...")
-                                break
-                            if t >= NUM_RETRIES:
-                                _LOGGER.info("Prefetch retries failed. Try this sample later")
-                                failed_runs.append(run_name)
-                                break
-                            _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
-                            time.sleep(t * 2)
+                        failed_runs = download_SRA_file(run_name, failed_runs)
                     else:
                         _LOGGER.info("Dry run (no data download)")
 
                     if args.bam_conversion and args.bam_folder != '':
-                        _LOGGER.info("Converting to bam: " + run_name)
-                        sra_file = os.path.join(args.sra_folder, run_name + ".sra")
-                        if not os.path.exists(sra_file):
-                            _LOGGER.info("SRA file doesn't exist, please "
-                                         "download it first: " + sra_file)
-                            continue
-
-                        # The -u here allows unaligned reads, and seems to be
-                        # required for some sra files regardless of aligned state
-                        cmd = "sam-dump -u " + \
-                              os.path.join(args.sra_folder, run_name + ".sra") + \
-                              " | samtools view -bS - > " + bam_file
-                        # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
-
-                        _LOGGER.info("Conversion command: {}".format(cmd))
-                        subprocess.call(cmd, shell=True)
-
-                # check to make sure it worked
-                # NS: Sometimes sam-dump fails, yielding an empty bam file, but
-                # a fastq-dump works. This happens on files with bad quality
-                # encodings. I contacted GEO about it in December 2015
-                # Here we check the file size and use fastq -> bam conversion
-                # if the sam-dump failed.
-                if args.bam_conversion and args.bam_folder != '':
-                    st = os.stat(bam_file)
-                    # print("File size: " + str(st.st_size))
-                    if st.st_size < 100:
-                        _LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
-                        # recreate?
-                        cmd = "fastq-dump --split-3 -O " + \
-                              os.path.realpath(args.sra_folder) + " " + \
-                              os.path.join(args.sra_folder, run_name + ".sra")
-                        _LOGGER.info("Command: {}".format(cmd))
-                        subprocess.call(cmd, shell=True)
-                        if not args.picard_path:
-                            _LOGGER.warning("Can't convert the fastq to bam without picard path")
-                        else:
-                            # was it paired data? you have to process it differently
-                            # so it knows it's paired end
-                            fastq0 = os.path.join(args.sra_folder, run_name + ".fastq")
-                            fastq1 = os.path.join(args.sra_folder, run_name + "_1.fastq")
-                            fastq2 = os.path.join(args.sra_folder, run_name + "_2.fastq")
-
-                            cmd = "java -jar " + args.picard_path + " FastqToSam"
-                            if os.path.exists(fastq1) and os.path.exists(fastq2):
-                                cmd += " FASTQ=" + fastq1
-                                cmd += " FASTQ2=" + fastq2
-                            else:
-                                cmd += " FASTQ=" + fastq0
-                            cmd += " OUTPUT=" + bam_file
-                            cmd += " SAMPLE_NAME=" + run_name
-                            cmd += " QUIET=true"
-                            _LOGGER.info("Conversion command: {}".format(cmd))
-                            subprocess.call(cmd, shell=True)
+                        try:
+                            sra_bam_conversion(args, bam_file, run_name)
+                        except FileNotFoundError:
+                            _LOGGER.warning("SRA file not found. Skipping bam converting ...")
 
             file_read.close()
             file_write.close()
@@ -871,6 +761,139 @@ def run_geofetch(cmdl):
 
     config = os.path.join(metadata_raw, project_name + "_config.yaml")
     _write(config, template, msg_pre="  Config file: ")
+
+
+def sra_bam_conversion(args, bam_file, run_name):
+    _LOGGER.info("Converting to bam: " + run_name)
+    sra_file = os.path.join(args.sra_folder, run_name + ".sra")
+    if not os.path.exists(sra_file):
+        _LOGGER.info(f"SRA file doesn't exist, please download it first: {sra_file}")
+
+        raise FileNotFoundError
+
+    # The -u here allows unaligned reads, and seems to be
+    # required for some sra files regardless of aligned state
+    cmd = "sam-dump -u " + \
+          os.path.join(args.sra_folder, run_name + ".sra") + \
+          " | samtools view -bS - > " + bam_file
+    # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
+
+    _LOGGER.info("Conversion command: {}".format(cmd))
+    subprocess.call(cmd, shell=True)
+
+    st = os.stat(bam_file)
+    # print("File size: " + str(st.st_size))
+    if st.st_size < 100:
+      _LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
+    sra_bam_conversion2(bam_file, run_name, args.sra_folder)
+
+
+def sra_bam_conversion2(bam_file, run_name, sra_folder, picard_path=None):
+    """
+    check to make sure it worked
+    NS: Sometimes sam-dump fails, yielding an empty bam file, but
+    a fastq-dump works. This happens on files with bad quality
+    encodings. I contacted GEO about it in December 2015
+    Here we check the file size and use fastq -> bam conversion
+    if the sam-dump failed.
+    """
+    # recreate?
+    cmd = "fastq-dump --split-3 -O " + \
+          os.path.realpath(sra_folder) + " " + \
+          os.path.join(sra_folder, run_name + ".sra")
+    _LOGGER.info(f"Command: {cmd}")
+    subprocess.call(cmd, shell=True)
+    if not picard_path:
+        _LOGGER.warning("Can't convert the fastq to bam without picard path")
+    else:
+        # was it paired data? you have to process it differently
+        # so it knows it's paired end
+        fastq0 = os.path.join(sra_folder, run_name + ".fastq")
+        fastq1 = os.path.join(sra_folder, run_name + "_1.fastq")
+        fastq2 = os.path.join(sra_folder, run_name + "_2.fastq")
+
+        cmd = "java -jar " + picard_path + " FastqToSam"
+        if os.path.exists(fastq1) and os.path.exists(fastq2):
+            cmd += " FASTQ=" + fastq1
+            cmd += " FASTQ2=" + fastq2
+        else:
+            cmd += " FASTQ=" + fastq0
+        cmd += " OUTPUT=" + bam_file
+        cmd += " SAMPLE_NAME=" + run_name
+        cmd += " QUIET=true"
+        _LOGGER.info("Conversion command: {}".format(cmd))
+        subprocess.call(cmd, shell=True)
+
+def download_SRA_file(run_name, failed_runs):
+    # Use the 'prefetch' utility from the SRA Toolkit
+    # to download the raw reads.
+    # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+
+    # Set up a simple loop to try a few times in case of failure
+    t = 0
+    while True:
+        t = t + 1
+        subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+        if subprocess_return == 0:
+            break
+        if subprocess_return == 3:
+            _LOGGER.info(f"File {run_name} already exist. Skipping...")
+            break
+        if t >= NUM_RETRIES:
+            _LOGGER.info("Prefetch retries failed. Try this sample later")
+            failed_runs.append(run_name)
+            break
+        _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
+        time.sleep(t * 2)
+    return failed_runs
+
+
+def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter_re):
+    # Parse out the SRA project identifier from the GSE file
+    acc_SRP = None
+    for line in open(file_gse, 'r'):
+        found = re.findall(PROJECT_PATTERN, line)
+        if found:
+            acc_SRP = found[0]
+            _LOGGER.info("Found SRA Project accession: {}".format(acc_SRP))
+            break
+        # For processed data, here's where we would download it
+        if args.processed and not args.just_metadata:
+            if not args.geo_folder:
+                _LOGGER.error("You must provide a geo_folder to download processed data.")
+                sys.exit(1)
+            found = re.findall(SER_SUPP_FILE_PATTERN, line)
+            if found:
+                pl = parse_SOFT_line(line)
+                file_url = pl[pl.keys()[0]].rstrip()
+                data_folder = os.path.join(args.geo_folder, acc_GSE)
+                _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
+                _LOGGER.debug("Data folder: " + data_folder)
+                download_processed_files(file_url, data_folder, tar_re, filter_re)
+
+    if not acc_SRP:
+        # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
+        # as part of this GEO submission. Can't proceed.
+        _LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
+        # but wait; another possibility: there's no SRP linked to the GSE, but there
+        # could still be an SRX linked to the (each) GSM.
+        if len(gsm_metadata) == 1:
+            acc_SRP = gsm_metadata.keys()[0]
+            _LOGGER.warning("But the GSM has an SRX number; instead of an "
+                            "SRP, using SRX identifier for this sample: " + acc_SRP)
+        # else:
+        #     # More than one sample? not sure what to do here. Does this even happen?
+        #     continue
+
+    # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
+    # The SRARunInfo sheet has additional sample metadata, which we will combine
+    # with the GSM file to produce a single sample a
+    if not os.path.isfile(file_sra) or args.refresh_metadata:
+        Accession(acc_SRP).fetch_metadata(file_sra)
+    else:
+        _LOGGER.info("Found previous SRA file: " + file_sra)
+
+    _LOGGER.info("SRP: {}".format(acc_SRP))
 
 
 def _write(f_var_value, content, msg_pre=None, omit_newline=False):

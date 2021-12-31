@@ -673,20 +673,33 @@ def run_geofetch(cmdl):
                 # any of this stuff... This also solves the bad sam-dump issues.
 
                 if os.path.exists(bam_file):
-                    _LOGGER.info("BAM found:" + bam_file)
+                    _LOGGER.info(f"BAM found: {bam_file} . Skipping...")
                 elif os.path.exists(fq_file):
-                    _LOGGER.info("FQ found:" + fq_file)
+                    _LOGGER.info(f"FQ found: {fq_file} .Skipping...")
                 else:
                     if not args.just_metadata:
-                        failed_runs = download_SRA_file(run_name, failed_runs)
+                        try:
+                            download_SRA_file(run_name, failed_runs)
+                        except Exception as err:
+                            failed_runs.append(run_name)
+                            _LOGGER.warning(f"Error occurred while downloading SRA file: {err}")
+
                     else:
                         _LOGGER.info("Dry run (no data download)")
 
                     if args.bam_conversion and args.bam_folder != '':
                         try:
-                            sra_bam_conversion(args, bam_file, run_name)
-                        except FileNotFoundError:
-                            _LOGGER.warning("SRA file not found. Skipping bam converting ...")
+                            # converting sra to bam using
+                            sra_bam_conversion(bam_file, run_name, args.sra_folder)
+
+                            # checking if bam_file converted correctly, if not --> use fastq-dump
+                            st = os.stat(bam_file)
+                            if st.st_size < 100:
+                                _LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
+                                sra_bam_conversion2(bam_file, run_name, args.sra_folder, args.picard_path)
+
+                        except FileNotFoundError as err:
+                            _LOGGER.info(f"SRA file doesn't exist, please download it first: {err}")
 
             file_read.close()
             file_write.close()
@@ -763,41 +776,41 @@ def run_geofetch(cmdl):
     _write(config, template, msg_pre="  Config file: ")
 
 
-def sra_bam_conversion(args, bam_file, run_name):
-    _LOGGER.info("Converting to bam: " + run_name)
-    sra_file = os.path.join(args.sra_folder, run_name + ".sra")
-    if not os.path.exists(sra_file):
-        _LOGGER.info(f"SRA file doesn't exist, please download it first: {sra_file}")
+def sra_bam_conversion(bam_file, run_name, sra_folder):
+    """
+    Converting of SRA file to BAM file by using samtools function "sam-dump"
+    :param str bam_file: path to BAM file that has to be created
+    :param str run_name: SRR number of the SRA file that has to be converted
+    :param str sra_folder: path to folder with SRA files
+    """
 
-        raise FileNotFoundError
+    _LOGGER.info("Converting to bam: " + run_name)
+    sra_file = os.path.join(sra_folder, run_name + ".sra")
+    if not os.path.exists(sra_file):
+        raise FileNotFoundError(sra_file)
 
     # The -u here allows unaligned reads, and seems to be
     # required for some sra files regardless of aligned state
     cmd = "sam-dump -u " + \
-          os.path.join(args.sra_folder, run_name + ".sra") + \
+          os.path.join(sra_folder, run_name + ".sra") + \
           " | samtools view -bS - > " + bam_file
     # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
 
-    _LOGGER.info("Conversion command: {}".format(cmd))
+    _LOGGER.info(f"Conversion command: {cmd}")
     subprocess.call(cmd, shell=True)
-
-    st = os.stat(bam_file)
-    # print("File size: " + str(st.st_size))
-    if st.st_size < 100:
-      _LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
-    sra_bam_conversion2(bam_file, run_name, args.sra_folder)
 
 
 def sra_bam_conversion2(bam_file, run_name, sra_folder, picard_path=None):
     """
-    check to make sure it worked
-    NS: Sometimes sam-dump fails, yielding an empty bam file, but
-    a fastq-dump works. This happens on files with bad quality
-    encodings. I contacted GEO about it in December 2015
-    Here we check the file size and use fastq -> bam conversion
-    if the sam-dump failed.
+    Converting of SRA file to BAM file by using fastq-dump
+    (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
+    :param str bam_file: path to BAM file that has to be created
+    :param str run_name: SRR number of the SRA file that has to be converted
+    :param str sra_folder: path to folder with SRA files
+    :param str picard_path: Path to The Picard toolkit. More info: https://broadinstitute.github.io/picard/
     """
-    # recreate?
+
+    # check to make sure it worked
     cmd = "fastq-dump --split-3 -O " + \
           os.path.realpath(sra_folder) + " " + \
           os.path.join(sra_folder, run_name + ".sra")
@@ -821,31 +834,31 @@ def sra_bam_conversion2(bam_file, run_name, sra_folder, picard_path=None):
         cmd += " OUTPUT=" + bam_file
         cmd += " SAMPLE_NAME=" + run_name
         cmd += " QUIET=true"
-        _LOGGER.info("Conversion command: {}".format(cmd))
+        _LOGGER.info(f"Conversion command: {cmd}")
         subprocess.call(cmd, shell=True)
 
-def download_SRA_file(run_name, failed_runs):
-    # Use the 'prefetch' utility from the SRA Toolkit
-    # to download the raw reads.
-    # (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+
+def download_SRA_file(run_name):
+    """
+    Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
+    more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+    :param str run_name: SRR number of the SRA file
+    """
 
     # Set up a simple loop to try a few times in case of failure
     t = 0
     while True:
         t = t + 1
         subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+
         if subprocess_return == 0:
             break
-        if subprocess_return == 3:
-            _LOGGER.info(f"File {run_name} already exist. Skipping...")
-            break
+
         if t >= NUM_RETRIES:
-            _LOGGER.info("Prefetch retries failed. Try this sample later")
-            failed_runs.append(run_name)
-            break
+            raise RuntimeError(f"Prefetch retries of {run_name} failed. Try this sample later")
+
         _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
         time.sleep(t * 2)
-    return failed_runs
 
 
 def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter_re):

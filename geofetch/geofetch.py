@@ -318,13 +318,13 @@ def update_columns(metadata, experiment_name, sample_name, read_type):
     return exp
 
 
-def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
+def download_processed_files(file_url, data_folder, filter_re=None):
     """
     Given a url for a file, download it, and extract anything passing the filter.
     :param str file_url: the URL of the file to download
     :param str data_folder: the local folder where the file should be saved
-    :param re.Pattern tar_re: a regulator expression (produced from re.compile)
-        that pulls out filenames with .tar in them
+    # :param re.Pattern tar_re: a regulator expression (produced from re.compile)
+        that pulls out filenames with .tar in them --- deleted
     :param re.Pattern filter_re: a regular expression (produced from
         re.compile) to filter filenames of interest.
     :return bool: True if the file is downloaded successfully; false if it does
@@ -337,16 +337,17 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
         filename = os.path.basename(file_url)
         full_filepath = os.path.join(data_folder, filename)
         if not os.path.exists(full_filepath):
-            _LOGGER.info("\033[38;5;242m")  # set color to gray
+            _LOGGER.info(f"\033[38;5;242m")  # set color to gray
             ret = subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
             time.sleep(sleep_after)
-            _LOGGER.info("\033[0m")  # Reset to default terminal color
+            _LOGGER.info(f"\033[0m")  # Reset to default terminal color
         else:
-            _LOGGER.info("\033[38;5;242mFile {} exists.\033[0m".format(full_filepath))
+            _LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
     filename = os.path.basename(file_url)
     full_filepath = os.path.join(data_folder, filename)
     ntry = 0
+    tar_re = re.compile(r".*\.tar$")
     while ntry < 10:
         try:
             if tar_re.search(filename):
@@ -362,27 +363,32 @@ def download_processed_files(file_url, data_folder, tar_re, filter_re=None):
 
                 files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
 
-                msg = "Files in archive: {}; passed filter: {}; not existing: {}.".format(
-                    len(members), len(pass_filt), len(files_to_extract))
+                _LOGGER.info(f"Files in archive: {len(members)}; "
+                             f"passed filter: {len(pass_filt)}; "
+                             f"not existing: {len(files_to_extract)}."
+                             )
 
-                _LOGGER.info(msg)
                 if len(files_to_extract) > 0:
                     t.extractall(data_folder, members=files_to_extract)
 
                 # if False:  # Delete archive?
                 #     os.unlink(full_filepath)
                 return True
+
             if not filter_re:
                 _LOGGER.info("No filter regex, downloading")
                 download_file(file_url, data_folder)
                 return True
+
             elif filter_re.search(filename):
                 _LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
                 download_file(file_url, data_folder)
                 return True
+
             else:
                 _LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
                 return False
+
         except IOError as e:
             _LOGGER.error(str(e))
             # The server times out if we are hitting it too frequently,
@@ -441,7 +447,10 @@ def get_gsm_metadata(acc_GSE, acc_GSE_list, args, file_gsm):
             if args.processed and not args.just_metadata:
                 found = re.findall(SUPP_FILE_PATTERN, line)
                 if found:
-                    _LOGGER.debug(f"Processed GSM file: {pl[pl.keys()[0]]}")
+                    try:
+                        _LOGGER.debug(f"Processed GSM file: {pl[list(pl.keys())[0]]}")
+                    except Exception as err:
+                        print(err)
 
             # Now convert the ids GEO accessions into SRX accessions
             if not current_sample_srx:
@@ -456,6 +465,10 @@ def get_gsm_metadata(acc_GSE, acc_GSE_list, args, file_gsm):
     # GSM SOFT file parsed, save it in a list
     _LOGGER.info(f"Processed {len(samples_list)} samples.")
     return gsm_metadata
+
+
+def render_env_var(ev):
+    return f"{ev} ({expandpath(ev)})"
 
 
 def run_geofetch(cmdl):
@@ -476,13 +489,8 @@ def run_geofetch(cmdl):
 
     if args.filter:
         filter_re = re.compile(args.filter)
-        tar_re = re.compile(r".*\.tar$")
     else:
         filter_re = None
-        tar_re = None
-
-    def render_env_var(ev):
-        return f"{ev} ({expandpath(ev)})"
 
     if args.metadata_folder:
         metadata_expanded = expandpath(args.metadata_folder)
@@ -530,9 +538,9 @@ def run_geofetch(cmdl):
         if ncount <= args.skip:
             continue
         elif ncount == args.skip + 1:
-            _LOGGER.info("Skipped {} accessions. Starting now.".format(args.skip))
-        _LOGGER.info("\033[38;5;228mProcessing accession {} of {}: '{}'\033[0m".format(
-            ncount, nkeys, acc_GSE))
+            _LOGGER.info(f"Skipped {args.skip} accessions. Starting now.")
+        _LOGGER.info(f"\033[38;5;228mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m")
+
         if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
             print(len(re.findall(GSE_PATTERN, acc_GSE)))
             _LOGGER.warning("This does not appear to be a correctly formatted GSE accession! Continue anyway...")
@@ -566,7 +574,7 @@ def run_geofetch(cmdl):
         gsm_metadata = get_gsm_metadata(acc_GSE, acc_GSE_list, args, file_gsm)
         metadata_dict[acc_GSE] = gsm_metadata
 
-        get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter_re)
+        get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, filter_re)
 
         # Parse metadata from SRA
         # Produce an annotated output from the GSM and SRARunInfo files.
@@ -679,7 +687,8 @@ def run_geofetch(cmdl):
                 else:
                     if not args.just_metadata:
                         try:
-                            download_SRA_file(run_name, failed_runs)
+                            download_SRA_file(run_name)
+                            print("skipped")
                         except Exception as err:
                             failed_runs.append(run_name)
                             _LOGGER.warning(f"Error occurred while downloading SRA file: {err}")
@@ -861,7 +870,7 @@ def download_SRA_file(run_name):
         time.sleep(t * 2)
 
 
-def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter_re):
+def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, filter_re):
     # Parse out the SRA project identifier from the GSE file
     acc_SRP = None
     for line in open(file_gse, 'r'):
@@ -878,11 +887,11 @@ def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
             if found:
                 pl = parse_SOFT_line(line)
-                file_url = pl[pl.keys()[0]].rstrip()
+                file_url = pl[list(pl.keys())[0]].rstrip()
                 data_folder = os.path.join(args.geo_folder, acc_GSE)
                 _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
                 _LOGGER.debug("Data folder: " + data_folder)
-                download_processed_files(file_url, data_folder, tar_re, filter_re)
+                download_processed_files(file_url, data_folder, filter_re)
 
     if not acc_SRP:
         # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
@@ -897,12 +906,15 @@ def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, tar_re, filter
         # else:
         #     # More than one sample? not sure what to do here. Does this even happen?
         #     continue
-
     # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
     # The SRARunInfo sheet has additional sample metadata, which we will combine
     # with the GSM file to produce a single sample a
+
     if not os.path.isfile(file_sra) or args.refresh_metadata:
-        Accession(acc_SRP).fetch_metadata(file_sra)
+        try:
+            Accession(acc_SRP).fetch_metadata(file_sra)
+        except Exception as err:
+            _LOGGER.warning(f"\033[91mError occurred, while SRA Info Metadata of {acc_SRP}\033[0m")
     else:
         _LOGGER.info("Found previous SRA file: " + file_sra)
 

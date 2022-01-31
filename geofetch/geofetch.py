@@ -471,6 +471,151 @@ def render_env_var(ev):
     return f"{ev} ({expandpath(ev)})"
 
 
+def sra_bam_conversion(bam_file, run_name, sra_folder):
+    """
+    Converting of SRA file to BAM file by using samtools function "sam-dump"
+    :param str bam_file: path to BAM file that has to be created
+    :param str run_name: SRR number of the SRA file that has to be converted
+    :param str sra_folder: path to folder with SRA files
+    """
+
+    _LOGGER.info("Converting to bam: " + run_name)
+    sra_file = os.path.join(sra_folder, run_name + ".sra")
+    if not os.path.exists(sra_file):
+        raise FileNotFoundError(sra_file)
+
+    # The -u here allows unaligned reads, and seems to be
+    # required for some sra files regardless of aligned state
+    cmd = "sam-dump -u " + \
+          os.path.join(sra_folder, run_name + ".sra") + \
+          " | samtools view -bS - > " + bam_file
+    # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
+
+    _LOGGER.info(f"Conversion command: {cmd}")
+    subprocess.call(cmd, shell=True)
+
+
+def sra_bam_conversion2(bam_file, run_name, sra_folder, picard_path=None):
+    """
+    Converting of SRA file to BAM file by using fastq-dump
+    (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
+    :param str bam_file: path to BAM file that has to be created
+    :param str run_name: SRR number of the SRA file that has to be converted
+    :param str sra_folder: path to folder with SRA files
+    :param str picard_path: Path to The Picard toolkit. More info: https://broadinstitute.github.io/picard/
+    """
+
+    # check to make sure it worked
+    cmd = "fastq-dump --split-3 -O " + \
+          os.path.realpath(sra_folder) + " " + \
+          os.path.join(sra_folder, run_name + ".sra")
+    _LOGGER.info(f"Command: {cmd}")
+    subprocess.call(cmd, shell=True)
+    if not picard_path:
+        _LOGGER.warning("Can't convert the fastq to bam without picard path")
+    else:
+        # was it paired data? you have to process it differently
+        # so it knows it's paired end
+        fastq0 = os.path.join(sra_folder, run_name + ".fastq")
+        fastq1 = os.path.join(sra_folder, run_name + "_1.fastq")
+        fastq2 = os.path.join(sra_folder, run_name + "_2.fastq")
+
+        cmd = "java -jar " + picard_path + " FastqToSam"
+        if os.path.exists(fastq1) and os.path.exists(fastq2):
+            cmd += " FASTQ=" + fastq1
+            cmd += " FASTQ2=" + fastq2
+        else:
+            cmd += " FASTQ=" + fastq0
+        cmd += " OUTPUT=" + bam_file
+        cmd += " SAMPLE_NAME=" + run_name
+        cmd += " QUIET=true"
+        _LOGGER.info(f"Conversion command: {cmd}")
+        subprocess.call(cmd, shell=True)
+
+
+def download_SRA_file(run_name):
+    """
+    Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
+    more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+    :param str run_name: SRR number of the SRA file
+    """
+
+    # Set up a simple loop to try a few times in case of failure
+    t = 0
+    while True:
+        t = t + 1
+        subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+
+        if subprocess_return == 0:
+            break
+
+        if t >= NUM_RETRIES:
+            raise RuntimeError(f"Prefetch retries of {run_name} failed. Try this sample later")
+
+        _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
+        time.sleep(t * 2)
+
+
+def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, filter_re):
+    # Parse out the SRA project identifier from the GSE file
+    acc_SRP = None
+    for line in open(file_gse, 'r'):
+        found = re.findall(PROJECT_PATTERN, line)
+        if found:
+            acc_SRP = found[0]
+            _LOGGER.info("Found SRA Project accession: {}".format(acc_SRP))
+            break
+        # For processed data, here's where we would download it
+        if args.processed and not args.just_metadata:
+            if not args.geo_folder:
+                _LOGGER.error("You must provide a geo_folder to download processed data.")
+                sys.exit(1)
+            found = re.findall(SER_SUPP_FILE_PATTERN, line)
+            if found:
+                pl = parse_SOFT_line(line)
+                file_url = pl[list(pl.keys())[0]].rstrip()
+                data_folder = os.path.join(args.geo_folder, acc_GSE)
+                _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
+                _LOGGER.debug("Data folder: " + data_folder)
+                download_processed_files(file_url, data_folder, filter_re)
+
+    if not acc_SRP:
+        # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
+        # as part of this GEO submission. Can't proceed.
+        _LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
+        # but wait; another possibility: there's no SRP linked to the GSE, but there
+        # could still be an SRX linked to the (each) GSM.
+        if len(gsm_metadata) == 1:
+            acc_SRP = gsm_metadata.keys()[0]
+            _LOGGER.warning("But the GSM has an SRX number; instead of an "
+                            "SRP, using SRX identifier for this sample: " + acc_SRP)
+        # else:
+        #     # More than one sample? not sure what to do here. Does this even happen?
+        #     continue
+    # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
+    # The SRARunInfo sheet has additional sample metadata, which we will combine
+    # with the GSM file to produce a single sample a
+
+    if not os.path.isfile(file_sra) or args.refresh_metadata:
+        try:
+            Accession(acc_SRP).fetch_metadata(file_sra)
+        except Exception as err:
+            _LOGGER.warning(f"\033[91mError occurred, while SRA Info Metadata of {acc_SRP}\033[0m")
+    else:
+        _LOGGER.info("Found previous SRA file: " + file_sra)
+
+    _LOGGER.info("SRP: {}".format(acc_SRP))
+
+
+def _write(f_var_value, content, msg_pre=None, omit_newline=False):
+    fp = expandpath(f_var_value)
+    _LOGGER.info((msg_pre or "") + fp)
+    with open(fp, 'w') as f:
+        f.write(content)
+        if not omit_newline:
+            f.write("\n")
+
+
 def run_geofetch(cmdl):
     """ Main script driver/workflow """
     args = _parse_cmdl(cmdl)
@@ -783,151 +928,6 @@ def run_geofetch(cmdl):
 
     config = os.path.join(metadata_raw, project_name + "_config.yaml")
     _write(config, template, msg_pre="  Config file: ")
-
-
-def sra_bam_conversion(bam_file, run_name, sra_folder):
-    """
-    Converting of SRA file to BAM file by using samtools function "sam-dump"
-    :param str bam_file: path to BAM file that has to be created
-    :param str run_name: SRR number of the SRA file that has to be converted
-    :param str sra_folder: path to folder with SRA files
-    """
-
-    _LOGGER.info("Converting to bam: " + run_name)
-    sra_file = os.path.join(sra_folder, run_name + ".sra")
-    if not os.path.exists(sra_file):
-        raise FileNotFoundError(sra_file)
-
-    # The -u here allows unaligned reads, and seems to be
-    # required for some sra files regardless of aligned state
-    cmd = "sam-dump -u " + \
-          os.path.join(sra_folder, run_name + ".sra") + \
-          " | samtools view -bS - > " + bam_file
-    # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
-
-    _LOGGER.info(f"Conversion command: {cmd}")
-    subprocess.call(cmd, shell=True)
-
-
-def sra_bam_conversion2(bam_file, run_name, sra_folder, picard_path=None):
-    """
-    Converting of SRA file to BAM file by using fastq-dump
-    (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
-    :param str bam_file: path to BAM file that has to be created
-    :param str run_name: SRR number of the SRA file that has to be converted
-    :param str sra_folder: path to folder with SRA files
-    :param str picard_path: Path to The Picard toolkit. More info: https://broadinstitute.github.io/picard/
-    """
-
-    # check to make sure it worked
-    cmd = "fastq-dump --split-3 -O " + \
-          os.path.realpath(sra_folder) + " " + \
-          os.path.join(sra_folder, run_name + ".sra")
-    _LOGGER.info(f"Command: {cmd}")
-    subprocess.call(cmd, shell=True)
-    if not picard_path:
-        _LOGGER.warning("Can't convert the fastq to bam without picard path")
-    else:
-        # was it paired data? you have to process it differently
-        # so it knows it's paired end
-        fastq0 = os.path.join(sra_folder, run_name + ".fastq")
-        fastq1 = os.path.join(sra_folder, run_name + "_1.fastq")
-        fastq2 = os.path.join(sra_folder, run_name + "_2.fastq")
-
-        cmd = "java -jar " + picard_path + " FastqToSam"
-        if os.path.exists(fastq1) and os.path.exists(fastq2):
-            cmd += " FASTQ=" + fastq1
-            cmd += " FASTQ2=" + fastq2
-        else:
-            cmd += " FASTQ=" + fastq0
-        cmd += " OUTPUT=" + bam_file
-        cmd += " SAMPLE_NAME=" + run_name
-        cmd += " QUIET=true"
-        _LOGGER.info(f"Conversion command: {cmd}")
-        subprocess.call(cmd, shell=True)
-
-
-def download_SRA_file(run_name):
-    """
-    Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
-    more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
-    :param str run_name: SRR number of the SRA file
-    """
-
-    # Set up a simple loop to try a few times in case of failure
-    t = 0
-    while True:
-        t = t + 1
-        subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
-
-        if subprocess_return == 0:
-            break
-
-        if t >= NUM_RETRIES:
-            raise RuntimeError(f"Prefetch retries of {run_name} failed. Try this sample later")
-
-        _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
-        time.sleep(t * 2)
-
-
-def get_SRA_meta(acc_GSE, args, file_gse, file_sra, gsm_metadata, filter_re):
-    # Parse out the SRA project identifier from the GSE file
-    acc_SRP = None
-    for line in open(file_gse, 'r'):
-        found = re.findall(PROJECT_PATTERN, line)
-        if found:
-            acc_SRP = found[0]
-            _LOGGER.info("Found SRA Project accession: {}".format(acc_SRP))
-            break
-        # For processed data, here's where we would download it
-        if args.processed and not args.just_metadata:
-            if not args.geo_folder:
-                _LOGGER.error("You must provide a geo_folder to download processed data.")
-                sys.exit(1)
-            found = re.findall(SER_SUPP_FILE_PATTERN, line)
-            if found:
-                pl = parse_SOFT_line(line)
-                file_url = pl[list(pl.keys())[0]].rstrip()
-                data_folder = os.path.join(args.geo_folder, acc_GSE)
-                _LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
-                _LOGGER.debug("Data folder: " + data_folder)
-                download_processed_files(file_url, data_folder, filter_re)
-
-    if not acc_SRP:
-        # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
-        # as part of this GEO submission. Can't proceed.
-        _LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. No raw data?\033[0m")
-        # but wait; another possibility: there's no SRP linked to the GSE, but there
-        # could still be an SRX linked to the (each) GSM.
-        if len(gsm_metadata) == 1:
-            acc_SRP = gsm_metadata.keys()[0]
-            _LOGGER.warning("But the GSM has an SRX number; instead of an "
-                            "SRP, using SRX identifier for this sample: " + acc_SRP)
-        # else:
-        #     # More than one sample? not sure what to do here. Does this even happen?
-        #     continue
-    # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
-    # The SRARunInfo sheet has additional sample metadata, which we will combine
-    # with the GSM file to produce a single sample a
-
-    if not os.path.isfile(file_sra) or args.refresh_metadata:
-        try:
-            Accession(acc_SRP).fetch_metadata(file_sra)
-        except Exception as err:
-            _LOGGER.warning(f"\033[91mError occurred, while SRA Info Metadata of {acc_SRP}\033[0m")
-    else:
-        _LOGGER.info("Found previous SRA file: " + file_sra)
-
-    _LOGGER.info("SRP: {}".format(acc_SRP))
-
-
-def _write(f_var_value, content, msg_pre=None, omit_newline=False):
-    fp = expandpath(f_var_value)
-    _LOGGER.info((msg_pre or "") + fp)
-    with open(fp, 'w') as f:
-        f.write(content)
-        if not omit_newline:
-            f.write("\n")
 
 
 def main():

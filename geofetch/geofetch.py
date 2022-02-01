@@ -23,7 +23,7 @@ import os
 import re
 import subprocess
 import sys
-import tarfile
+# import tarfile
 import time
 import pandas as pd
 
@@ -140,6 +140,7 @@ class Geofetch:
 
             if self.args.refresh_metadata:
                 self._LOGGER.info("Refreshing metadata...")
+
             # For each GSE acc, produce a series of metadata files
             file_gse = os.path.join(self.metadata_expanded, acc_GSE + '_GSE.soft')
             file_gsm = os.path.join(self.metadata_expanded, acc_GSE + '_GSM.soft')
@@ -161,19 +162,19 @@ class Geofetch:
             else:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
 
-            gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list,  file_gsm)
-
             # download gsm metadata with processed files
+            gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list,  file_gsm)
             metadata_dict[acc_GSE] = gsm_metadata
-            # TODO:
-            # TODO:
+
             self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
 
-            data_folder = os.path.join(self.args.geo_folder, acc_GSE)
-            self._LOGGER.debug("Data folder: " + data_folder)
-            processed_files = self.get_list_of_processed_files(file_gse, data_folder)
-            for file_url in processed_files:
-                self.download_processed_file(file_url, data_folder)
+            # download processed data
+            if self.args.processed and not self.args.just_metadata:
+                data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
+                self._LOGGER.debug("Data folder: " + data_geo_folder)
+                processed_files = self.get_list_of_processed_files(file_gse, data_geo_folder)
+                for file_url in processed_files:
+                    self.download_processed_file(file_url, data_geo_folder)
 
 
             # Parse metadata from SRA
@@ -182,11 +183,9 @@ class Geofetch:
             # with one entry per sample.
             # NB: There may be multiple SRA Runs (and thus lines in the RunInfo file)
             # Corresponding to each sample.
-
             # For multi samples (samples with multiple runs), we keep track of these
             # relations in a separate table, which is called the subannotation table.
             gsm_multi_table = OrderedDict()
-
             if not self.args.processed:
                 file_read = open(file_sra, 'r')
                 file_write = open(file_srafilt, 'w')
@@ -346,13 +345,11 @@ class Geofetch:
                 except Exception as err:
                     self._LOGGER.warning(f"Error wihile updating annotation file: {err}")
 
-
             # accumulate subannotations
             subannotation_dict[acc_GSE] = gsm_multi_table
 
         # Combine individual accessions into project-level annotations, and write
         # individual accession files (if requested)
-
         metadata_dict_combined = OrderedDict()
         for acc_GSE, gsm_metadata in metadata_dict.items():
             file_annotation = os.path.join(self.metadata_expanded, acc_GSE + '_annotation.csv')
@@ -368,6 +365,7 @@ class Geofetch:
                 self.write_subannotation(gsm_multi_table, file_subannotation)
             subannotation_dict_combined.update(gsm_multi_table)
 
+        # Logging additional information about processing
         self._LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
 
         if len(failed_runs) > 0:
@@ -638,42 +636,56 @@ class Geofetch:
             self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
     def get_list_of_processed_files(self, file_gse, data_folder):
+        """
+        Given a path to GSE metafile, downloading filelist of tar file and making list of all processed files
+        :param str file_gse: the path to gse metafile
+        :param str data_folder: the path to folder, where filelist file has to bed downloaded
+        :return list: list of all processed files in current experiment
+        """
 
         tar_re = re.compile(r".*\.tar$")
-
         files_list = []
         for line in open(file_gse, 'r'):
-            if self.args.processed and not self.args.just_metadata:
-                if not self.args.geo_folder:
-                    self._LOGGER.error("You must provide a geo_folder to download processed data.")
-                    sys.exit(1)
-                found = re.findall(SER_SUPP_FILE_PATTERN, line)
-                if found:
+            if not self.args.geo_folder:
+                self._LOGGER.error("You must provide a geo_folder to download processed data.")
+                sys.exit(1)
+            found = re.findall(SER_SUPP_FILE_PATTERN, line)
+            if found:
 
-                    pl = parse_SOFT_line(line)
-                    file_url = pl[list(pl.keys())[0]].rstrip()
-                    filename = os.path.basename(file_url)
-                    if tar_re.search(filename):
-                        self._LOGGER.info("\033[92mtar archive found\033[0m")
+                pl = parse_SOFT_line(line)
+                file_url = pl[list(pl.keys())[0]].rstrip()
+                filename = os.path.basename(file_url)
+                if tar_re.search(filename):
+                    self._LOGGER.info("\033[92mtar archive found\033[0m")
 
-                        index = file_url.rfind("/")
-                        tar_files_list_url = file_url[:index+1] + "filelist.txt"
-                        self.download_file(tar_files_list_url, data_folder)
-                        tar_files = self.read_tar_filelist(data_folder+"/filelist.txt")
-                        tar_files_url = self.get_suppl_url(tar_files)
-                        files_list.extend(tar_files_url)
-                    else:
-                        files_list.append(file_url)
+                    index = file_url.rfind("/")
+                    tar_files_list_url = file_url[:index+1] + "filelist.txt"
+                    self.download_file(tar_files_list_url, data_folder)
+                    tar_files = self.read_tar_filelist(data_folder+"/filelist.txt")
+                    tar_files_url = self.get_suppl_url(tar_files)
+                    files_list.extend(tar_files_url)
+                else:
+                    files_list.append(file_url)
 
         return files_list
 
     @staticmethod
     def read_tar_filelist(file_path):
+        """
+        Creating list for supplementary files that are listed in "filelist.txt"
+        :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
+        :return list: list of supplementary file names
+        """
         list_file = pd.read_csv(file_path, sep="\t")
         return list(list_file['Name'])[1:]
 
     @staticmethod
     def get_suppl_url(file_names):
+        """
+        Creating urls for supplementary files (mainly used for zipped files)
+         :param list file_names: list of supplementary file names
+         :return list: list of urls of supplementary files
+        """
         file_links = []
         for name in file_names:
             GSM_number = re.split('_',name)[0]
@@ -700,6 +712,7 @@ class Geofetch:
         # tar_re = re.compile(r".*\.tar$")
         while ntry < 10:
             try:
+                # ### previous version of downloading tar file, unzipping it and choosing files to extract by recompile
                 # if tar_re.search(filename):
                 #     self._LOGGER.info("\033[92mDownloading tar archive\033[0m")
                 #     self.download_file(file_url, data_folder)
@@ -724,7 +737,6 @@ class Geofetch:
                 #     #     os.unlink(full_filepath)
                 #     return True
 
-                # download file without unzipping
                 if not self.filter_re:
                     self._LOGGER.info("No filter regex, downloading")
                     self.download_file(file_url, data_folder)
@@ -754,10 +766,10 @@ class Geofetch:
     def get_SRA_meta(self, file_gse, file_sra, gsm_metadata):
         """
         Parse out the SRA project identifier from the GSE file
-        # :param str acc_GSE: ...
-        # :param str file_gse: ...
-        # :param str file_sra: ...
-        # :param str gsm_metadata: ...
+
+        :param str file_gse: full path to GSE.soft metafile
+        :param str file_sra: full path to SRA.csv metafile that has to be downloaded
+        :param OrderedDict gsm_metadata: dict of GSM metadata
         """
         #
         acc_SRP = None
@@ -801,10 +813,11 @@ class Geofetch:
     def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm):
         """
         A simple state machine to parse SOFT formatted files (Here, the GSM file)
-                # :param str acc_GSE: ...
-        # :param str file_gse: ...
-        # :param str file_sra: ...
-        # :param str gsm_metadata: ...
+
+        :param str acc_GSE: GSE number (Series accession)
+        :param OrderedDict acc_GSE_list: list of GSE
+        :param str file_gsm: full path to GSM.soft metafile
+        :return OrderedDict: Ordered Dictionary of experiment information (gsm_metadata)
         """
         gsm_metadata = OrderedDict()
 

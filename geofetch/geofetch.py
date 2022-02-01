@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import pandas as pd
 
 from utils import Accession, parse_accessions, parse_SOFT_line
 from _version import __version__
@@ -161,9 +162,19 @@ class Geofetch:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
 
             gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list,  file_gsm)
-            metadata_dict[acc_GSE] = gsm_metadata
 
-            self.get_SRA_meta(acc_GSE, file_gse, file_sra, gsm_metadata)
+            # download gsm metadata with processed files
+            metadata_dict[acc_GSE] = gsm_metadata
+            # TODO:
+            # TODO:
+            # self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
+
+            data_folder = os.path.join(self.args.geo_folder, acc_GSE)
+            self._LOGGER.debug("Data folder: " + data_folder)
+            processed_files = self.get_list_of_processed_files(file_gse, data_folder)
+            for file_url in processed_files:
+                self.download_processed_file(file_url, data_folder)
+
 
             # Parse metadata from SRA
             # Produce an annotated output from the GSM and SRARunInfo files.
@@ -594,7 +605,51 @@ class Geofetch:
         else:
             self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
-    def download_processed_files(self, file_url, data_folder):
+    def get_list_of_processed_files(self, file_gse, data_folder):
+
+        tar_re = re.compile(r".*\.tar$")
+
+        files_list = []
+        for line in open(file_gse, 'r'):
+            if self.args.processed and not self.args.just_metadata:
+                if not self.args.geo_folder:
+                    self._LOGGER.error("You must provide a geo_folder to download processed data.")
+                    sys.exit(1)
+                found = re.findall(SER_SUPP_FILE_PATTERN, line)
+                if found:
+
+                    pl = parse_SOFT_line(line)
+                    file_url = pl[list(pl.keys())[0]].rstrip()
+                    filename = os.path.basename(file_url)
+                    if tar_re.search(filename):
+                        self._LOGGER.info("\033[92mtar archive found\033[0m")
+
+                        index = file_url.rfind("/")
+                        tar_files_list_url = file_url[:index+1] + "filelist.txt"
+                        self.download_file(tar_files_list_url, data_folder)
+                        tar_files = self.read_tar_filelist(data_folder+"/filelist.txt")
+                        tar_files_url = self.get_suppl_url(tar_files)
+                        files_list.extend(tar_files_url)
+                    else:
+                        files_list.append(file_url)
+
+        return files_list
+
+    @staticmethod
+    def read_tar_filelist(file_path):
+        list_file = pd.read_csv(file_path, sep="\t")
+        return list(list_file['Name'])[1:]
+
+    @staticmethod
+    def get_suppl_url(file_names):
+        file_links = []
+        for name in file_names:
+            GSM_number = re.split('_',name)[0]
+            file_url = f"ftp://ftp.ncbi.nlm.nih.gov/geo/samples/{GSM_number[:-3]}nnn/{GSM_number}/suppl/{name}"
+            file_links.append(file_url)
+        return file_links
+
+    def download_processed_file(self, file_url, data_folder):
         """
         Given a url for a file, download it, and extract anything passing the filter.
         :param str file_url: the URL of the file to download
@@ -609,40 +664,41 @@ class Geofetch:
         """
 
         filename = os.path.basename(file_url)
-        full_filepath = os.path.join(data_folder, filename)
         ntry = 0
-        tar_re = re.compile(r".*\.tar$")
+        # tar_re = re.compile(r".*\.tar$")
         while ntry < 10:
             try:
-                if tar_re.search(filename):
-                    self._LOGGER.info("\033[92mDownloading tar archive\033[0m")
-                    self.download_file(file_url, data_folder)
-                    t = tarfile.open(full_filepath, 'r')
-                    members = t.getmembers()
+                # if tar_re.search(filename):
+                #     self._LOGGER.info("\033[92mDownloading tar archive\033[0m")
+                #     self.download_file(file_url, data_folder)
+                #     t = tarfile.open(full_filepath, 'r')
+                #     members = t.getmembers()
+                #
+                #     if self.filter_re:
+                #         pass_filt = [m for m in members if self.filter_re.search(m.name)]
+                #     else:
+                #         pass_filt = t.getmembers()
+                #
+                #     files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
+                #
+                #     self._LOGGER.info(f"Files in archive: {len(members)}; "
+                #                       f"passed filter: {len(pass_filt)}; "
+                #                       f"not existing: {len(files_to_extract)}.")
+                #
+                #     if len(files_to_extract) > 0:
+                #         t.extractall(data_folder, members=files_to_extract)
+                #
+                #     # if False:  # Delete archive?
+                #     #     os.unlink(full_filepath)
+                #     return True
 
-                    if self.filter_re:
-                        pass_filt = [m for m in members if self.filter_re.search(m.name)]
-                    else:
-                        pass_filt = t.getmembers()
-
-                    files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
-
-                    self._LOGGER.info(f"Files in archive: {len(members)}; "
-                                      "passed filter: {len(pass_filt)}; "
-                                      f"not existing: {len(files_to_extract)}.")
-
-                    if len(files_to_extract) > 0:
-                        t.extractall(data_folder, members=files_to_extract)
-
-                    # if False:  # Delete archive?
-                    #     os.unlink(full_filepath)
-                    return True
-
+                # download file without unzipping
                 if not self.filter_re:
                     self._LOGGER.info("No filter regex, downloading")
                     self.download_file(file_url, data_folder)
                     return True
 
+                # search file with filename
                 elif self.filter_re.search(filename):
                     self._LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
                     self.download_file(file_url, data_folder)
@@ -663,7 +719,7 @@ class Geofetch:
                 if ntry > 4:
                     raise e
 
-    def get_SRA_meta(self, acc_GSE, file_gse, file_sra, gsm_metadata):
+    def get_SRA_meta(self, file_gse, file_sra, gsm_metadata):
         """
         Parse out the SRA project identifier from the GSE file
         # :param str acc_GSE: ...
@@ -679,19 +735,6 @@ class Geofetch:
                 acc_SRP = found[0]
                 self._LOGGER.info(f"Found SRA Project accession: {acc_SRP}")
                 break
-            # For processed data, here's where we would download it
-            if self.args.processed and not self.args.just_metadata:
-                if not self.args.geo_folder:
-                    self._LOGGER.error("You must provide a geo_folder to download processed data.")
-                    sys.exit(1)
-                found = re.findall(SER_SUPP_FILE_PATTERN, line)
-                if found:
-                    pl = parse_SOFT_line(line)
-                    file_url = pl[list(pl.keys())[0]].rstrip()
-                    data_folder = os.path.join(self.args.geo_folder, acc_GSE)
-                    self._LOGGER.info("\033[38;5;195mProcessed GSE file: " + str(file_url) + "\033[0m")
-                    self._LOGGER.debug("Data folder: " + data_folder)
-                    self.download_processed_files(file_url, data_folder)
 
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
@@ -713,6 +756,7 @@ class Geofetch:
 
         if not os.path.isfile(file_sra) or self.args.refresh_metadata:
             try:
+                # downloading metadata
                 Accession(acc_SRP).fetch_metadata(file_sra)
             except Exception as err:
                 self._LOGGER.warning(f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP} ."

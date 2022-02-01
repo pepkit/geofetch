@@ -74,7 +74,7 @@ class Geofetch:
             self.project_name = os.path.splitext(os.path.basename(args.input))[0]
 
         if args.filter:
-            self.filter_re = re.compile(args.filter)
+            self.filter_re = re.compile(args.filter.lower())
         else:
             self.filter_re = None
 
@@ -167,7 +167,7 @@ class Geofetch:
             metadata_dict[acc_GSE] = gsm_metadata
             # TODO:
             # TODO:
-            # self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
+            self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
 
             data_folder = os.path.join(self.args.geo_folder, acc_GSE)
             self._LOGGER.debug("Data folder: " + data_folder)
@@ -314,6 +314,38 @@ class Geofetch:
 
                 file_read.close()
                 file_write.close()
+            else:
+                # update annotation file:
+                try:
+                    with open(file_sra, 'r') as file_read:
+                        input_file = csv.DictReader(file_read)
+                        for line in input_file:
+                            experiment = line["Experiment"]
+                            if experiment not in gsm_metadata:
+                                # print(f"Skipping: {experiment}")
+                                continue
+                            sample_name = None  # initialize to empty
+                            try:
+                                sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
+                            except KeyError:
+                                pass
+                            if not sample_name or sample_name == "":
+                                temp = gsm_metadata[experiment]['Sample_title']
+                                # Now do a series of transformations to cleanse the sample name
+                                temp = temp.replace(" ", "_")
+                                # Do people put commas in their sample names? Yes.
+                                temp = temp.replace(",", "_")
+                                temp = temp.replace("__", "_")
+                                sample_name = temp
+
+                            self.update_columns(gsm_metadata, experiment, sample_name=sample_name,
+                                                read_type=line['LibraryLayout'])
+                            if gsm_metadata[experiment].get("SRR") is None:
+                                run_name = line["Run"]
+                                gsm_metadata[experiment]["SRR"] = run_name
+                except Exception as err:
+                    self._LOGGER.warning(f"Error wihile updating annotation file: {err}")
+
 
             # accumulate subannotations
             subannotation_dict[acc_GSE] = gsm_multi_table
@@ -699,7 +731,7 @@ class Geofetch:
                     return True
 
                 # search file with filename
-                elif self.filter_re.search(filename):
+                elif self.filter_re.search(filename.lower()):
                     self._LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
                     self.download_file(file_url, data_folder)
                     return True

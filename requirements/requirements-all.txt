@@ -5,3 +5,4 @@ logmuse>=0.0.2
 ubiquerg>=0.4.4
 logmuse>=0.2.7
 ubiquerg>=0.6.2
+pandas>=1.4.0

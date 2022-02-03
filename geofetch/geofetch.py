@@ -25,7 +25,6 @@ import subprocess
 import sys
 # import tarfile
 import time
-import pandas as pd
 
 from utils import Accession, parse_accessions, parse_SOFT_line
 from _version import __version__

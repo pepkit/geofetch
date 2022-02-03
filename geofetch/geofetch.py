@@ -172,7 +172,7 @@ class Geofetch:
             if self.args.processed and not self.args.just_metadata:
                 data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
                 self._LOGGER.debug("Data folder: " + data_geo_folder)
-                processed_files = self.get_list_of_processed_files(file_gse, data_geo_folder)
+                processed_files = self.get_list_of_processed_files(file_gse, file_gsm)
                 for file_url in processed_files:
                     self.download_processed_file(file_url, data_geo_folder)
 
@@ -313,37 +313,6 @@ class Geofetch:
 
                 file_read.close()
                 file_write.close()
-            else:
-                # update annotation file:
-                try:
-                    with open(file_sra, 'r') as file_read:
-                        input_file = csv.DictReader(file_read)
-                        for line in input_file:
-                            experiment = line["Experiment"]
-                            if experiment not in gsm_metadata:
-                                # print(f"Skipping: {experiment}")
-                                continue
-                            sample_name = None  # initialize to empty
-                            try:
-                                sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
-                            except KeyError:
-                                pass
-                            if not sample_name or sample_name == "":
-                                temp = gsm_metadata[experiment]['Sample_title']
-                                # Now do a series of transformations to cleanse the sample name
-                                temp = temp.replace(" ", "_")
-                                # Do people put commas in their sample names? Yes.
-                                temp = temp.replace(",", "_")
-                                temp = temp.replace("__", "_")
-                                sample_name = temp
-
-                            self.update_columns(gsm_metadata, experiment, sample_name=sample_name,
-                                                read_type=line['LibraryLayout'])
-                            if gsm_metadata[experiment].get("SRR") is None:
-                                run_name = line["Run"]
-                                gsm_metadata[experiment]["SRR"] = run_name
-                except Exception as err:
-                    self._LOGGER.warning(f"Error wihile updating annotation file: {err}")
 
             # accumulate subannotations
             subannotation_dict[acc_GSE] = gsm_multi_table
@@ -635,7 +604,7 @@ class Geofetch:
         else:
             self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
-    def get_list_of_processed_files(self, file_gse, data_folder):
+    def get_list_of_processed_files(self, file_gse, file_gsm):
         """
         Given a path to GSE metafile, downloading filelist of tar file and making list of all processed files
         :param str file_gse: the path to gse metafile
@@ -651,47 +620,22 @@ class Geofetch:
                 sys.exit(1)
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
             if found:
-
                 pl = parse_SOFT_line(line)
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
+                self._LOGGER.info(f"Processed GSE file found: %s" % str(file_url))
                 if tar_re.search(filename):
-                    self._LOGGER.info("\033[92mtar archive found\033[0m")
-
-                    index = file_url.rfind("/")
-                    tar_files_list_url = file_url[:index+1] + "filelist.txt"
-                    self.download_file(tar_files_list_url, data_folder)
-                    tar_files = self.read_tar_filelist(data_folder+"/filelist.txt")
-                    tar_files_url = self.get_suppl_url(tar_files)
-                    files_list.extend(tar_files_url)
+                    for line_gsm in open(file_gsm, 'r'):
+                        found_gsm = re.findall(SUPP_FILE_PATTERN, line_gsm)
+                        if found_gsm:
+                            pl = parse_SOFT_line(line_gsm)
+                            file_url_gsm = pl[list(pl.keys())[0]].rstrip()
+                            self._LOGGER.info(f"Processed GSM file found: %s" % str(file_url_gsm))
+                            files_list.append(file_url_gsm)
                 else:
                     files_list.append(file_url)
-
+        self._LOGGER.info(f"Total number of files found is: %s" % str(len(files_list)))
         return files_list
-
-    @staticmethod
-    def read_tar_filelist(file_path):
-        """
-        Creating list for supplementary files that are listed in "filelist.txt"
-        :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
-        :return list: list of supplementary file names
-        """
-        list_file = pd.read_csv(file_path, sep="\t")
-        return list(list_file['Name'])[1:]
-
-    @staticmethod
-    def get_suppl_url(file_names):
-        """
-        Creating urls for supplementary files (mainly used for zipped files)
-         :param list file_names: list of supplementary file names
-         :return list: list of urls of supplementary files
-        """
-        file_links = []
-        for name in file_names:
-            GSM_number = re.split('_',name)[0]
-            file_url = f"ftp://ftp.ncbi.nlm.nih.gov/geo/samples/{GSM_number[:-3]}nnn/{GSM_number}/suppl/{name}"
-            file_links.append(file_url)
-        return file_links
 
     def download_processed_file(self, file_url, data_folder):
         """
@@ -857,15 +801,6 @@ class Geofetch:
                                        f"line: {line}")
                     continue
                 gsm_metadata[current_sample_id].update(pl)
-
-                # For processed data, here's where we would download it
-                if self.args.processed and not self.args.just_metadata:
-                    found = re.findall(SUPP_FILE_PATTERN, line)
-                    if found:
-                        try:
-                            self._LOGGER.debug(f"Processed GSM file: {pl[list(pl.keys())[0]]}")
-                        except Exception as err:
-                            print(err)
 
                 # Now convert the ids GEO accessions into SRX accessions
                 if not current_sample_srx:

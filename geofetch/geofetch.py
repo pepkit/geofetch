@@ -103,6 +103,8 @@ class Geofetch:
         if args.bam_conversion and not args.just_metadata and not self.which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
+        self.processed_metadata = []
+
     def run_geofetch(self):
         """ Main script driver/workflow """
 
@@ -384,6 +386,50 @@ class Geofetch:
         config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
         self._write(config, template, msg_pre="  Config file: ")
 
+        if self.args.processed:
+
+            ## extend sample_characteristics_ch1
+            for n_elem in range(len(self.processed_metadata)):
+                try:
+                    if type(self.processed_metadata[n_elem]["Sample_characteristics_ch1"]) is not list:
+                        self.processed_metadata[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata[n_elem]["Sample_characteristics_ch1"]]
+                    for elem in self.processed_metadata[n_elem]["Sample_characteristics_ch1"]:
+                        sample_char = dict([elem.split(": ")])
+                        self.processed_metadata[n_elem].update(sample_char)
+                    del self.processed_metadata[n_elem]["Sample_characteristics_ch1"]
+                except KeyError as err:
+                    self._LOGGER.warning("Key Error: %s" % err)
+                except ValueError as err1:
+                    self._LOGGER.warning("Value Error: %s" % err1)
+
+            ## adding missing keys to dict
+            list_of_keys = []
+            for element in self.processed_metadata:
+                list_of_keys.extend(list(element.keys()))
+
+            list_of_keys = list(set(list_of_keys))
+
+            for element in self.processed_metadata:
+                list_of_keys.extend(list(element.keys()))
+
+            for k in list_of_keys:
+                for list_elem in range(len(self.processed_metadata)):
+                    if k not in self.processed_metadata[list_elem]:
+                        self.processed_metadata[list_elem][k] = ""
+
+            # check if genome is ok:
+            self.processed_metadata = self.check_genome_value(self.processed_metadata)
+
+
+
+            mf_path = os.path.join(self.metadata_raw, self.project_name + '_annotation_processed.csv')
+            a_file = open(mf_path, "w")
+            dict_writer = csv.DictWriter(a_file, self.processed_metadata[0].keys())
+            dict_writer.writeheader()
+            dict_writer.writerows(self.processed_metadata)
+            a_file.close()
+
+
     def write_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
         """
         Write metadata sheet out as an annotation file.
@@ -611,30 +657,127 @@ class Geofetch:
         :return list: list of all processed files in current experiment
         """
 
+
         tar_re = re.compile(r".*\.tar$")
         files_list = []
+        gse_numb = None
+        meta_processed_sample = []
+        meta_processed_series = []
         for line in open(file_gse, 'r'):
+
+            if re.compile(r"!Series_geo_accession").search(line):
+                gse_numb = self.get_value(line)
+
             if not self.args.geo_folder:
                 self._LOGGER.error("You must provide a geo_folder to download processed data.")
                 sys.exit(1)
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
+
             if found:
                 pl = parse_SOFT_line(line)
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
                 self._LOGGER.info(f"Processed GSE file found: %s" % str(file_url))
                 if tar_re.search(filename):
+                    nb = len(meta_processed_sample) - 1
+
+
                     for line_gsm in open(file_gsm, 'r'):
+
+                        if line_gsm[0] == "^":
+                            # check if files are in previous accession
+                            if nb > -1:
+                                if meta_processed_sample[nb]["GSE"] == "GSE132683":
+                                    print("this this this")
+                                print(meta_processed_sample[nb]["files"])
+
+                                    # print(meta_processed_sample[nb]["files"])
+
+                                if meta_processed_sample[nb]["files"] == ['NONE']:
+                                    del meta_processed_sample[nb]
+                                    nb -= 1
+                                    print("deleted")
+                                    pass
+
+                            nb += 1
+                            meta_processed_sample.append({"files": [],
+                                                          "GSE": gse_numb
+                                                          })
+
+                        else:
+                            pl = parse_SOFT_line(line_gsm.strip('\n'))
+                            element_keys = list(pl.keys())[0]
+                            element_values = list(pl.values())[0]
+                            if not re.findall(SUPP_FILE_PATTERN, line_gsm):
+                                if element_keys not in meta_processed_sample[nb].keys():
+                                    meta_processed_sample[nb].update(pl)
+                                else:
+                                    if type(meta_processed_sample[nb][element_keys]) is not list:
+                                        meta_processed_sample[nb][element_keys] = [meta_processed_sample[nb][element_keys]]
+                                        meta_processed_sample[nb][element_keys].append(element_values)
+                                    else:
+                                        meta_processed_sample[nb][element_keys].append(element_values)
+
                         found_gsm = re.findall(SUPP_FILE_PATTERN, line_gsm)
+
                         if found_gsm:
                             pl = parse_SOFT_line(line_gsm)
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
                             self._LOGGER.info(f"Processed GSM file found: %s" % str(file_url_gsm))
                             files_list.append(file_url_gsm)
+                            if file_url_gsm is not None:
+                                meta_processed_sample[nb]["files"].append(file_url_gsm)
                 else:
-                    files_list.append(file_url)
+                    # TODO: add other file with experiment metadata!
+
+                    meta_processed_series.append({"file": file_url,
+                                                  "GSE": gse_numb,
+                                                  })
+
+        # print(meta_processed_series)
+        # meta_processed_sample = self.separate_list_of_files(meta_processed_sample)
+
+        try:
+            # print(meta_processed_sample)
+            self.processed_metadata.extend(meta_processed_sample)
+        except:
+            pass
         self._LOGGER.info(f"Total number of files found is: %s" % str(len(files_list)))
+
         return files_list
+
+    @staticmethod
+    def separate_list_of_files(meta_list, col_name="files"):
+        """
+        ...
+        """
+        separated_list = []
+        for meta_elem in meta_list:
+            for file_elem in meta_elem[col_name]:
+                new_dict = meta_elem.copy()
+                new_dict.pop(col_name, None)
+                new_dict["file"] = file_elem
+                separated_list.append(new_dict)
+
+        return separated_list
+
+    def check_genome_value(self, meta_list):
+        for elem_nb in range(len(meta_list)):
+            try:
+                if meta_list[elem_nb]["genome build"] == "" or  meta_list[elem_nb]["genome build"] is None:
+                    for elem in meta_list[elem_nb]["Sample_data_processing"]:
+                        dict_elem = elem.split(": ")
+                        if dict_elem[0] == 'Genome_build':
+                            meta_list[elem_nb]["genome build"] = dict_elem[-1]
+                            break
+            except Exception as err:
+                self._LOGGER.warning(f"Error in check genome value: %s" % err)
+
+        return meta_list
+
+    def get_value(self, all_line):
+        line_value = all_line.split("= ")[-1]
+        return line_value.split(": ")[-1].rstrip("\n")
 
     def download_processed_file(self, file_url, data_folder):
         """

@@ -170,12 +170,14 @@ class Geofetch:
             self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
 
             # download processed data
-            if self.args.processed and not self.args.just_metadata:
+            if self.args.processed:
                 data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
                 self._LOGGER.debug("Data folder: " + data_geo_folder)
-                processed_files = self.get_list_of_processed_files(file_gse, file_gsm)
-                for file_url in processed_files:
-                    self.download_processed_file(file_url, data_geo_folder)
+                meta_processed_files = self.get_list_of_processed_files(file_gse, file_gsm)
+                processed_files = [each_file["file"] for each_file in meta_processed_files]
+                if not self.args.just_metadata:
+                    for file_url in processed_files:
+                        self.download_processed_file(file_url, data_geo_folder)
 
 
             # Parse metadata from SRA
@@ -387,8 +389,7 @@ class Geofetch:
         self._write(config, template, msg_pre="  Config file: ")
 
         if self.args.processed:
-
-            ## extend sample_characteristics_ch1
+            # extend sample_characteristics_ch1
             for n_elem in range(len(self.processed_metadata)):
                 try:
                     if type(self.processed_metadata[n_elem]["Sample_characteristics_ch1"]) is not list:
@@ -402,7 +403,7 @@ class Geofetch:
                 except ValueError as err1:
                     self._LOGGER.warning("Value Error: %s" % err1)
 
-            ## adding missing keys to dict
+            # adding missing keys to dict
             list_of_keys = []
             for element in self.processed_metadata:
                 list_of_keys.extend(list(element.keys()))
@@ -428,7 +429,6 @@ class Geofetch:
             dict_writer.writeheader()
             dict_writer.writerows(self.processed_metadata)
             a_file.close()
-
 
     def write_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
         """
@@ -653,10 +653,9 @@ class Geofetch:
         """
         Given a path to GSE metafile, downloading filelist of tar file and making list of all processed files
         :param str file_gse: the path to gse metafile
-        :param str data_folder: the path to folder, where filelist file has to bed downloaded
+        :param str file_gsm: the path to gse metafile
         :return list: list of all processed files in current experiment
         """
-
 
         tar_re = re.compile(r".*\.tar$")
         files_list = []
@@ -668,9 +667,6 @@ class Geofetch:
             if re.compile(r"!Series_geo_accession").search(line):
                 gse_numb = self.get_value(line)
 
-            if not self.args.geo_folder:
-                self._LOGGER.error("You must provide a geo_folder to download processed data.")
-                sys.exit(1)
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
 
             if found:
@@ -680,30 +676,12 @@ class Geofetch:
                 self._LOGGER.info(f"Processed GSE file found: %s" % str(file_url))
                 if tar_re.search(filename):
                     nb = len(meta_processed_sample) - 1
-
-
                     for line_gsm in open(file_gsm, 'r'):
-
                         if line_gsm[0] == "^":
-                            # check if files are in previous accession
-                            if nb > -1:
-                                if meta_processed_sample[nb]["GSE"] == "GSE132683":
-                                    print("this this this")
-                                print(meta_processed_sample[nb]["files"])
-
-                                    # print(meta_processed_sample[nb]["files"])
-
-                                if meta_processed_sample[nb]["files"] == ['NONE']:
-                                    del meta_processed_sample[nb]
-                                    nb -= 1
-                                    print("deleted")
-                                    pass
-
-                            nb += 1
+                            nb = len(self.check_file_existance(meta_processed_sample))
                             meta_processed_sample.append({"files": [],
                                                           "GSE": gse_numb
                                                           })
-
                         else:
                             pl = parse_SOFT_line(line_gsm.strip('\n'))
                             element_keys = list(pl.keys())[0]
@@ -725,31 +703,42 @@ class Geofetch:
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
                             self._LOGGER.info(f"Processed GSM file found: %s" % str(file_url_gsm))
                             files_list.append(file_url_gsm)
-                            if file_url_gsm is not None:
+                            if file_url_gsm != "NONE":
                                 meta_processed_sample[nb]["files"].append(file_url_gsm)
+
+                    self.check_file_existance(meta_processed_sample)
+                    meta_processed_sample = self.separate_list_of_files(meta_processed_sample)
+
                 else:
                     # TODO: add other file with experiment metadata!
 
                     meta_processed_series.append({"file": file_url,
                                                   "GSE": gse_numb,
                                                   })
-
-        # print(meta_processed_series)
-        # meta_processed_sample = self.separate_list_of_files(meta_processed_sample)
-
         try:
-            # print(meta_processed_sample)
             self.processed_metadata.extend(meta_processed_sample)
         except:
             pass
         self._LOGGER.info(f"Total number of files found is: %s" % str(len(files_list)))
+        return meta_processed_sample
+        # return files_list
 
-        return files_list
+    @staticmethod
+    def check_file_existance(meta_processed_sample):
+        """
+        Checking if last element of the list has files. If list of files is empty deleting it
+        """
+        nb = len(meta_processed_sample) - 1
+        if nb > -1:
+            if len(meta_processed_sample[nb]["files"]) == 0:
+                del meta_processed_sample[nb]
+                nb -= 1
+        return meta_processed_sample
 
     @staticmethod
     def separate_list_of_files(meta_list, col_name="files"):
         """
-        ...
+        This method is separating list of files (dict value) into two different dicts
         """
         separated_list = []
         for meta_elem in meta_list:
@@ -775,7 +764,8 @@ class Geofetch:
 
         return meta_list
 
-    def get_value(self, all_line):
+    @staticmethod
+    def get_value(all_line):
         line_value = all_line.split("= ")[-1]
         return line_value.split(": ")[-1].rstrip("\n")
 
@@ -793,36 +783,15 @@ class Geofetch:
         #    re.compile) to filter filenames of interest.
         """
 
+        if not self.args.geo_folder:
+            self._LOGGER.error("You must provide a geo_folder to download processed data.")
+            sys.exit(1)
+
         filename = os.path.basename(file_url)
         ntry = 0
-        # tar_re = re.compile(r".*\.tar$")
+
         while ntry < 10:
             try:
-                # ### previous version of downloading tar file, unzipping it and choosing files to extract by recompile
-                # if tar_re.search(filename):
-                #     self._LOGGER.info("\033[92mDownloading tar archive\033[0m")
-                #     self.download_file(file_url, data_folder)
-                #     t = tarfile.open(full_filepath, 'r')
-                #     members = t.getmembers()
-                #
-                #     if self.filter_re:
-                #         pass_filt = [m for m in members if self.filter_re.search(m.name)]
-                #     else:
-                #         pass_filt = t.getmembers()
-                #
-                #     files_to_extract = [m for m in pass_filt if not os.path.exists(os.path.join(data_folder, m.name))]
-                #
-                #     self._LOGGER.info(f"Files in archive: {len(members)}; "
-                #                       f"passed filter: {len(pass_filt)}; "
-                #                       f"not existing: {len(files_to_extract)}.")
-                #
-                #     if len(files_to_extract) > 0:
-                #         t.extractall(data_folder, members=files_to_extract)
-                #
-                #     # if False:  # Delete archive?
-                #     #     os.unlink(full_filepath)
-                #     return True
-
                 if not self.filter_re:
                     self._LOGGER.info("No filter regex, downloading")
                     self.download_file(file_url, data_folder)

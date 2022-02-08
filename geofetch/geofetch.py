@@ -174,7 +174,7 @@ class Geofetch:
                 data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
                 self._LOGGER.debug("Data folder: " + data_geo_folder)
                 meta_processed_files = self.get_list_of_processed_files(file_gse, file_gsm)
-                processed_files = [each_file["file"] for each_file in meta_processed_files]
+                processed_files = [each_file["file_url"] for each_file in meta_processed_files]
                 if not self.args.just_metadata:
                     for file_url in processed_files:
                         self.download_processed_file(file_url, data_geo_folder)
@@ -654,13 +654,13 @@ class Geofetch:
         Given a path to GSE metafile, downloading filelist of tar file and making list of all processed files
         :param str file_gse: the path to gse metafile
         :param str file_gsm: the path to gse metafile
-        :return list: list of all processed files in current experiment
+        :return list: list of metadata of processed files
         """
 
         tar_re = re.compile(r".*\.tar$")
         files_list = []
         gse_numb = None
-        meta_processed_sample = []
+        meta_processed_samples = []
         meta_processed_series = []
         for line in open(file_gse, 'r'):
 
@@ -674,27 +674,29 @@ class Geofetch:
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
                 self._LOGGER.info(f"Processed GSE file found: %s" % str(file_url))
+
+                # search for tar file:
                 if tar_re.search(filename):
-                    nb = len(meta_processed_sample) - 1
+                    nb = len(meta_processed_samples) - 1
                     for line_gsm in open(file_gsm, 'r'):
                         if line_gsm[0] == "^":
-                            nb = len(self.check_file_existance(meta_processed_sample))
-                            meta_processed_sample.append({"files": [],
+                            nb = len(self.check_file_existance(meta_processed_samples))
+                            meta_processed_samples.append({"files": [],
                                                           "GSE": gse_numb
-                                                          })
+                                                           })
                         else:
                             pl = parse_SOFT_line(line_gsm.strip('\n'))
                             element_keys = list(pl.keys())[0]
                             element_values = list(pl.values())[0]
                             if not re.findall(SUPP_FILE_PATTERN, line_gsm):
-                                if element_keys not in meta_processed_sample[nb].keys():
-                                    meta_processed_sample[nb].update(pl)
+                                if element_keys not in meta_processed_samples[nb].keys():
+                                    meta_processed_samples[nb].update(pl)
                                 else:
-                                    if type(meta_processed_sample[nb][element_keys]) is not list:
-                                        meta_processed_sample[nb][element_keys] = [meta_processed_sample[nb][element_keys]]
-                                        meta_processed_sample[nb][element_keys].append(element_values)
+                                    if type(meta_processed_samples[nb][element_keys]) is not list:
+                                        meta_processed_samples[nb][element_keys] = [meta_processed_samples[nb][element_keys]]
+                                        meta_processed_samples[nb][element_keys].append(element_values)
                                     else:
-                                        meta_processed_sample[nb][element_keys].append(element_values)
+                                        meta_processed_samples[nb][element_keys].append(element_values)
 
                         found_gsm = re.findall(SUPP_FILE_PATTERN, line_gsm)
 
@@ -704,11 +706,16 @@ class Geofetch:
                             self._LOGGER.info(f"Processed GSM file found: %s" % str(file_url_gsm))
                             files_list.append(file_url_gsm)
                             if file_url_gsm != "NONE":
-                                meta_processed_sample[nb]["files"].append(file_url_gsm)
+                                meta_processed_samples[nb]["files"].append(file_url_gsm)
 
-                    self.check_file_existance(meta_processed_sample)
-                    meta_processed_sample = self.separate_list_of_files(meta_processed_sample)
+                    self.check_file_existance(meta_processed_samples)
+                    meta_processed_samples = self.separate_list_of_files(meta_processed_samples)
+                    meta_processed_samples = self.separate_file_url(meta_processed_samples)
+                    # TODO: add here filter option
+                    if self.filter_re:
+                        meta_processed_samples = self.run_filter(meta_processed_samples)
 
+                # other files than .tar
                 else:
                     # TODO: add other file with experiment metadata!
 
@@ -716,11 +723,11 @@ class Geofetch:
                                                   "GSE": gse_numb,
                                                   })
         try:
-            self.processed_metadata.extend(meta_processed_sample)
+            self.processed_metadata.extend(meta_processed_samples)
         except:
             pass
         self._LOGGER.info(f"Total number of files found is: %s" % str(len(files_list)))
-        return meta_processed_sample
+        return meta_processed_samples
         # return files_list
 
     @staticmethod
@@ -750,6 +757,32 @@ class Geofetch:
 
         return separated_list
 
+    @staticmethod
+    def separate_file_url(meta_list):
+        """
+        This method is adding dict key without file_name without path
+        """
+        separated_list = []
+        for meta_elem in meta_list:
+            new_dict = meta_elem.copy()
+            new_dict["file_url"] = meta_elem["file"]
+            new_dict["file"] = os.path.basename(meta_elem["file"])
+            new_dict["sample_name"] = os.path.basename(meta_elem["file"])
+            separated_list.append(new_dict)
+        return separated_list
+
+
+    def run_filter(self, meta_list, col_name="file"):
+        """
+        If user specified filter it will filter all this files here by col_name
+        """
+        filtered_list = []
+        for meta_elem in meta_list:
+            if self.filter_re.search(meta_elem[col_name].lower()):
+                filtered_list.append(meta_elem)
+        return filtered_list
+
+
     def check_genome_value(self, meta_list):
         for elem_nb in range(len(meta_list)):
             try:
@@ -759,6 +792,11 @@ class Geofetch:
                         if dict_elem[0] == 'Genome_build':
                             meta_list[elem_nb]["genome build"] = dict_elem[-1]
                             break
+            except KeyError:
+                for elem_nb1 in range(len(meta_list)):
+                    meta_list[elem_nb1]["genome build"] = ""
+                self.check_genome_value(meta_list)
+                break
             except Exception as err:
                 self._LOGGER.warning(f"Error in check genome value: %s" % err)
 
@@ -770,6 +808,7 @@ class Geofetch:
         return line_value.split(": ")[-1].rstrip("\n")
 
     def download_processed_file(self, file_url, data_folder):
+        # TODO: change description
         """
         Given a url for a file, download it, and extract anything passing the filter.
         :param str file_url: the URL of the file to download
@@ -792,20 +831,8 @@ class Geofetch:
 
         while ntry < 10:
             try:
-                if not self.filter_re:
-                    self._LOGGER.info("No filter regex, downloading")
-                    self.download_file(file_url, data_folder)
-                    return True
-
-                # search file with filename
-                elif self.filter_re.search(filename.lower()):
-                    self._LOGGER.info("\033[92mMatches filter regex, downloading\033[0m")
-                    self.download_file(file_url, data_folder)
-                    return True
-
-                else:
-                    self._LOGGER.info("\033[91mDoesn't match filter regex\033[0m")
-                    return False
+                self.download_file(file_url, data_folder)
+                return True
 
             except IOError as e:
                 self._LOGGER.error(str(e))

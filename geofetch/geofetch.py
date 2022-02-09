@@ -123,6 +123,8 @@ class Geofetch:
         metadata_dict = OrderedDict()
         subannotation_dict = OrderedDict()
         failed_runs = []
+        processed_metadata_samples = []
+        processed_metadata_exp = []
 
         acc_GSE_keys = acc_GSE_list.keys()
         nkeys = len(acc_GSE_keys)
@@ -179,8 +181,8 @@ class Geofetch:
                 self._LOGGER.debug("Data folder: " + data_geo_folder)
                 meta_processed_samples, meta_processed_series = self.get_list_of_processed_files(file_gse, file_gsm)
                 try:
-                    self.processed_metadata_samples.extend(meta_processed_samples)
-                    self.processed_metadata_exp.extend(meta_processed_series)
+                    processed_metadata_samples.extend(meta_processed_samples)
+                    processed_metadata_exp.extend(meta_processed_series)
                 except:
                     pass
                 processed_files = [each_file["file_url"] for each_file in meta_processed_samples]
@@ -331,7 +333,7 @@ class Geofetch:
         for acc_GSE, gsm_metadata in metadata_dict.items():
             file_annotation = os.path.join(self.metadata_expanded, acc_GSE + '_annotation.csv')
             if self.args.acc_anno:
-                self.write_annotation(gsm_metadata, file_annotation, use_key_subset=self.args.use_key_subset)
+                self.write_gsm_annotation(gsm_metadata, file_annotation, use_key_subset=self.args.use_key_subset)
             metadata_dict_combined.update(gsm_metadata)
 
         subannotation_dict_combined = OrderedDict()
@@ -360,7 +362,7 @@ class Geofetch:
 
         # Write combined annotation sheet
         file_annotation = os.path.join(self.metadata_raw, self.project_name + '_annotation.csv')
-        self.write_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.args.use_key_subset)
+        self.write_gsm_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.args.use_key_subset)
 
         # Write combined subannotation table
         if len(subannotation_dict_combined) > 0:
@@ -390,77 +392,53 @@ class Geofetch:
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
 
+        # save .yaml file
         config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
         self._write(config, template, msg_pre="  Config file: ")
 
         if self.args.processed:
             # extend sample_characteristics_ch1
-            for n_elem in range(len(self.processed_metadata_samples)):
-                # TODO: make method out of this:: so it will be possible to separate many columns, not just one
-
-                try:
-                    if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
-                        self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
-                    for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
-                        sample_char = dict([elem.split(": ")])
-                        self.processed_metadata_samples[n_elem].update(sample_char)
-                        del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
-                except KeyError as err:
-                    self._LOGGER.warning("Key Error: %s" % err)
-                except ValueError as err1:
-                    self._LOGGER.warning("Value Error: %s" % err1)
+            # for n_elem in range(len(self.processed_metadata_samples)):
+            #     # TODO: make method out of this:: so it will separate many columns, not just one
+            #
+            #     try:
+            #         if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
+            #             self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
+            #         for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
+            #             sample_char = dict([elem.split(": ")])
+            #             self.processed_metadata_samples[n_elem].update(sample_char)
+            #             del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
+            #     except KeyError as err:
+            #         self._LOGGER.warning("Key Error: %s" % err)
+            #     except ValueError as err1:
+            #         self._LOGGER.warning("Value Error: %s" % err1)
 
             # adding missing keys to dict
-            list_of_keys = []
-            for element in self.processed_metadata_samples:
-                list_of_keys.extend(list(element.keys()))
-
-            list_of_keys = list(set(list_of_keys))
-
-            for element in self.processed_metadata_samples:
-                list_of_keys.extend(list(element.keys()))
-
-            for k in list_of_keys:
-                for list_elem in range(len(self.processed_metadata_samples)):
-                    if k not in self.processed_metadata_samples[list_elem]:
-                        self.processed_metadata_samples[list_elem][k] = ""
-
             # check if genome is ok:
-            self.processed_metadata_samples = self.check_genome_value(self.processed_metadata_samples)
+            # self.processed_metadata_samples = self.check_genome_value(self.processed_metadata_samples)
+
+            supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
+            self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
 
-            mf_path = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
-            a_file = open(mf_path, "w")
-            dict_writer = csv.DictWriter(a_file, self.processed_metadata_samples[0].keys())
-            dict_writer.writeheader()
-            dict_writer.writerows(self.processed_metadata_samples)
-            a_file.close()
+            supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
+            self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
+    @staticmethod
+    def unify_list_keys(processed_meta_list):
+        list_of_keys = []
+        for element in processed_meta_list:
+            list_of_keys.extend(list(element.keys()))
+        list_of_keys = list(set(list_of_keys))
+        for element in processed_meta_list:
+            list_of_keys.extend(list(element.keys()))
+        for k in list_of_keys:
+            for list_elem in range(len(processed_meta_list)):
+                if k not in processed_meta_list[list_elem]:
+                    processed_meta_list[list_elem][k] = ""
+        return processed_meta_list
 
-            list_of_keys = []
-            for element in self.processed_metadata_exp:
-                list_of_keys.extend(list(element.keys()))
-
-            list_of_keys = list(set(list_of_keys))
-
-            for element in self.processed_metadata_exp:
-                list_of_keys.extend(list(element.keys()))
-
-            for k in list_of_keys:
-                for list_elem in range(len(self.processed_metadata_exp)):
-                    if k not in self.processed_metadata_exp[list_elem]:
-                        self.processed_metadata_exp[list_elem][k] = ""
-
-
-
-            mf_path = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
-            a_file = open(mf_path, "w")
-            dict_writer = csv.DictWriter(a_file, self.processed_metadata_exp[0].keys())
-            dict_writer.writeheader()
-            dict_writer.writerows(self.processed_metadata_exp)
-            a_file.close()
-
-    def write_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
+    def write_gsm_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
         """
         Write metadata sheet out as an annotation file.
 
@@ -487,6 +465,18 @@ class Geofetch:
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
         return fp
+
+    def write_processed_annotation(self, processed_metadata, file_annotation_path):
+        self._LOGGER.info("Unifying and saving of metadata... ")
+        processed_metadata = self.unify_list_keys(processed_metadata)
+
+        with open(file_annotation_path, "w") as m_file:
+            dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
+            dict_writer.writeheader()
+            dict_writer.writerows(processed_metadata)
+        self._LOGGER.info("\033[92mFile %s has been saved successfully\033[0m" %file_annotation_path)
+        return True
+
 
     def download_SRA_file(self, run_name):
         """
@@ -839,24 +829,24 @@ class Geofetch:
         return filtered_list
 
 
-    def check_genome_value(self, meta_list):
-        for elem_nb in range(len(meta_list)):
-            try:
-                if meta_list[elem_nb]["genome build"] == "" or  meta_list[elem_nb]["genome build"] is None:
-                    for elem in meta_list[elem_nb]["Sample_data_processing"]:
-                        dict_elem = elem.split(": ")
-                        if dict_elem[0] == 'Genome_build':
-                            meta_list[elem_nb]["genome build"] = dict_elem[-1]
-                            break
-            except KeyError:
-                for elem_nb1 in range(len(meta_list)):
-                    meta_list[elem_nb1]["genome build"] = ""
-                self.check_genome_value(meta_list)
-                break
-            except Exception as err:
-                self._LOGGER.warning(f"Error in check genome value: %s" % err)
-
-        return meta_list
+    # def check_genome_value(self, meta_list):
+    #     for elem_nb in range(len(meta_list)):
+    #         try:
+    #             if meta_list[elem_nb]["genome build"] == "" or  meta_list[elem_nb]["genome build"] is None:
+    #                 for elem in meta_list[elem_nb]["Sample_data_processing"]:
+    #                     dict_elem = elem.split(": ")
+    #                     if dict_elem[0] == 'Genome_build':
+    #                         meta_list[elem_nb]["genome build"] = dict_elem[-1]
+    #                         break
+    #         except KeyError:
+    #             for elem_nb1 in range(len(meta_list)):
+    #                 meta_list[elem_nb1]["genome build"] = ""
+    #             self.check_genome_value(meta_list)
+    #             break
+    #         except Exception as err:
+    #             self._LOGGER.warning(f"Error in check genome value: %s" % err)
+    #
+    #     return meta_list
 
     @staticmethod
     def get_value(all_line):
@@ -888,6 +878,8 @@ class Geofetch:
         while ntry < 10:
             try:
                 self.download_file(file_url, data_folder)
+                self._LOGGER.info("\033[92mFile %s has been downloaded successfully\033[0m" %
+                                  f"{data_folder}/{filename}")
                 return True
 
             except IOError as e:

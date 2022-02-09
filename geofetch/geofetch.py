@@ -51,6 +51,9 @@ GSE_PATTERN = re.compile(r"(GSE\d{4,8})")
 SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
 SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
+SAMPLE_SUPP_METADATA_FILE = "_annotation_sample_processed.csv"
+EXP_SUPP_METADATA_FILE = "_annotation_series_processed.csv"
+
 # How many times should we retry failing prefetch call?
 NUM_RETRIES = 3
 
@@ -103,7 +106,8 @@ class Geofetch:
         if args.bam_conversion and not args.just_metadata and not self.which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
-        self.processed_metadata = []
+        self.processed_metadata_samples = []
+        self.processed_metadata_exp = []
 
     def run_geofetch(self):
         """ Main script driver/workflow """
@@ -132,7 +136,7 @@ class Geofetch:
             self._LOGGER.info(f"\033[38;5;228mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m")
 
             if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
-                print(len(re.findall(GSE_PATTERN, acc_GSE)))
+                self._LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
                 self._LOGGER.warning("This does not appear to be a correctly formatted GSE accession! "
                                      "Continue anyway...")
 
@@ -173,8 +177,13 @@ class Geofetch:
             if self.args.processed:
                 data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
                 self._LOGGER.debug("Data folder: " + data_geo_folder)
-                meta_processed_files = self.get_list_of_processed_files(file_gse, file_gsm)
-                processed_files = [each_file["file_url"] for each_file in meta_processed_files]
+                meta_processed_samples, meta_processed_series = self.get_list_of_processed_files(file_gse, file_gsm)
+                try:
+                    self.processed_metadata_samples.extend(meta_processed_samples)
+                    self.processed_metadata_exp.extend(meta_processed_series)
+                except:
+                    pass
+                processed_files = [each_file["file_url"] for each_file in meta_processed_samples]
                 if not self.args.just_metadata:
                     for file_url in processed_files:
                         self.download_processed_file(file_url, data_geo_folder)
@@ -201,10 +210,6 @@ class Geofetch:
                         initialized = True
                         wwrite = csv.DictWriter(file_write, line.keys())
                         wwrite.writeheader()
-                    # print(line)
-                    # print(gsm_metadata[line['SampleName']])
-                    # SampleName is not necessarily the GSM number, though frequently it is
-                    # gsm_metadata[line['SampleName']].update(line)
 
                     # Only download if it's in the include list:
                     experiment = line["Experiment"]
@@ -292,7 +297,7 @@ class Geofetch:
                         if not self.args.just_metadata:
                             try:
                                 self.download_SRA_file(run_name)
-                                print("skipped")
+                                # self._LOGGER.debug("skipped")
                             except Exception as err:
                                 failed_runs.append(run_name)
                                 self._LOGGER.warning(f"Error occurred while downloading SRA file: {err}")
@@ -390,14 +395,16 @@ class Geofetch:
 
         if self.args.processed:
             # extend sample_characteristics_ch1
-            for n_elem in range(len(self.processed_metadata)):
+            for n_elem in range(len(self.processed_metadata_samples)):
+                # TODO: make method out of this:: so it will be possible to separate many columns, not just one
+
                 try:
-                    if type(self.processed_metadata[n_elem]["Sample_characteristics_ch1"]) is not list:
-                        self.processed_metadata[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata[n_elem]["Sample_characteristics_ch1"]]
-                    for elem in self.processed_metadata[n_elem]["Sample_characteristics_ch1"]:
+                    if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
+                        self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
+                    for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
                         sample_char = dict([elem.split(": ")])
-                        self.processed_metadata[n_elem].update(sample_char)
-                    del self.processed_metadata[n_elem]["Sample_characteristics_ch1"]
+                        self.processed_metadata_samples[n_elem].update(sample_char)
+                        del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
                 except KeyError as err:
                     self._LOGGER.warning("Key Error: %s" % err)
                 except ValueError as err1:
@@ -405,29 +412,52 @@ class Geofetch:
 
             # adding missing keys to dict
             list_of_keys = []
-            for element in self.processed_metadata:
+            for element in self.processed_metadata_samples:
                 list_of_keys.extend(list(element.keys()))
 
             list_of_keys = list(set(list_of_keys))
 
-            for element in self.processed_metadata:
+            for element in self.processed_metadata_samples:
                 list_of_keys.extend(list(element.keys()))
 
             for k in list_of_keys:
-                for list_elem in range(len(self.processed_metadata)):
-                    if k not in self.processed_metadata[list_elem]:
-                        self.processed_metadata[list_elem][k] = ""
+                for list_elem in range(len(self.processed_metadata_samples)):
+                    if k not in self.processed_metadata_samples[list_elem]:
+                        self.processed_metadata_samples[list_elem][k] = ""
 
             # check if genome is ok:
-            self.processed_metadata = self.check_genome_value(self.processed_metadata)
+            self.processed_metadata_samples = self.check_genome_value(self.processed_metadata_samples)
 
 
-
-            mf_path = os.path.join(self.metadata_raw, self.project_name + '_annotation_processed.csv')
+            mf_path = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
             a_file = open(mf_path, "w")
-            dict_writer = csv.DictWriter(a_file, self.processed_metadata[0].keys())
+            dict_writer = csv.DictWriter(a_file, self.processed_metadata_samples[0].keys())
             dict_writer.writeheader()
-            dict_writer.writerows(self.processed_metadata)
+            dict_writer.writerows(self.processed_metadata_samples)
+            a_file.close()
+
+
+            list_of_keys = []
+            for element in self.processed_metadata_exp:
+                list_of_keys.extend(list(element.keys()))
+
+            list_of_keys = list(set(list_of_keys))
+
+            for element in self.processed_metadata_exp:
+                list_of_keys.extend(list(element.keys()))
+
+            for k in list_of_keys:
+                for list_elem in range(len(self.processed_metadata_exp)):
+                    if k not in self.processed_metadata_exp[list_elem]:
+                        self.processed_metadata_exp[list_elem][k] = ""
+
+
+
+            mf_path = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
+            a_file = open(mf_path, "w")
+            dict_writer = csv.DictWriter(a_file, self.processed_metadata_exp[0].keys())
+            dict_writer.writeheader()
+            dict_writer.writerows(self.processed_metadata_exp)
             a_file.close()
 
     def write_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
@@ -480,7 +510,6 @@ class Geofetch:
             self._LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
             time.sleep(t * 2)
 
-    # From Jay@Stackoverflow
     @staticmethod
     def which(program):
         """
@@ -658,22 +687,21 @@ class Geofetch:
         """
 
         tar_re = re.compile(r".*\.tar$")
-        files_list = []
         gse_numb = None
         meta_processed_samples = []
-        meta_processed_series = []
+        meta_processed_series = {"GSE": "", "files": []}
         for line in open(file_gse, 'r'):
 
             if re.compile(r"!Series_geo_accession").search(line):
                 gse_numb = self.get_value(line)
-
+                meta_processed_series["GSE"] = gse_numb
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
 
             if found:
                 pl = parse_SOFT_line(line)
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
-                self._LOGGER.info(f"Processed GSE file found: %s" % str(file_url))
+                self._LOGGER.debug(f"Processed GSE file found: %s" % str(file_url))
 
                 # search for tar file:
                 if tar_re.search(filename):
@@ -682,7 +710,7 @@ class Geofetch:
                         if line_gsm[0] == "^":
                             nb = len(self.check_file_existance(meta_processed_samples))
                             meta_processed_samples.append({"files": [],
-                                                          "GSE": gse_numb
+                                                           "GSE": gse_numb
                                                            })
                         else:
                             pl = parse_SOFT_line(line_gsm.strip('\n'))
@@ -703,32 +731,48 @@ class Geofetch:
                         if found_gsm:
                             pl = parse_SOFT_line(line_gsm)
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
-                            self._LOGGER.info(f"Processed GSM file found: %s" % str(file_url_gsm))
-                            files_list.append(file_url_gsm)
+                            self._LOGGER.debug(f"Processed GSM file found: %s" % str(file_url_gsm))
                             if file_url_gsm != "NONE":
                                 meta_processed_samples[nb]["files"].append(file_url_gsm)
 
                     self.check_file_existance(meta_processed_samples)
                     meta_processed_samples = self.separate_list_of_files(meta_processed_samples)
                     meta_processed_samples = self.separate_file_url(meta_processed_samples)
-                    # TODO: add here filter option
+
+                    self._LOGGER.info(f"Total number of processed SAMPLES files found is: "
+                                      f"%s" % str(len(meta_processed_samples)))
                     if self.filter_re:
                         meta_processed_samples = self.run_filter(meta_processed_samples)
 
                 # other files than .tar
                 else:
-                    # TODO: add other file with experiment metadata!
+                    meta_processed_series["files"].append(file_url)
 
-                    meta_processed_series.append({"file": file_url,
-                                                  "GSE": gse_numb,
-                                                  })
-        try:
-            self.processed_metadata.extend(meta_processed_samples)
-        except:
-            pass
-        self._LOGGER.info(f"Total number of files found is: %s" % str(len(files_list)))
-        return meta_processed_samples
-        # return files_list
+            # adding metadata to the experiment file
+            try:
+                bl = parse_SOFT_line(line.rstrip("\n"))
+                bl_key = list(bl.keys())[0]
+                bl_value = list(bl.values())[0]
+
+                if bl_key not in meta_processed_series.keys():
+                    meta_processed_series.update(bl)
+                else:
+                    if type(meta_processed_series[bl_key]) is not list:
+                        meta_processed_series[bl_key] = [meta_processed_series[bl_key]]
+                        meta_processed_series[bl_key].append(bl_value)
+                    else:
+                        meta_processed_series[bl_key].append(bl_value)
+            except IndexError as ind_err:
+                self._LOGGER.debug(f"IndexError in adding value to meta_processed_series: %s" % ind_err)
+
+        meta_processed_series = self.separate_list_of_files(meta_processed_series)
+        self._LOGGER.info(f"Total number of processed SERIES files found is: "
+                          f"%s" % str(len(meta_processed_series)))
+        if self.filter_re:
+            meta_processed_series = self.run_filter(meta_processed_series)
+
+        return meta_processed_samples, meta_processed_series
+
 
     @staticmethod
     def check_file_existance(meta_processed_sample):
@@ -745,15 +789,25 @@ class Geofetch:
     @staticmethod
     def separate_list_of_files(meta_list, col_name="files"):
         """
-        This method is separating list of files (dict value) into two different dicts
+        This method is separating list of files (dict value) or just simple dict
+        into two different dicts
         """
         separated_list = []
-        for meta_elem in meta_list:
-            for file_elem in meta_elem[col_name]:
-                new_dict = meta_elem.copy()
+        if type(meta_list) == list:
+            for meta_elem in meta_list:
+                for file_elem in meta_elem[col_name]:
+                    new_dict = meta_elem.copy()
+                    new_dict.pop(col_name, None)
+                    new_dict["file"] = file_elem
+                    separated_list.append(new_dict)
+        elif type(meta_list) == dict:
+            for file_elem in meta_list[col_name]:
+                new_dict = meta_list.copy()
                 new_dict.pop(col_name, None)
                 new_dict["file"] = file_elem
                 separated_list.append(new_dict)
+        else:
+            return TypeError("Incorrect type")
 
         return separated_list
 
@@ -780,6 +834,8 @@ class Geofetch:
         for meta_elem in meta_list:
             if self.filter_re.search(meta_elem[col_name].lower()):
                 filtered_list.append(meta_elem)
+        self._LOGGER.info("\033[32mTotal number of files after filter is: %i \033[0m" % len(filtered_list))
+
         return filtered_list
 
 
@@ -870,9 +926,13 @@ class Geofetch:
             # but wait; another possibility: there's no SRP linked to the GSE, but there
             # could still be an SRX linked to the (each) GSM.
             if len(gsm_metadata) == 1:
-                acc_SRP = gsm_metadata.keys()[0]
-                self._LOGGER.warning("But the GSM has an SRX number; instead of an "
-                                     "SRP, using SRX identifier for this sample: " + acc_SRP)
+                try:
+                    acc_SRP = gsm_metadata.keys()[0]
+                    self._LOGGER.warning("But the GSM has an SRX number; instead of an "
+                                         "SRP, using SRX identifier for this sample: " + acc_SRP)
+                except TypeError:
+                    self._LOGGER.warning("Error in gsm_metadata")
+
             # else:
             #     # More than one sample? not sure what to do here. Does this even happen?
             #     continue

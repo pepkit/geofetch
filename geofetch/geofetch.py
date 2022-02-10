@@ -109,6 +109,8 @@ class Geofetch:
         self.processed_metadata_samples = []
         self.processed_metadata_exp = []
 
+        self.supp_by = args.supp_by
+
     def run_geofetch(self):
         """ Main script driver/workflow """
 
@@ -177,18 +179,35 @@ class Geofetch:
 
             # download processed data
             if self.args.processed:
-                data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
-                self._LOGGER.debug("Data folder: " + data_geo_folder)
                 meta_processed_samples, meta_processed_series = self.get_list_of_processed_files(file_gse, file_gsm)
                 try:
                     processed_metadata_samples.extend(meta_processed_samples)
                     processed_metadata_exp.extend(meta_processed_series)
                 except:
                     pass
-                processed_files = [each_file["file_url"] for each_file in meta_processed_samples]
+
                 if not self.args.just_metadata:
-                    for file_url in processed_files:
-                        self.download_processed_file(file_url, data_geo_folder)
+                    data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
+                    self._LOGGER.debug("Data folder: " + data_geo_folder)
+
+                    if self.supp_by == "all":
+                        processed_samples_files = [each_file["file_url"] for each_file in meta_processed_samples]
+                        for file_url in processed_samples_files:
+                            self.download_processed_file(file_url, data_geo_folder)
+
+                        processed_series_files = [each_file["file_url"] for each_file in meta_processed_series]
+                        for file_url in processed_series_files:
+                            self.download_processed_file(file_url, data_geo_folder)
+
+                    elif self.supp_by == "samples":
+                        processed_samples_files = [each_file["file_url"] for each_file in meta_processed_samples]
+                        for file_url in processed_samples_files:
+                            self.download_processed_file(file_url, data_geo_folder)
+
+                    elif self.supp_by == "series":
+                        processed_series_files = [each_file["file_url"] for each_file in meta_processed_series]
+                        for file_url in processed_series_files:
+                            self.download_processed_file(file_url, data_geo_folder)
 
 
             # Parse metadata from SRA
@@ -416,13 +435,20 @@ class Geofetch:
             # adding missing keys to dict
             # check if genome is ok:
             # self.processed_metadata_samples = self.check_genome_value(self.processed_metadata_samples)
+            if self.supp_by == "all":
+                supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
+                self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
-            supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
-            self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
+                self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
+            elif self.supp_by == "samples":
+                supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
+                self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
-            supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
-            self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+            elif self.supp_by == "series":
+                supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
+                self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
     @staticmethod
     def unify_list_keys(processed_meta_list):
@@ -756,6 +782,7 @@ class Geofetch:
                 self._LOGGER.debug(f"IndexError in adding value to meta_processed_series: %s" % ind_err)
 
         meta_processed_series = self.separate_list_of_files(meta_processed_series)
+        meta_processed_series = self.separate_file_url(meta_processed_series)
         self._LOGGER.info(f"Total number of processed SERIES files found is: "
                           f"%s" % str(len(meta_processed_series)))
         if self.filter_re:
@@ -1077,21 +1104,37 @@ def _parse_cmdl(cmdl):
         help="Project config yaml file template.")
 
     parser.add_argument(
-        "-p", "--processed",
-        default=False,
-        action="store_true",
-        help="Download processed data [Default: download raw data].")
-
-    parser.add_argument(
         "-k", "--skip",
         default=0,
         type=int,
         help="Skip some accessions. [Default: no skip].")
 
     parser.add_argument(
+        "-p", "--processed",
+        default=False,
+        action="store_true",
+        help="Download processed data [Default: download raw data].")
+
+    parser.add_argument(
+        "--supp_by",
+        choices=['all', 'samples', 'series'],
+        default='all',
+        help="""Specify if processed data that you would like to download has to be from 
+                samples, experiement, or both (all). [Default: all]""")
+
+    parser.add_argument(
         "--filter",
         default=None,
         help="Filter regex for processed filenames [Default: None].")
+
+    parser.add_argument(
+        "--size-filter",
+        dest="size_filter",
+        default=None,
+        help="""Filter size for processed files [Default: None]. 
+                Input format: 12 (12 bytes), 12K (12 kilobytes),
+                12MB (12 megabytes), 12GB (12 gigabytes)
+                """)
 
     parser.add_argument(
         "-g", "--geo-folder", default=safe_echo("GEODATA"),

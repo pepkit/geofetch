@@ -25,8 +25,9 @@ import subprocess
 import sys
 # import tarfile
 import time
+import pandas as pd
 
-from utils import Accession, parse_accessions, parse_SOFT_line
+from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
 from _version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
@@ -110,6 +111,11 @@ class Geofetch:
         self.processed_metadata_exp = []
 
         self.supp_by = args.supp_by
+
+        if args.filter_size is not None:
+            self.filter_size = convert_size(args.filter_size.lower())
+        else:
+            self.filter_size = args.filter_size
 
     def run_geofetch(self):
         """ Main script driver/workflow """
@@ -493,6 +499,11 @@ class Geofetch:
         return fp
 
     def write_processed_annotation(self, processed_metadata, file_annotation_path):
+        """
+        Saving annotation file by providing list of dictionaries with files metadata
+        :param list processed_metadata: list of dictionaries with files metadata
+        :param str file_annotation_path: the path to the metadata file that has to be saved
+        """
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
 
@@ -676,18 +687,26 @@ class Geofetch:
                     writer.writerows(values)
         return fp
 
-    def download_file(self, file_url, data_folder, sleep_after=0.5):
+    def download_file(self, file_url, data_folder, new_name=None, sleep_after=0.5):
         """
         Given an url for a file, downloading to specified folder
         :param str file_url: the URL of the file to download
         :param str data_folder: path to the folder where data should be downloaded
         :param float sleep_after: time to sleep after downloading
+        :param str new_name: new file name in the
         """
         filename = os.path.basename(file_url)
-        full_filepath = os.path.join(data_folder, filename)
+        if new_name is None:
+            full_filepath = os.path.join(data_folder, filename)
+        else:
+            full_filepath = os.path.join(data_folder, new_name)
+
         if not os.path.exists(full_filepath):
             self._LOGGER.info(f"\033[38;5;242m")  # set color to gray
-            ret = subprocess.call(['wget', '--no-clobber', file_url, '-P', data_folder])
+            # if dir does not exist:
+            if not os.path.exists(data_folder):
+                os.makedirs(data_folder)
+            ret = subprocess.call(['wget', '--no-clobber', file_url, '-O', full_filepath])
             self._LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
             time.sleep(sleep_after)
             self._LOGGER.info(f"\033[0m")  # Reset to default terminal color
@@ -696,7 +715,7 @@ class Geofetch:
 
     def get_list_of_processed_files(self, file_gse, file_gsm):
         """
-        Given a path to GSE metafile, downloading filelist of tar file and making list of all processed files
+        Given a paths to GSE and GSM metafile create a list of dicts of metadata of processed files
         :param str file_gse: the path to gse metafile
         :param str file_gsm: the path to gse metafile
         :return list: list of metadata of processed files
@@ -721,6 +740,13 @@ class Geofetch:
 
                 # search for tar file:
                 if tar_re.search(filename):
+                    # find and download filelist - file with information about files in tar
+                    index = file_url.rfind("/")
+                    tar_files_list_url = file_url[:index+1] + "filelist.txt"
+                    #file_list_name
+                    filelist_path = os.path.join(self.metadata_expanded, gse_numb+"_file_list.txt")
+                    self.download_file(tar_files_list_url, self.metadata_expanded, gse_numb+"_file_list.txt")
+
                     nb = len(meta_processed_samples) - 1
                     for line_gsm in open(file_gsm, 'r'):
                         if line_gsm[0] == "^":
@@ -757,10 +783,19 @@ class Geofetch:
 
                     self._LOGGER.info(f"Total number of processed SAMPLES files found is: "
                                       f"%s" % str(len(meta_processed_samples)))
+
+                    # expand meta_processed_samples with information about type and size
+                    file_info_add = self.read_tar_filelist(filelist_path)
+                    for index_nr in range(len(meta_processed_samples)):
+                        file_name = meta_processed_samples[index_nr]["sample_name"]
+                        meta_processed_samples[index_nr].update(file_info_add[file_name])
+
                     if self.filter_re:
                         meta_processed_samples = self.run_filter(meta_processed_samples)
+                    if self.filter_size:
+                        meta_processed_samples = self.run_size_filter(meta_processed_samples)
 
-                # other files than .tar
+                # other files than .tar: saving them into meta_processed_series list
                 else:
                     meta_processed_series["files"].append(file_url)
 
@@ -854,6 +889,38 @@ class Geofetch:
         self._LOGGER.info("\033[32mTotal number of files after filter is: %i \033[0m" % len(filtered_list))
 
         return filtered_list
+
+    def run_size_filter(self, meta_list, col_name="size"):
+        """
+        function for filtering file size
+        """
+        if self.filter_size is not None:
+            filtered_list = []
+            for meta_elem in meta_list:
+                if meta_elem[col_name] <= self.filter_size:
+                    filtered_list.append(meta_elem)
+        else:
+            self._LOGGER.info("\033[32mTotal number of files after size filter NOOOONE???? \033[0m")
+            return meta_list
+        self._LOGGER.info("\033[32mTotal number of files after size filter is: %i \033[0m" % len(filtered_list))
+        return filtered_list
+
+    @staticmethod
+    def read_tar_filelist(file_path):
+        """
+        Creating list for supplementary files that are listed in "filelist.txt"
+        :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
+        :return dict: dict of supplementary file names and additional information
+        """
+        files_info = {}
+        list_file = pd.read_csv(file_path, sep="\t")
+
+        for index, row in list_file.iterrows():
+            files_info[row['Name']] = {
+                "size": row['Size'],
+                "type": row['Type']
+            }
+        return files_info
 
 
     # def check_genome_value(self, meta_list):
@@ -1116,25 +1183,24 @@ def _parse_cmdl(cmdl):
         help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
-        "--supp_by",
+        "--stored-in",
+        dest="supp_by",
         choices=['all', 'samples', 'series'],
         default='all',
         help="""Specify if processed data that you would like to download has to be from 
-                samples, experiement, or both (all). [Default: all]""")
+                samples, experiment, or both (all). [Default: all]""")
 
     parser.add_argument(
         "--filter",
         default=None,
-        help="Filter regex for processed filenames [Default: None].")
+        help="Optional: Filter regex for processed filenames [Default: None].")
 
     parser.add_argument(
-        "--size-filter",
-        dest="size_filter",
+        "--filter-size",
+        dest="filter_size",
         default=None,
-        help="""Filter size for processed files [Default: None]. 
-                Input format: 12 (12 bytes), 12K (12 kilobytes),
-                12MB (12 megabytes), 12GB (12 gigabytes)
-                """)
+        help="""Optional: Filter size for processed files That are stored as sample repository [Default: None].
+                Supported input formats : 12B, 12KB, 12MB, 12GB """)
 
     parser.add_argument(
         "-g", "--geo-folder", default=safe_echo("GEODATA"),

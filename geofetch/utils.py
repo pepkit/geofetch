@@ -4,6 +4,7 @@ from collections import OrderedDict
 import logging
 import os
 import subprocess
+import re
 
 
 __author__ = ["Vince Reuter", "Nathan Sheffield"]
@@ -270,3 +271,24 @@ def split_accn(accn):
     """
     typename, number_text = accn[:3], accn[3:]
     return typename.upper(), number_text
+
+
+def convert_size(size_str: str) -> int:
+    abbreviation_dict = {"gb": 1073741824,
+                         "mb": 1048576,
+                         "kb": 1024,
+                         "b": 1}
+    supported_formats = r"(\dgb|\dmb|\db|\dkb)$"
+    reg_number = r'^\d+'
+    abbreviation = re.findall(supported_formats, size_str)
+    size_numb = re.findall(reg_number, size_str)
+
+    # check if list is empty
+    if len(abbreviation) == 0:
+        size_in_bytes = size_numb[0]
+    else:
+        abb = abbreviation[0][1:]
+        size_in_bytes = int(size_numb[0])*abbreviation_dict[abb]
+
+    return size_in_bytes
+

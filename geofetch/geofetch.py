@@ -117,6 +117,12 @@ class Geofetch:
         else:
             self.filter_size = args.filter_size
 
+        # if user specified a pipeline interface path, add it into the project config
+        if self.args.pipeline_interfaces:
+            self.file_pipeline_interfaces = self.args.pipeline_interfaces
+        else:
+            self.file_pipeline_interfaces = "null"
+
     def run_geofetch(self):
         """ Main script driver/workflow """
 
@@ -178,7 +184,7 @@ class Geofetch:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
 
             # download gsm metadata with processed files
-            gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list,  file_gsm)
+            gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list, file_gsm)
             metadata_dict[acc_GSE] = gsm_metadata
 
             self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
@@ -214,7 +220,6 @@ class Geofetch:
                         processed_series_files = [each_file["file_url"] for each_file in meta_processed_series]
                         for file_url in processed_series_files:
                             self.download_processed_file(file_url, data_geo_folder)
-
 
             # Parse metadata from SRA
             # Produce an annotated output from the GSM and SRARunInfo files.
@@ -375,12 +380,8 @@ class Geofetch:
         if len(failed_runs) > 0:
             self._LOGGER.warn(f"The following samples could not be downloaded: {failed_runs}")
 
-        # if user specified a pipeline interface path, add it into the project config
-        if self.args.pipeline_interfaces:
-            file_pipeline_interfaces = self.args.pipeline_interfaces
-        else:
-            file_pipeline_interfaces = "null"
 
+        #######################################################################################
         self._LOGGER.info("Creating complete project annotation sheets and config file...")
         # If the project included more than one GSE, we can now output combined
         # annotation tables for the entire project.
@@ -398,7 +399,6 @@ class Geofetch:
             file_subannotation = "null"
 
         # Write project config file
-
         if not self.args.config_template:
             geofetchdir = os.path.dirname(__file__)
             self.args.config_template = os.path.join(geofetchdir, "config_template.yaml")
@@ -410,7 +410,7 @@ class Geofetch:
             "project_name": self.project_name,
             "annotation": os.path.basename(file_annotation),
             "subannotation": os.path.basename(file_subannotation),
-            "pipeline_interfaces": file_pipeline_interfaces
+            "pipeline_interfaces": self.file_pipeline_interfaces
         }
 
         for k, v in template_values.items():
@@ -421,32 +421,15 @@ class Geofetch:
         config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
         self._write(config, template, msg_pre="  Config file: ")
 
+        ############################## This is processed file download and annotation
         if self.args.processed:
-                # extend sample_characteristics_ch1
-                # for n_elem in range(len(self.processed_metadata_samples)):
-                #     # TODO: make method out of this:: so it will separate many columns, not just one
-            try:
-                # if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
-                #     self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
-                # for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
-                #     sample_char = dict([elem.split(": ")])
-                #     self.processed_metadata_samples[n_elem].update(sample_char)
-                #     del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
-                # processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, "Sample_characteristics_ch1")
-                processed_metadata_samples = self.unify_list_keys(processed_metadata_samples)
-                list_of_keys = []
-                for element in  processed_metadata_samples :
-                    list_of_keys.extend(list(element.keys()))
-                for key_in_list in list_of_keys:
-                    processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, key_in_list )
-            except KeyError as err:
-                self._LOGGER.warning("Key Error: %s" % err)
-            except ValueError as err1:
-                self._LOGGER.warning("Value Error: %s" % err1)
+            processed_metadata_samples = self.unify_list_keys(processed_metadata_samples)
 
-            # adding missing keys to dict
-            # check if genome is ok:
-            # self.processed_metadata_samples = self.check_genome_value(self.processed_metadata_samples)
+            list_of_keys = self.get_list_of_keys(processed_metadata_samples)
+            self._LOGGER.info("Expanding metadata list...")
+            for key_in_list in list_of_keys:
+                processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, key_in_list)
+
             if self.supp_by == "all":
                 supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
                 self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
@@ -463,49 +446,51 @@ class Geofetch:
                 self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
     def expand_metadata_list(self, metadata_list, dict_key):
+        try:
+            element_is_list = any(type(list_item[dict_key]) is list for list_item in metadata_list)
+            if element_is_list:
+                for n_elem in range(len(metadata_list)):
+                    if type(metadata_list[n_elem][dict_key]) is not list:
+                        metadata_list[n_elem][dict_key] = [
+                            metadata_list[n_elem][dict_key]]
 
-        self._LOGGER.info("Expanding metadata list")
+                    just_string = False
+                    this_string = ""
+                    for elem in metadata_list[n_elem][dict_key]:
+                        separated_elements = elem.split(": ")
+                        if len(separated_elements) >= 2:
+                            list_of_elem = [separated_elements[0], ": ".join(separated_elements[1:])]
+                            sample_char = dict([list_of_elem])
+                            metadata_list[n_elem].update(sample_char)
+                        else:
+                            just_string = True
+                            this_string += elem
 
-        element_is_list = any(type(list_item[dict_key]) is list for list_item in metadata_list)
-        if element_is_list:
-            for n_elem in range(len(metadata_list)):
-                if type(metadata_list[n_elem][dict_key]) is not list:
-                    metadata_list[n_elem][dict_key] = [
-                        metadata_list[n_elem][dict_key]]
-
-                just_string = False
-                this_string = ""
-                for elem in metadata_list[n_elem][dict_key]:
-                    separated_elements = elem.split(": ")
-                    if len(separated_elements) >= 2:
-                        list_of_elem = [separated_elements[0], ": ".join(separated_elements[1:])]
-                        sample_char = dict([list_of_elem])
-                        metadata_list[n_elem].update(sample_char)
+                    if just_string:
+                        metadata_list[n_elem][dict_key] = this_string
                     else:
-                        just_string = True
-                        this_string += elem
+                        del metadata_list[n_elem][dict_key]
 
-                if just_string:
-                    metadata_list[n_elem][dict_key] = this_string
-                else:
-                    del metadata_list[n_elem][dict_key]
-
+                return metadata_list
+            else:
+                self._LOGGER.debug("metadata with %s was not expanded, as item is not list" % dict_key)
+                return metadata_list
+        except KeyError as err:
+            self._LOGGER.warning("Key Error: %s" % err)
             return metadata_list
-        else:
-            self._LOGGER.debug("metadata with %s was not expanded, as item is not list" % dict_key)
+        except ValueError as err1:
+            self._LOGGER.warning("Value Error: %s" % err1)
             return metadata_list
-
-
-
 
     @staticmethod
-    def unify_list_keys(processed_meta_list):
+    def get_list_of_keys(list_of_dict):
         list_of_keys = []
-        for element in processed_meta_list:
+        for element in list_of_dict:
             list_of_keys.extend(list(element.keys()))
-        list_of_keys = list(set(list_of_keys))
-        for element in processed_meta_list:
-            list_of_keys.extend(list(element.keys()))
+        return list(set(list_of_keys))
+
+    def unify_list_keys(self, processed_meta_list):
+        list_of_keys = self.get_list_of_keys(processed_meta_list)
         for k in list_of_keys:
             for list_elem in range(len(processed_meta_list)):
                 if k not in processed_meta_list[list_elem]:
@@ -555,18 +540,17 @@ class Geofetch:
             dict_writer.writerows(processed_metadata)
         self._LOGGER.info("\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path)
 
-
         geofetchdir = os.path.dirname(__file__)
         config_template = os.path.join(geofetchdir, "config_processed_template.yaml")
 
         with open(config_template, 'r') as template_file:
             template = template_file.read()
 
-
         template_values = {
             "project_name": self.project_name,
             "sample_table": file_annotation_path,
-            "geo_folder": self.args.geo_folder
+            "geo_folder": self.args.geo_folder,
+            "pipeline_interfaces": self.file_pipeline_interfaces
         }
 
         for k, v in template_values.items():
@@ -806,10 +790,10 @@ class Geofetch:
                 if tar_re.search(filename):
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
-                    tar_files_list_url = file_url[:index+1] + "filelist.txt"
-                    #file_list_name
-                    filelist_path = os.path.join(self.metadata_expanded, gse_numb+"_file_list.txt")
-                    self.download_file(tar_files_list_url, self.metadata_expanded, gse_numb+"_file_list.txt")
+                    tar_files_list_url = file_url[:index + 1] + "filelist.txt"
+                    # file_list_name
+                    filelist_path = os.path.join(self.metadata_expanded, gse_numb + "_file_list.txt")
+                    self.download_file(tar_files_list_url, self.metadata_expanded, gse_numb + "_file_list.txt")
 
                     nb = len(meta_processed_samples) - 1
                     for line_gsm in open(file_gsm, 'r'):
@@ -827,7 +811,8 @@ class Geofetch:
                                     meta_processed_samples[nb].update(pl)
                                 else:
                                     if type(meta_processed_samples[nb][element_keys]) is not list:
-                                        meta_processed_samples[nb][element_keys] = [meta_processed_samples[nb][element_keys]]
+                                        meta_processed_samples[nb][element_keys] = [
+                                            meta_processed_samples[nb][element_keys]]
                                         meta_processed_samples[nb][element_keys].append(element_values)
                                     else:
                                         meta_processed_samples[nb][element_keys].append(element_values)
@@ -889,7 +874,6 @@ class Geofetch:
 
         return meta_processed_samples, meta_processed_series
 
-
     @staticmethod
     def check_file_existance(meta_processed_sample):
         """
@@ -941,7 +925,6 @@ class Geofetch:
             separated_list.append(new_dict)
         return separated_list
 
-
     def run_filter(self, meta_list, col_name="file"):
         """
         If user specified filter it will filter all this files here by col_name
@@ -985,26 +968,6 @@ class Geofetch:
                 "type": row['Type']
             }
         return files_info
-
-
-    # def check_genome_value(self, meta_list):
-    #     for elem_nb in range(len(meta_list)):
-    #         try:
-    #             if meta_list[elem_nb]["genome build"] == "" or  meta_list[elem_nb]["genome build"] is None:
-    #                 for elem in meta_list[elem_nb]["Sample_data_processing"]:
-    #                     dict_elem = elem.split(": ")
-    #                     if dict_elem[0] == 'Genome_build':
-    #                         meta_list[elem_nb]["genome build"] = dict_elem[-1]
-    #                         break
-    #         except KeyError:
-    #             for elem_nb1 in range(len(meta_list)):
-    #                 meta_list[elem_nb1]["genome build"] = ""
-    #             self.check_genome_value(meta_list)
-    #             break
-    #         except Exception as err:
-    #             self._LOGGER.warning(f"Error in check genome value: %s" % err)
-    #
-    #     return meta_list
 
     @staticmethod
     def get_value(all_line):

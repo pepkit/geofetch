@@ -511,9 +511,31 @@ class Geofetch:
             dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
             dict_writer.writeheader()
             dict_writer.writerows(processed_metadata)
-        self._LOGGER.info("\033[92mFile %s has been saved successfully\033[0m" %file_annotation_path)
-        return True
+        self._LOGGER.info("\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path)
 
+
+        geofetchdir = os.path.dirname(__file__)
+        config_template = os.path.join(geofetchdir, "config_processed_template.yaml")
+
+        with open(config_template, 'r') as template_file:
+            template = template_file.read()
+
+
+        template_values = {
+            "project_name": self.project_name,
+            "sample_table": file_annotation_path,
+            "geo_folder": self.args.geo_folder
+        }
+
+        for k, v in template_values.items():
+            placeholder = "{" + str(k) + "}"
+            template = template.replace(placeholder, str(v))
+
+        # save .yaml file
+        yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
+        config = os.path.join(self.metadata_raw, self.project_name + yaml_name)
+        self._write(config, template, msg_pre="  Config file: ")
+        return True
 
     def download_SRA_file(self, run_name):
         """
@@ -1203,7 +1225,8 @@ def _parse_cmdl(cmdl):
                 Supported input formats : 12B, 12KB, 12MB, 12GB """)
 
     parser.add_argument(
-        "-g", "--geo-folder", default=safe_echo("GEODATA"),
+        "-g", "--geo-folder",
+        default=safe_echo("GEODATA"),
         help="Optional: Specify a location to store processed GEO files "
              "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 

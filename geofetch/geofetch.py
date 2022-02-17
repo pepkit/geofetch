@@ -422,21 +422,27 @@ class Geofetch:
         self._write(config, template, msg_pre="  Config file: ")
 
         if self.args.processed:
-            # extend sample_characteristics_ch1
-            # for n_elem in range(len(self.processed_metadata_samples)):
-            #     # TODO: make method out of this:: so it will separate many columns, not just one
-            #
-            #     try:
-            #         if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
-            #             self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
-            #         for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
-            #             sample_char = dict([elem.split(": ")])
-            #             self.processed_metadata_samples[n_elem].update(sample_char)
-            #             del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
-            #     except KeyError as err:
-            #         self._LOGGER.warning("Key Error: %s" % err)
-            #     except ValueError as err1:
-            #         self._LOGGER.warning("Value Error: %s" % err1)
+                # extend sample_characteristics_ch1
+                # for n_elem in range(len(self.processed_metadata_samples)):
+                #     # TODO: make method out of this:: so it will separate many columns, not just one
+            try:
+                # if type(self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]) is not list:
+                #     self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"] = [self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]]
+                # for elem in self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]:
+                #     sample_char = dict([elem.split(": ")])
+                #     self.processed_metadata_samples[n_elem].update(sample_char)
+                #     del self.processed_metadata_samples[n_elem]["Sample_characteristics_ch1"]
+                # processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, "Sample_characteristics_ch1")
+                processed_metadata_samples = self.unify_list_keys(processed_metadata_samples)
+                list_of_keys = []
+                for element in  processed_metadata_samples :
+                    list_of_keys.extend(list(element.keys()))
+                for key_in_list in list_of_keys:
+                    processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, key_in_list )
+            except KeyError as err:
+                self._LOGGER.warning("Key Error: %s" % err)
+            except ValueError as err1:
+                self._LOGGER.warning("Value Error: %s" % err1)
 
             # adding missing keys to dict
             # check if genome is ok:
@@ -455,6 +461,42 @@ class Geofetch:
             elif self.supp_by == "series":
                 supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
                 self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+
+    def expand_metadata_list(self, metadata_list, dict_key):
+
+        self._LOGGER.info("Expanding metadata list")
+
+        element_is_list = any(type(list_item[dict_key]) is list for list_item in metadata_list)
+        if element_is_list:
+            for n_elem in range(len(metadata_list)):
+                if type(metadata_list[n_elem][dict_key]) is not list:
+                    metadata_list[n_elem][dict_key] = [
+                        metadata_list[n_elem][dict_key]]
+
+                just_string = False
+                this_string = ""
+                for elem in metadata_list[n_elem][dict_key]:
+                    separated_elements = elem.split(": ")
+                    if len(separated_elements) >= 2:
+                        list_of_elem = [separated_elements[0], ": ".join(separated_elements[1:])]
+                        sample_char = dict([list_of_elem])
+                        metadata_list[n_elem].update(sample_char)
+                    else:
+                        just_string = True
+                        this_string += elem
+
+                if just_string:
+                    metadata_list[n_elem][dict_key] = this_string
+                else:
+                    del metadata_list[n_elem][dict_key]
+
+            return metadata_list
+        else:
+            self._LOGGER.debug("metadata with %s was not expanded, as item is not list" % dict_key)
+            return metadata_list
+
+
+
 
     @staticmethod
     def unify_list_keys(processed_meta_list):
@@ -912,7 +954,7 @@ class Geofetch:
 
         return filtered_list
 
-    def run_size_filter(self, meta_list, col_name="size"):
+    def run_size_filter(self, meta_list, col_name="file_size"):
         """
         function for filtering file size
         """
@@ -939,7 +981,7 @@ class Geofetch:
 
         for index, row in list_file.iterrows():
             files_info[row['Name']] = {
-                "size": row['Size'],
+                "file_size": row['Size'],
                 "type": row['Type']
             }
         return files_info

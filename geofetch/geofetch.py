@@ -26,12 +26,12 @@ import sys
 # import tarfile
 import time
 import pandas as pd
-from logmuse import add_logging_options, logger_via_cli
-from ubiquerg import expandpath, is_command_callable
 
 from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
 from _version import __version__
 
+from logmuse import add_logging_options, logger_via_cli
+from ubiquerg import expandpath, is_command_callable
 
 _STRING_TYPES = str
 _LOGGER = None
@@ -450,7 +450,7 @@ class Geofetch:
         try:
             element_is_list = any(type(list_item[dict_key]) is list for list_item in metadata_list)
             if element_is_list:
-                for n_elem in enumerate(metadata_list):
+                for n_elem in range(len(metadata_list)):
                     if type(metadata_list[n_elem][dict_key]) is not list:
                         metadata_list[n_elem][dict_key] = [
                             metadata_list[n_elem][dict_key]]
@@ -493,7 +493,7 @@ class Geofetch:
     def unify_list_keys(self, processed_meta_list):
         list_of_keys = self.get_list_of_keys(processed_meta_list)
         for k in list_of_keys:
-            for list_elem in enumerate(processed_meta_list):
+            for list_elem in range(len(processed_meta_list)):
                 if k not in processed_meta_list[list_elem]:
                     processed_meta_list[list_elem][k] = ""
         return processed_meta_list
@@ -591,6 +591,8 @@ class Geofetch:
         """
         return str:  the path to a program to make sure it exists
         """
+        import os
+
         def is_exe(fp):
             return os.path.isfile(fp) and os.access(fp, os.X_OK)
 
@@ -834,7 +836,7 @@ class Geofetch:
 
                     # expand meta_processed_samples with information about type and size
                     file_info_add = self.read_tar_filelist(filelist_path)
-                    for index_nr in enumerate(meta_processed_samples):
+                    for index_nr in range(len(meta_processed_samples)):
                         file_name = meta_processed_samples[index_nr]["sample_name"]
                         meta_processed_samples[index_nr].update(file_info_add[file_name])
 
@@ -974,6 +976,7 @@ class Geofetch:
         return line_value.split(": ")[-1].rstrip("\n")
 
     def download_processed_file(self, file_url, data_folder):
+
         """
         Given a url for a file, download it, and extract anything passing the filter.
         :param str file_url: the URL of the file to download

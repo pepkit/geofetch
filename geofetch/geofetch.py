@@ -224,8 +224,9 @@ class Geofetch:
                 metadata_dict[acc_GSE] = gsm_metadata
 
                 # download gsm metadata
-                self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
-
+                result = self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
+                if not result:
+                    continue
                 # Parse metadata from SRA
                 # Produce an annotated output from the GSM and SRARunInfo files.
                 # This will merge the GSM and SRA sample metadata into a dict of dicts,
@@ -532,6 +533,11 @@ class Geofetch:
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
         """
+        if len(processed_metadata) == 0:
+            self._LOGGER.info("No files found. No data to save. File %s won't be created" %file_annotation_path)
+            return False
+
+
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
 
@@ -560,7 +566,7 @@ class Geofetch:
 
         # save .yaml file
         yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
-        config = os.path.join(self.metadata_raw, self.project_name + yaml_name)
+        config = os.path.join(self.metadata_raw, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
         return True
 
@@ -1046,6 +1052,7 @@ class Geofetch:
                                          "SRP, using SRX identifier for this sample: " + acc_SRP)
                 except TypeError:
                     self._LOGGER.warning("Error in gsm_metadata")
+                    return False
 
             # else:
             #     # More than one sample? not sure what to do here. Does this even happen?
@@ -1061,10 +1068,12 @@ class Geofetch:
             except Exception as err:
                 self._LOGGER.warning(f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
                                      f"Error: {err}  \033[0m")
+                return False
         else:
             self._LOGGER.info("Found previous SRA file: " + file_sra)
 
         self._LOGGER.info(f"SRP: {acc_SRP}")
+        return True
 
     def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm):
         """
@@ -1213,26 +1222,28 @@ def _parse_cmdl(cmdl):
         dest="supp_by",
         choices=['all', 'samples', 'series'],
         default='all',
-        help="""Specify if processed data that you would like to download has to be from
-                samples, experiment, or both (all). [Default: all]""")
+        help="""Optional: {processed} Specify GEO location where processed data is stored 
+                and has to be downloaded. Processed data is stored in
+                samples and experiments.
+                Allowable values are: samples, series or both (all). [Default: all]""")
 
     parser.add_argument(
         "--filter",
         default=None,
-        help="Optional: Filter regex for processed filenames [Default: None].")
+        help="Optional: {processed} Filter regex for processed filenames [Default: None].")
 
     parser.add_argument(
         "--filter-size",
         dest="filter_size",
         default=None,
-        help="""Optional: Filter size for processed files
+        help="""Optional: {processed} Filter size for processed files
                 that are stored as sample repository [Default: None].
                 Supported input formats : 12B, 12KB, 12MB, 12GB """)
 
     parser.add_argument(
         "-g", "--geo-folder",
         default=safe_echo("GEODATA"),
-        help="Optional: Specify a location to store processed GEO files "
+        help="Optional: {processed} Specify a location to store processed GEO files "
              "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 
     parser.add_argument(

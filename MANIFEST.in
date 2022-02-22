@@ -2,3 +2,4 @@ include requirements/*
 include README.md
 include docs/img/geofetch_logo.svg
 include geofetch/config_template.yaml
+include geofetch/config_processed_template.yaml

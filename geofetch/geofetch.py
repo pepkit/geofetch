@@ -25,7 +25,6 @@ import subprocess
 import sys
 # import tarfile
 import time
-import pandas as pd
 
 from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
 from _version import __version__
@@ -966,14 +965,24 @@ class Geofetch:
         :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
         :return dict: dict of supplementary file names and additional information
         """
-        files_info = {}
-        list_file = pd.read_csv(file_path, sep="\t")
 
-        for index, row in list_file.iterrows():
-            files_info[row['Name']] = {
-                "file_size": row['Size'],
-                "type": row['Type']
-            }
+        files_info = {}
+        with open(file_path, newline='') as csvfile:
+            csv_reader = csv.reader(csvfile, delimiter="\t")
+            line_count = 0
+            for row in csv_reader:
+                if line_count == 0:
+                    name_index = row.index('Name')
+                    size_index = row.index('Size')
+                    type_index = row.index('Type')
+
+                    line_count += 1
+                else:
+                    files_info[row[name_index]] = {
+                        "file_size": row[size_index],
+                        "type": row[type_index]
+                    }
+
         return files_info
 
     @staticmethod

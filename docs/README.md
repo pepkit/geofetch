@@ -23,7 +23,7 @@ You can add `--processed` if you want to download processed files from the given
 geofetch -i GSE95654 --processed
 ```
 
-You can add `--just-metadata` if you want to download metadata without the raw SRA files (or processed files if *processed* argument is added).
+You can add `--just-metadata` if you want to download metadata without the raw SRA files or processed GEO files.
 
 ```console
 geofetch -i GSE95654 --just-metadata

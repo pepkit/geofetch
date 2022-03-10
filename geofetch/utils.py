@@ -24,7 +24,7 @@ URL_BY_ACC = {
     "GSE": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gse&acc={ACCESSION}&form=text&view=full",
     "GSM": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc={ACCESSION}&form=text&view=full",
     "SRP": "https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}",
-    "SRX": "https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}"
+    "SRX": "https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}",
 }
 
 
@@ -73,22 +73,21 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
             base, ext = os.path.splitext(input_arg)
             if ext:
                 raise ValueError("SRP-like input must be an SRP accession")
-            file_sra = os.path.join(
-                metadata_folder, "SRA_{}.csv".format(input_arg))
+            file_sra = os.path.join(metadata_folder, "SRA_{}.csv".format(input_arg))
             # Fetch and write the metadata for this SRP accession.
             Accession(input_arg).fetch_metadata(file_sra)
             if just_metadata:
                 return
             # Read the Run identifiers to download.
             run_ids = []
-            with open(file_sra, 'r') as f:
+            with open(file_sra, "r") as f:
                 for l in f:
                     if l.startswith("SRR"):
                         r_id = l.split(",")[0]
                         run_ids.append(r_id)
             _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
-                subprocess.call(['prefetch', r_id, '--max-size', '50000000'])
+                subprocess.call(["prefetch", r_id, "--max-size", "50000000"])
             # Early return if we've just handled SRP accession directly.
             return
         else:
@@ -98,7 +97,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
         _LOGGER.info("Accession list file found: {}".format(input_arg))
 
         # Read input file line by line.
-        for line in open(input_arg, 'r'):
+        for line in open(input_arg, "r"):
             if (not line) or (line[0] in ["#", "\n", "\t"]):
                 continue
             fields = [x.rstrip() for x in line.split("\t")]
@@ -142,7 +141,7 @@ def parse_SOFT_line(l):
 
 
 class AccessionException(Exception):
-    """ Exceptional condition(s) dealing with accession number(s). """
+    """Exceptional condition(s) dealing with accession number(s)."""
 
     def __init__(self, reason=""):
         """
@@ -155,7 +154,7 @@ class AccessionException(Exception):
 
 
 class Accession(object):
-    """ Working with accession numbers. """
+    """Working with accession numbers."""
 
     _LOGGER = logging.getLogger("{}.{}".format(__name__, "Accession"))
 
@@ -174,9 +173,9 @@ class Accession(object):
         typename, number = self._validate(accn)
         if strict and not is_known_type(accn):
             raise AccessionException(
-                    "Unknown accession type for '{}': '{}'; "
-                    "supported types: {}".format(
-                            accn, typename, URL_BY_ACC.keys()))
+                "Unknown accession type for '{}': '{}'; "
+                "supported types: {}".format(accn, typename, URL_BY_ACC.keys())
+            )
         self.accn = accn
         self.typename = typename.upper()
 
@@ -201,8 +200,11 @@ class Accession(object):
         try:
             full_url = url_base.format(**format_kwargs)
         except KeyError:
-            _LOGGER.error("Couldn't populate URL format '{}' with {}".
-                          format(url_base, format_kwargs))
+            _LOGGER.error(
+                "Couldn't populate URL format '{}' with {}".format(
+                    url_base, format_kwargs
+                )
+            )
             raise
         _LOGGER.debug("Fetching: '%s'", full_url)
 
@@ -226,20 +228,21 @@ class Accession(object):
 
     @staticmethod
     def _validate(accn):
-        """ Determine if given value looks like an accession. """
+        """Determine if given value looks like an accession."""
         typename, number = split_accn(accn)
         if len(typename) != 3:
             raise AccessionException(
-                    "Not a three-character accession prefix: '{}' ('{}')".
-                    format(accn, typename))
+                "Not a three-character accession prefix: '{}' ('{}')".format(
+                    accn, typename
+                )
+            )
         try:
             number = int(number)
         except (TypeError, ValueError):
             raise AccessionException(
-                    "Not an integral accession number: '{}' ('{}')".
-                    format(accn, number))
+                "Not an integral accession number: '{}' ('{}')".format(accn, number)
+            )
         return typename, number
-
 
     @staticmethod
     def accn_type_exception(accn, typename, include_known=True):
@@ -256,8 +259,7 @@ class Accession(object):
         """
         message = "Unknown accn type for '{}': '{}'".format(accn, typename)
         if include_known:
-            message = "{}; known types: {}".format(
-                message, URL_BY_ACC.keys())
+            message = "{}; known types: {}".format(message, URL_BY_ACC.keys())
         return AccessionException(message)
 
 
@@ -274,12 +276,9 @@ def split_accn(accn):
 
 
 def convert_size(size_str: str) -> int:
-    abbreviation_dict = {"gb": 1073741824,
-                         "mb": 1048576,
-                         "kb": 1024,
-                         "b": 1}
+    abbreviation_dict = {"gb": 1073741824, "mb": 1048576, "kb": 1024, "b": 1}
     supported_formats = r"(\dgb|\dmb|\db|\dkb)$"
-    reg_number = r'^\d+'
+    reg_number = r"^\d+"
     abbreviation = re.findall(supported_formats, size_str)
     size_numb = re.findall(reg_number, size_str)
 
@@ -288,7 +287,6 @@ def convert_size(size_str: str) -> int:
         size_in_bytes = size_numb[0]
     else:
         abb = abbreviation[0][1:]
-        size_in_bytes = int(size_numb[0])*abbreviation_dict[abb]
+        size_in_bytes = int(size_numb[0]) * abbreviation_dict[abb]
 
     return size_in_bytes
-

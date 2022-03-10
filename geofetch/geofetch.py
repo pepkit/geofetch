@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+
 # import tarfile
 import time
 
@@ -37,11 +38,23 @@ _LOGGER = None
 # A set of hard-coded keys if you want to limit to just a few instead of taking
 # all information provided in GEO. Use with `--use-key-subset`
 ANNOTATION_SHEET_KEYS = [
-    "sample_name", "protocol", "read_type", "organism", "data_source",
-    'Sample_title', 'Sample_source_name_ch1', 'Sample_organism_ch1',
-    "Sample_library_selection", "Sample_library_strategy",
-    'Sample_type', "SRR", "SRX", 'Sample_geo_accession', 'Sample_series_id',
-    'Sample_instrument_model']
+    "sample_name",
+    "protocol",
+    "read_type",
+    "organism",
+    "data_source",
+    "Sample_title",
+    "Sample_source_name_ch1",
+    "Sample_organism_ch1",
+    "Sample_library_selection",
+    "Sample_library_strategy",
+    "Sample_type",
+    "SRR",
+    "SRX",
+    "Sample_geo_accession",
+    "Sample_series_id",
+    "Sample_instrument_model",
+]
 
 # Regex to parse out SRA accession identifiers
 PROJECT_PATTERN = re.compile(r"(SRP\d{4,8})")
@@ -58,7 +71,6 @@ NUM_RETRIES = 3
 
 
 class Geofetcher:
-
     def __init__(self, args):
         self.args = args
         global _LOGGER
@@ -67,7 +79,9 @@ class Geofetcher:
         # check to make sure prefetch is callable
         if not args.just_metadata and not args.processed:
             if not is_command_callable("prefetch"):
-                raise SystemExit("You must first install the sratoolkit, with prefetch in your PATH.")
+                raise SystemExit(
+                    "You must first install the sratoolkit, with prefetch in your PATH."
+                )
 
         if args.name:
             self.project_name = args.name
@@ -96,13 +110,19 @@ class Geofetcher:
                 self.metadata_raw = os.path.abspath(args.metadata_root)
 
             # Postpend the project name as a subfolder (only for -m option)
-            self.metadata_expanded = os.path.join(self.metadata_expanded, self.project_name)
+            self.metadata_expanded = os.path.join(
+                self.metadata_expanded, self.project_name
+            )
             self.metadata_raw = os.path.join(self.metadata_raw, self.project_name)
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
         # Some sanity checks before proceeding
-        if args.bam_conversion and not args.just_metadata and not self.which("samtools"):
+        if (
+            args.bam_conversion
+            and not args.just_metadata
+            and not self.which("samtools")
+        ):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
         self.processed_metadata_samples = []
@@ -122,9 +142,11 @@ class Geofetcher:
             self.file_pipeline_interfaces = "null"
 
     def fetch_all(self):
-        """ Main script driver/workflow """
+        """Main script driver/workflow"""
 
-        acc_GSE_list = parse_accessions(self.args.input, self.metadata_expanded, self.args.just_metadata)
+        acc_GSE_list = parse_accessions(
+            self.args.input, self.metadata_expanded, self.args.just_metadata
+        )
 
         # Loop through each accession.
         # This will process that accession, produce metadata and download files for
@@ -147,24 +169,32 @@ class Geofetcher:
                 continue
             elif ncount == self.args.skip + 1:
                 self._LOGGER.info(f"Skipped {self.args.skip} accessions. Starting now.")
-            self._LOGGER.info(f"\033[38;5;228mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m")
+            self._LOGGER.info(
+                f"\033[38;5;228mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
+            )
 
             if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
                 self._LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
-                self._LOGGER.warning("This does not appear to be a correctly formatted GSE accession! "
-                                     "Continue anyway...")
+                self._LOGGER.warning(
+                    "This does not appear to be a correctly formatted GSE accession! "
+                    "Continue anyway..."
+                )
 
             if len(acc_GSE_list[acc_GSE]) > 0:
-                self._LOGGER.info(f"Limit to: {list(acc_GSE_list[acc_GSE])}")  # a list of GSM#s
+                self._LOGGER.info(
+                    f"Limit to: {list(acc_GSE_list[acc_GSE])}"
+                )  # a list of GSM#s
 
             if self.args.refresh_metadata:
                 self._LOGGER.info("Refreshing metadata...")
 
             # For each GSE acc, produce a series of metadata files
-            file_gse = os.path.join(self.metadata_expanded, acc_GSE + '_GSE.soft')
-            file_gsm = os.path.join(self.metadata_expanded, acc_GSE + '_GSM.soft')
-            file_sra = os.path.join(self.metadata_expanded, acc_GSE + '_SRA.csv')
-            file_srafilt = os.path.join(self.metadata_expanded, acc_GSE + '_SRA_filt.csv')
+            file_gse = os.path.join(self.metadata_expanded, acc_GSE + "_GSE.soft")
+            file_gsm = os.path.join(self.metadata_expanded, acc_GSE + "_GSM.soft")
+            file_sra = os.path.join(self.metadata_expanded, acc_GSE + "_SRA.csv")
+            file_srafilt = os.path.join(
+                self.metadata_expanded, acc_GSE + "_SRA_filt.csv"
+            )
 
             # Grab the GSE and GSM SOFT files from GEO.
             # The GSE file has metadata describing the experiment, which includes
@@ -183,11 +213,13 @@ class Geofetcher:
 
             # if not os.path.isfile(file_gsm) or not os.path.isfile(file_gse):
 
-
             # download processed data
             if self.args.processed:
                 try:
-                    meta_processed_samples, meta_processed_series = self.get_list_of_processed_files(file_gse, file_gsm)
+                    (
+                        meta_processed_samples,
+                        meta_processed_series,
+                    ) = self.get_list_of_processed_files(file_gse, file_gsm)
                     processed_metadata_samples.extend(meta_processed_samples)
                     processed_metadata_exp.extend(meta_processed_series)
 
@@ -196,21 +228,33 @@ class Geofetcher:
                         self._LOGGER.debug("Data folder: " + data_geo_folder)
 
                         if self.supp_by == "all":
-                            processed_samples_files = [each_file["file_url"] for each_file in meta_processed_samples]
+                            processed_samples_files = [
+                                each_file["file_url"]
+                                for each_file in meta_processed_samples
+                            ]
                             for file_url in processed_samples_files:
                                 self.download_processed_file(file_url, data_geo_folder)
 
-                            processed_series_files = [each_file["file_url"] for each_file in meta_processed_series]
+                            processed_series_files = [
+                                each_file["file_url"]
+                                for each_file in meta_processed_series
+                            ]
                             for file_url in processed_series_files:
                                 self.download_processed_file(file_url, data_geo_folder)
 
                         elif self.supp_by == "samples":
-                            processed_samples_files = [each_file["file_url"] for each_file in meta_processed_samples]
+                            processed_samples_files = [
+                                each_file["file_url"]
+                                for each_file in meta_processed_samples
+                            ]
                             for file_url in processed_samples_files:
                                 self.download_processed_file(file_url, data_geo_folder)
 
                         elif self.supp_by == "series":
-                            processed_series_files = [each_file["file_url"] for each_file in meta_processed_series]
+                            processed_series_files = [
+                                each_file["file_url"]
+                                for each_file in meta_processed_series
+                            ]
                             for file_url in processed_series_files:
                                 self.download_processed_file(file_url, data_geo_folder)
                 except Exception as processed_exception:
@@ -234,8 +278,8 @@ class Geofetcher:
                 # For multi samples (samples with multiple runs), we keep track of these
                 # relations in a separate table, which is called the subannotation table.
                 gsm_multi_table = {}
-                file_read = open(file_sra, 'r')
-                file_write = open(file_srafilt, 'w')
+                file_read = open(file_sra, "r")
+                file_write = open(file_srafilt, "w")
                 self._LOGGER.info("Parsing SRA file to download SRR records")
                 initialized = False
 
@@ -257,11 +301,13 @@ class Geofetcher:
                     # possibly set in the input tsv file
                     sample_name = None  # initialize to empty
                     try:
-                        sample_name = acc_GSE_list[acc_GSE][gsm_metadata[experiment]["gsm_id"]]
+                        sample_name = acc_GSE_list[acc_GSE][
+                            gsm_metadata[experiment]["gsm_id"]
+                        ]
                     except KeyError:
                         pass
                     if not sample_name or sample_name == "":
-                        temp = gsm_metadata[experiment]['Sample_title']
+                        temp = gsm_metadata[experiment]["Sample_title"]
                         # Now do a series of transformations to cleanse the sample name
                         temp = temp.replace(" ", "_")
                         # Do people put commas in their sample names? Yes.
@@ -272,28 +318,45 @@ class Geofetcher:
                     # Otherwise, record that there's SRA data for this run.
                     # And set a few columns that are used as input to the Looper
                     # print("Updating columns for looper")
-                    self.update_columns(gsm_metadata, experiment, sample_name=sample_name,
-                                        read_type=line['LibraryLayout'])
+                    self.update_columns(
+                        gsm_metadata,
+                        experiment,
+                        sample_name=sample_name,
+                        read_type=line["LibraryLayout"],
+                    )
 
                     # Some experiments are flagged in SRA as having multiple runs.
                     if gsm_metadata[experiment].get("SRR") is not None:
                         # This SRX number already has an entry in the table.
-                        self._LOGGER.info(f"Found additional run: {run_name} ({experiment})")
+                        self._LOGGER.info(
+                            f"Found additional run: {run_name} ({experiment})"
+                        )
 
-                        if isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES) \
-                                and experiment not in gsm_multi_table:
+                        if (
+                            isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES)
+                            and experiment not in gsm_multi_table
+                        ):
                             # Only one has been stuck in so far, make a list
                             gsm_multi_table[experiment] = []
                             # Add first the original one, which was stored as a string
                             # previously
                             gsm_multi_table[experiment].append(
-                                [sample_name, experiment, gsm_metadata[experiment]["SRR"]])
+                                [
+                                    sample_name,
+                                    experiment,
+                                    gsm_metadata[experiment]["SRR"],
+                                ]
+                            )
                             # Now append the current SRR number in a list as [SRX, SRR]
-                            gsm_multi_table[experiment].append([sample_name, experiment, run_name])
+                            gsm_multi_table[experiment].append(
+                                [sample_name, experiment, run_name]
+                            )
                         else:
                             # this is the 3rd or later sample; the first two are done,
                             # so just add it.
-                            gsm_multi_table[experiment].append([sample_name, experiment, run_name])
+                            gsm_multi_table[experiment].append(
+                                [sample_name, experiment, run_name]
+                            )
 
                         if self.args.split_experiments:
                             # Duplicate the gsm metadata for this experiment (copy to make sure
@@ -302,7 +365,9 @@ class Geofetcher:
                             new_SRX = experiment + "_" + str(rep_number)
                             gsm_metadata[new_SRX] = copy.copy(gsm_metadata[experiment])
                             # gsm_metadata[new_SRX]["SRX"] = new_SRX
-                            gsm_metadata[new_SRX]["sample_name"] += "_" + str(rep_number)
+                            gsm_metadata[new_SRX]["sample_name"] += "_" + str(
+                                rep_number
+                            )
                             gsm_metadata[new_SRX]["SRR"] = run_name
                         else:
                             # Either way, set the srr code to multi in the main table.
@@ -316,10 +381,16 @@ class Geofetcher:
                     # Write to filtered SRA Runinfo file
                     wwrite.writerow(line)
                     self._LOGGER.info(f"Get SRR: {run_name} ({experiment})")
-                    bam_file = "" if self.args.bam_folder == "" else os.path.join(self.args.bam_folder,
-                                                                                  run_name + ".bam")
-                    fq_file = "" if self.args.fq_folder == "" else os.path.join(self.args.fq_folder,
-                                                                                run_name + "_1.fq")
+                    bam_file = (
+                        ""
+                        if self.args.bam_folder == ""
+                        else os.path.join(self.args.bam_folder, run_name + ".bam")
+                    )
+                    fq_file = (
+                        ""
+                        if self.args.fq_folder == ""
+                        else os.path.join(self.args.fq_folder, run_name + "_1.fq")
+                    )
 
                     # TODO: sam-dump has a built-in prefetch. I don't have to do
                     # any of this stuff... This also solves the bad sam-dump issues.
@@ -334,12 +405,14 @@ class Geofetcher:
                                 self.download_SRA_file(run_name)
                             except Exception as err:
                                 failed_runs.append(run_name)
-                                self._LOGGER.warning(f"Error occurred while downloading SRA file: {err}")
+                                self._LOGGER.warning(
+                                    f"Error occurred while downloading SRA file: {err}"
+                                )
 
                         else:
                             self._LOGGER.info("Dry run (no data download)")
 
-                        if self.args.bam_conversion and self.args.bam_folder != '':
+                        if self.args.bam_conversion and self.args.bam_folder != "":
                             try:
                                 # converting sra to bam using
                                 self.sra_bam_conversion(bam_file, run_name)
@@ -347,11 +420,17 @@ class Geofetcher:
                                 # checking if bam_file converted correctly, if not --> use fastq-dump
                                 st = os.stat(bam_file)
                                 if st.st_size < 100:
-                                    self._LOGGER.warning("Bam conversion failed with sam-dump. Trying fastq-dump...")
-                                    self.sra_bam_conversion2(bam_file, run_name, self.args.picard_path)
+                                    self._LOGGER.warning(
+                                        "Bam conversion failed with sam-dump. Trying fastq-dump..."
+                                    )
+                                    self.sra_bam_conversion2(
+                                        bam_file, run_name, self.args.picard_path
+                                    )
 
                             except FileNotFoundError as err:
-                                self._LOGGER.info(f"SRA file doesn't exist, please download it first: {err}")
+                                self._LOGGER.info(
+                                    f"SRA file doesn't exist, please download it first: {err}"
+                                )
 
                 file_read.close()
                 file_write.close()
@@ -363,78 +442,120 @@ class Geofetcher:
         self._LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
 
         if len(failed_runs) > 0:
-            self._LOGGER.warn(f"The following samples could not be downloaded: {failed_runs}")
+            self._LOGGER.warn(
+                f"The following samples could not be downloaded: {failed_runs}"
+            )
 
         #######################################################################################
 
         if self.args.processed:
-            processed_metadata_samples = self.unify_list_keys(processed_metadata_samples)
+            processed_metadata_samples = self.unify_list_keys(
+                processed_metadata_samples
+            )
 
             list_of_keys = self.get_list_of_keys(processed_metadata_samples)
             self._LOGGER.info("Expanding metadata list...")
             for key_in_list in list_of_keys:
-                processed_metadata_samples = self.expand_metadata_list(processed_metadata_samples, key_in_list)
+                processed_metadata_samples = self.expand_metadata_list(
+                    processed_metadata_samples, key_in_list
+                )
 
             if self.supp_by == "all":
-                supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
-                self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                supp_sample_path_meta = os.path.join(
+                    self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                )
+                self.write_processed_annotation(
+                    processed_metadata_samples, supp_sample_path_meta
+                )
 
-                supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
-                self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                supp_series_path_meta = os.path.join(
+                    self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                )
+                self.write_processed_annotation(
+                    processed_metadata_exp, supp_series_path_meta
+                )
 
             elif self.supp_by == "samples":
-                supp_sample_path_meta = os.path.join(self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE)
-                self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                supp_sample_path_meta = os.path.join(
+                    self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                )
+                self.write_processed_annotation(
+                    processed_metadata_samples, supp_sample_path_meta
+                )
 
             elif self.supp_by == "series":
-                supp_series_path_meta = os.path.join(self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE)
-                self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                supp_series_path_meta = os.path.join(
+                    self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                )
+                self.write_processed_annotation(
+                    processed_metadata_exp, supp_series_path_meta
+                )
         else:
             # Combine individual accessions into project-level annotations, and write
             # individual accession files (if requested)
             metadata_dict_combined = {}
             for acc_GSE, gsm_metadata in metadata_dict.items():
-                file_annotation = os.path.join(self.metadata_expanded, acc_GSE + '_annotation.csv')
+                file_annotation = os.path.join(
+                    self.metadata_expanded, acc_GSE + "_annotation.csv"
+                )
                 if self.args.acc_anno:
-                    self.write_gsm_annotation(gsm_metadata, file_annotation, use_key_subset=self.args.use_key_subset)
+                    self.write_gsm_annotation(
+                        gsm_metadata,
+                        file_annotation,
+                        use_key_subset=self.args.use_key_subset,
+                    )
                 metadata_dict_combined.update(gsm_metadata)
 
             subannotation_dict_combined = {}
             for acc_GSE, gsm_multi_table in subannotation_dict.items():
                 file_subannotation = os.path.join(
-                    self.metadata_expanded, acc_GSE + '_subannotation.csv')
+                    self.metadata_expanded, acc_GSE + "_subannotation.csv"
+                )
                 if self.args.acc_anno:
                     self.write_subannotation(gsm_multi_table, file_subannotation)
                 subannotation_dict_combined.update(gsm_multi_table)
-            self._LOGGER.info("Creating complete project annotation sheets and config file...")
+            self._LOGGER.info(
+                "Creating complete project annotation sheets and config file..."
+            )
             # If the project included more than one GSE, we can now output combined
             # annotation tables for the entire project.
 
             # Write combined annotation sheet
-            file_annotation = os.path.join(self.metadata_raw, self.project_name + '_annotation.csv')
-            self.write_gsm_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.args.use_key_subset)
+            file_annotation = os.path.join(
+                self.metadata_raw, self.project_name + "_annotation.csv"
+            )
+            self.write_gsm_annotation(
+                metadata_dict_combined,
+                file_annotation,
+                use_key_subset=self.args.use_key_subset,
+            )
 
             # Write combined subannotation table
             if len(subannotation_dict_combined) > 0:
                 file_subannotation = os.path.join(
-                    self.metadata_raw, self.project_name + '_subannotation.csv')
-                self.write_subannotation(subannotation_dict_combined, file_subannotation)
+                    self.metadata_raw, self.project_name + "_subannotation.csv"
+                )
+                self.write_subannotation(
+                    subannotation_dict_combined, file_subannotation
+                )
             else:
                 file_subannotation = "null"
 
             # Write project config file
             if not self.args.config_template:
                 geofetchdir = os.path.dirname(__file__)
-                self.args.config_template = os.path.join(geofetchdir, "config_template.yaml")
+                self.args.config_template = os.path.join(
+                    geofetchdir, "config_template.yaml"
+                )
 
-            with open(self.args.config_template, 'r') as template_file:
+            with open(self.args.config_template, "r") as template_file:
                 template = template_file.read()
 
             template_values = {
                 "project_name": self.project_name,
                 "annotation": os.path.basename(file_annotation),
                 "subannotation": os.path.basename(file_subannotation),
-                "pipeline_interfaces": self.file_pipeline_interfaces
+                "pipeline_interfaces": self.file_pipeline_interfaces,
             }
 
             for k, v in template_values.items():
@@ -447,19 +568,25 @@ class Geofetcher:
 
     def expand_metadata_list(self, metadata_list, dict_key):
         try:
-            element_is_list = any(type(list_item[dict_key]) is list for list_item in metadata_list)
+            element_is_list = any(
+                type(list_item[dict_key]) is list for list_item in metadata_list
+            )
             if element_is_list:
                 for n_elem in range(len(metadata_list)):
                     if type(metadata_list[n_elem][dict_key]) is not list:
                         metadata_list[n_elem][dict_key] = [
-                            metadata_list[n_elem][dict_key]]
+                            metadata_list[n_elem][dict_key]
+                        ]
 
                     just_string = False
                     this_string = ""
                     for elem in metadata_list[n_elem][dict_key]:
                         separated_elements = elem.split(": ")
                         if len(separated_elements) >= 2:
-                            list_of_elem = [separated_elements[0], ": ".join(separated_elements[1:])]
+                            list_of_elem = [
+                                separated_elements[0],
+                                ": ".join(separated_elements[1:]),
+                            ]
                             sample_char = dict([list_of_elem])
                             metadata_list[n_elem].update(sample_char)
                         else:
@@ -473,7 +600,9 @@ class Geofetcher:
 
                 return metadata_list
             else:
-                self._LOGGER.debug("metadata with %s was not expanded, as item is not list" % dict_key)
+                self._LOGGER.debug(
+                    "metadata with %s was not expanded, as item is not list" % dict_key
+                )
                 return metadata_list
         except KeyError as err:
             self._LOGGER.warning("Key Error: %s" % err)
@@ -513,13 +642,13 @@ class Geofetcher:
             keys = ANNOTATION_SHEET_KEYS
         else:
             # keys = gsm_metadata[gsm_metadata.keys().next()].keys()
-            keys = (list(list(gsm_metadata.values())[0].keys()))
+            keys = list(list(gsm_metadata.values())[0].keys())
 
         self._LOGGER.info(f"Sample annotation sheet: {file_annotation}")
         fp = expandpath(file_annotation)
         self._LOGGER.info(f"Writing: {fp}")
-        with open(fp, 'w') as of:
-            w = csv.DictWriter(of, keys, extrasaction='ignore')
+        with open(fp, "w") as of:
+            w = csv.DictWriter(of, keys, extrasaction="ignore")
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
@@ -532,9 +661,11 @@ class Geofetcher:
         :param str file_annotation_path: the path to the metadata file that has to be saved
         """
         if len(processed_metadata) == 0:
-            self._LOGGER.info("No files found. No data to save. File %s won't be created" %file_annotation_path)
+            self._LOGGER.info(
+                "No files found. No data to save. File %s won't be created"
+                % file_annotation_path
+            )
             return False
-
 
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
@@ -543,19 +674,21 @@ class Geofetcher:
             dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
             dict_writer.writeheader()
             dict_writer.writerows(processed_metadata)
-        self._LOGGER.info("\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path)
+        self._LOGGER.info(
+            "\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path
+        )
 
         geofetchdir = os.path.dirname(__file__)
         config_template = os.path.join(geofetchdir, "config_processed_template.yaml")
 
-        with open(config_template, 'r') as template_file:
+        with open(config_template, "r") as template_file:
             template = template_file.read()
 
         template_values = {
             "project_name": self.project_name,
             "sample_table": file_annotation_path,
             "geo_folder": self.args.geo_folder,
-            "pipeline_interfaces": self.file_pipeline_interfaces
+            "pipeline_interfaces": self.file_pipeline_interfaces,
         }
 
         for k, v in template_values.items():
@@ -579,15 +712,21 @@ class Geofetcher:
         t = 0
         while True:
             t = t + 1
-            subprocess_return = subprocess.call(['prefetch', run_name, '--max-size', '50000000'])
+            subprocess_return = subprocess.call(
+                ["prefetch", run_name, "--max-size", "50000000"]
+            )
 
             if subprocess_return == 0:
                 break
 
             if t >= NUM_RETRIES:
-                raise RuntimeError(f"Prefetch retries of {run_name} failed. Try this sample later")
+                raise RuntimeError(
+                    f"Prefetch retries of {run_name} failed. Try this sample later"
+                )
 
-            self._LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
+            self._LOGGER.info(
+                "Prefetch attempt failed, wait a few seconds to try again"
+            )
             time.sleep(t * 2)
 
     @staticmethod
@@ -624,9 +763,12 @@ class Geofetcher:
 
         # The -u here allows unaligned reads, and seems to be
         # required for some sra files regardless of aligned state
-        cmd = "sam-dump -u " + \
-              os.path.join(self.args.sra_folder, run_name + ".sra") + \
-              " | samtools view -bS - > " + bam_file
+        cmd = (
+            "sam-dump -u "
+            + os.path.join(self.args.sra_folder, run_name + ".sra")
+            + " | samtools view -bS - > "
+            + bam_file
+        )
         # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
 
         self._LOGGER.info(f"Conversion command: {cmd}")
@@ -658,7 +800,7 @@ class Geofetcher:
         exp["sample_name"] = sample_name
         exp["protocol"] = exp["Sample_library_selection"]
         exp["read_type"] = read_type
-        exp["organism"] = exp['Sample_organism_ch1']
+        exp["organism"] = exp["Sample_organism_ch1"]
         exp["data_source"] = "SRA"
         exp["SRX"] = experiment_name
 
@@ -687,9 +829,12 @@ class Geofetcher:
         """
 
         # check to make sure it worked
-        cmd = "fastq-dump --split-3 -O " + \
-              os.path.realpath(self.args.sra_folder) + " " + \
-              os.path.join(self.args.sra_folder, run_name + ".sra")
+        cmd = (
+            "fastq-dump --split-3 -O "
+            + os.path.realpath(self.args.sra_folder)
+            + " "
+            + os.path.join(self.args.sra_folder, run_name + ".sra")
+        )
         self._LOGGER.info(f"Command: {cmd}")
         subprocess.call(cmd, shell=True)
         if not picard_path:
@@ -728,7 +873,7 @@ class Geofetcher:
         self._LOGGER.info(f"Sample subannotation sheet: {filepath}")
         fp = expandpath(filepath)
         self._LOGGER.info(f"Writing: {fp}")
-        with open(fp, 'w') as openfile:
+        with open(fp, "w") as openfile:
             writer = csv.writer(openfile, delimiter=",")
             # write header
             writer.writerow(column_names or ["sample_name", "SRX", "SRR"])
@@ -759,7 +904,9 @@ class Geofetcher:
             # if dir does not exist:
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
-            ret = subprocess.call(['wget', '--no-clobber', file_url, '-O', full_filepath])
+            ret = subprocess.call(
+                ["wget", "--no-clobber", file_url, "-O", full_filepath]
+            )
             self._LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
             time.sleep(sleep_after)
             self._LOGGER.info(f"\033[0m")  # Reset to default terminal color
@@ -778,7 +925,7 @@ class Geofetcher:
         gse_numb = None
         meta_processed_samples = []
         meta_processed_series = {"GSE": "", "files": []}
-        for line in open(file_gse, 'r'):
+        for line in open(file_gse, "r"):
 
             if re.compile(r"!Series_geo_accession").search(line):
                 gse_numb = self.get_value(line)
@@ -795,59 +942,88 @@ class Geofetcher:
                 if tar_re.search(filename):
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
-                    tar_files_list_url = file_url[:index + 1] + "filelist.txt"
+                    tar_files_list_url = file_url[: index + 1] + "filelist.txt"
                     # file_list_name
-                    filelist_path = os.path.join(self.metadata_expanded, gse_numb + "_file_list.txt")
-                    self.download_file(tar_files_list_url, self.metadata_expanded, gse_numb + "_file_list.txt")
+                    filelist_path = os.path.join(
+                        self.metadata_expanded, gse_numb + "_file_list.txt"
+                    )
+                    self.download_file(
+                        tar_files_list_url,
+                        self.metadata_expanded,
+                        gse_numb + "_file_list.txt",
+                    )
 
                     nb = len(meta_processed_samples) - 1
-                    for line_gsm in open(file_gsm, 'r'):
+                    for line_gsm in open(file_gsm, "r"):
                         if line_gsm[0] == "^":
                             nb = len(self.check_file_existance(meta_processed_samples))
-                            meta_processed_samples.append({"files": [],
-                                                           "GSE": gse_numb
-                                                           })
+                            meta_processed_samples.append(
+                                {"files": [], "GSE": gse_numb}
+                            )
                         else:
-                            pl = parse_SOFT_line(line_gsm.strip('\n'))
+                            pl = parse_SOFT_line(line_gsm.strip("\n"))
                             element_keys = list(pl.keys())[0]
                             element_values = list(pl.values())[0]
                             if not re.findall(SUPP_FILE_PATTERN, line_gsm):
-                                if element_keys not in meta_processed_samples[nb].keys():
+                                if (
+                                    element_keys
+                                    not in meta_processed_samples[nb].keys()
+                                ):
                                     meta_processed_samples[nb].update(pl)
                                 else:
-                                    if type(meta_processed_samples[nb][element_keys]) is not list:
+                                    if (
+                                        type(meta_processed_samples[nb][element_keys])
+                                        is not list
+                                    ):
                                         meta_processed_samples[nb][element_keys] = [
-                                            meta_processed_samples[nb][element_keys]]
-                                        meta_processed_samples[nb][element_keys].append(element_values)
+                                            meta_processed_samples[nb][element_keys]
+                                        ]
+                                        meta_processed_samples[nb][element_keys].append(
+                                            element_values
+                                        )
                                     else:
-                                        meta_processed_samples[nb][element_keys].append(element_values)
+                                        meta_processed_samples[nb][element_keys].append(
+                                            element_values
+                                        )
 
                         found_gsm = re.findall(SUPP_FILE_PATTERN, line_gsm)
 
                         if found_gsm:
                             pl = parse_SOFT_line(line_gsm)
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
-                            self._LOGGER.debug(f"Processed GSM file found: %s" % str(file_url_gsm))
+                            self._LOGGER.debug(
+                                f"Processed GSM file found: %s" % str(file_url_gsm)
+                            )
                             if file_url_gsm != "NONE":
                                 meta_processed_samples[nb]["files"].append(file_url_gsm)
 
                     self.check_file_existance(meta_processed_samples)
-                    meta_processed_samples = self.separate_list_of_files(meta_processed_samples)
-                    meta_processed_samples = self.separate_file_url(meta_processed_samples)
+                    meta_processed_samples = self.separate_list_of_files(
+                        meta_processed_samples
+                    )
+                    meta_processed_samples = self.separate_file_url(
+                        meta_processed_samples
+                    )
 
-                    self._LOGGER.info(f"Total number of processed SAMPLES files found is: "
-                                      f"%s" % str(len(meta_processed_samples)))
+                    self._LOGGER.info(
+                        f"Total number of processed SAMPLES files found is: "
+                        f"%s" % str(len(meta_processed_samples))
+                    )
 
                     # expand meta_processed_samples with information about type and size
                     file_info_add = self.read_tar_filelist(filelist_path)
                     for index_nr in range(len(meta_processed_samples)):
                         file_name = meta_processed_samples[index_nr]["sample_name"]
-                        meta_processed_samples[index_nr].update(file_info_add[file_name])
+                        meta_processed_samples[index_nr].update(
+                            file_info_add[file_name]
+                        )
 
                     if self.filter_re:
                         meta_processed_samples = self.run_filter(meta_processed_samples)
                     if self.filter_size:
-                        meta_processed_samples = self.run_size_filter(meta_processed_samples)
+                        meta_processed_samples = self.run_size_filter(
+                            meta_processed_samples
+                        )
 
                 # other files than .tar: saving them into meta_processed_series list
                 else:
@@ -868,12 +1044,16 @@ class Geofetcher:
                     else:
                         meta_processed_series[bl_key].append(bl_value)
             except IndexError as ind_err:
-                self._LOGGER.debug(f"IndexError in adding value to meta_processed_series: %s" % ind_err)
+                self._LOGGER.debug(
+                    f"IndexError in adding value to meta_processed_series: %s" % ind_err
+                )
 
         meta_processed_series = self.separate_list_of_files(meta_processed_series)
         meta_processed_series = self.separate_file_url(meta_processed_series)
-        self._LOGGER.info(f"Total number of processed SERIES files found is: "
-                          f"%s" % str(len(meta_processed_series)))
+        self._LOGGER.info(
+            f"Total number of processed SERIES files found is: "
+            f"%s" % str(len(meta_processed_series))
+        )
         if self.filter_re:
             meta_processed_series = self.run_filter(meta_processed_series)
 
@@ -938,7 +1118,10 @@ class Geofetcher:
         for meta_elem in meta_list:
             if self.filter_re.search(meta_elem[col_name].lower()):
                 filtered_list.append(meta_elem)
-        self._LOGGER.info("\033[32mTotal number of files after filter is: %i \033[0m" % len(filtered_list))
+        self._LOGGER.info(
+            "\033[32mTotal number of files after filter is: %i \033[0m"
+            % len(filtered_list)
+        )
 
         return filtered_list
 
@@ -952,9 +1135,14 @@ class Geofetcher:
                 if meta_elem[col_name] <= self.filter_size:
                     filtered_list.append(meta_elem)
         else:
-            self._LOGGER.info("\033[32mTotal number of files after size filter NOOOONE???? \033[0m")
+            self._LOGGER.info(
+                "\033[32mTotal number of files after size filter NOOOONE???? \033[0m"
+            )
             return meta_list
-        self._LOGGER.info("\033[32mTotal number of files after size filter is: %i \033[0m" % len(filtered_list))
+        self._LOGGER.info(
+            "\033[32mTotal number of files after size filter is: %i \033[0m"
+            % len(filtered_list)
+        )
         return filtered_list
 
     @staticmethod
@@ -966,20 +1154,20 @@ class Geofetcher:
         """
 
         files_info = {}
-        with open(file_path, newline='') as csvfile:
+        with open(file_path, newline="") as csvfile:
             csv_reader = csv.reader(csvfile, delimiter="\t")
             line_count = 0
             for row in csv_reader:
                 if line_count == 0:
-                    name_index = row.index('Name')
-                    size_index = row.index('Size')
-                    type_index = row.index('Type')
+                    name_index = row.index("Name")
+                    size_index = row.index("Size")
+                    type_index = row.index("Type")
 
                     line_count += 1
                 else:
                     files_info[row[name_index]] = {
                         "file_size": row[size_index],
-                        "type": row[type_index]
+                        "type": row[type_index],
                     }
 
         return files_info
@@ -1005,7 +1193,9 @@ class Geofetcher:
         """
 
         if not self.args.geo_folder:
-            self._LOGGER.error("You must provide a geo_folder to download processed data.")
+            self._LOGGER.error(
+                "You must provide a geo_folder to download processed data."
+            )
             sys.exit(1)
 
         filename = os.path.basename(file_url)
@@ -1014,8 +1204,10 @@ class Geofetcher:
         while ntry < 10:
             try:
                 self.download_file(file_url, data_folder)
-                self._LOGGER.info("\033[92mFile %s has been downloaded successfully\033[0m" %
-                                  f"{data_folder}/{filename}")
+                self._LOGGER.info(
+                    "\033[92mFile %s has been downloaded successfully\033[0m"
+                    % f"{data_folder}/{filename}"
+                )
                 return True
 
             except IOError as e:
@@ -1039,7 +1231,7 @@ class Geofetcher:
         """
         #
         acc_SRP = None
-        for line in open(file_gse, 'r'):
+        for line in open(file_gse, "r"):
             found = re.findall(PROJECT_PATTERN, line)
             if found:
                 acc_SRP = found[0]
@@ -1049,15 +1241,19 @@ class Geofetcher:
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
             # as part of this GEO submission. Can't proceed.
-            self._LOGGER.warning("\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. "
-                                 "No raw data?\033[0m")
+            self._LOGGER.warning(
+                "\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. "
+                "No raw data?\033[0m"
+            )
             # but wait; another possibility: there's no SRP linked to the GSE, but there
             # could still be an SRX linked to the (each) GSM.
             if len(gsm_metadata) == 1:
                 try:
                     acc_SRP = gsm_metadata.keys()[0]
-                    self._LOGGER.warning("But the GSM has an SRX number; instead of an "
-                                         "SRP, using SRX identifier for this sample: " + acc_SRP)
+                    self._LOGGER.warning(
+                        "But the GSM has an SRX number; instead of an "
+                        "SRP, using SRX identifier for this sample: " + acc_SRP
+                    )
                 except TypeError:
                     self._LOGGER.warning("Error in gsm_metadata")
                     return False
@@ -1074,8 +1270,10 @@ class Geofetcher:
                 # downloading metadata
                 Accession(acc_SRP).fetch_metadata(file_sra)
             except Exception as err:
-                self._LOGGER.warning(f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
-                                     f"Error: {err}  \033[0m")
+                self._LOGGER.warning(
+                    f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
+                    f"Error: {err}  \033[0m"
+                )
                 return False
         else:
             self._LOGGER.info("Found previous SRA file: " + file_sra)
@@ -1101,17 +1299,20 @@ class Geofetcher:
         current_sample_id = None
         current_sample_srx = False
         samples_list = []
-        for line in open(file_gsm, 'r'):
+        for line in open(file_gsm, "r"):
             line = line.rstrip()
             if len(line) == 0:  # Apparently SOFT files can contain blank lines
                 continue
             if line[0] == "^":
                 pl = parse_SOFT_line(line)
-                if len(acc_GSE_list[acc_GSE]) > 0 and pl['SAMPLE'] not in GSM_limit_list:
+                if (
+                    len(acc_GSE_list[acc_GSE]) > 0
+                    and pl["SAMPLE"] not in GSM_limit_list
+                ):
                     # sys.stdout.write("  Skipping " + a['SAMPLE'] + ".")
                     current_sample_id = None
                     continue
-                current_sample_id = pl['SAMPLE']
+                current_sample_id = pl["SAMPLE"]
                 current_sample_srx = False
                 gsm_metadata[current_sample_id] = {
                     "sample_name": "",
@@ -1120,7 +1321,7 @@ class Geofetcher:
                     "read_type": "",
                     "data_source": None,
                     "SRR": None,
-                    "SRX": None
+                    "SRX": None,
                 }
 
                 self._LOGGER.debug(f"Found sample: {current_sample_id}")
@@ -1129,8 +1330,10 @@ class Geofetcher:
                 try:
                     pl = parse_SOFT_line(line)
                 except IndexError:
-                    self._LOGGER.debug(f"Failed to parse alleged SOFT line for sample ID {current_sample_id}; "
-                                       f"line: {line}")
+                    self._LOGGER.debug(
+                        f"Failed to parse alleged SOFT line for sample ID {current_sample_id}; "
+                        f"line: {line}"
+                    )
                     continue
                 gsm_metadata[current_sample_id].update(pl)
 
@@ -1141,7 +1344,9 @@ class Geofetcher:
                         self._LOGGER.debug(f"(SRX accession: {found[0]})")
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
-                        gsm_metadata[srx_id]["gsm_id"] = current_sample_id  # save the GSM id
+                        gsm_metadata[srx_id][
+                            "gsm_id"
+                        ] = current_sample_id  # save the GSM id
                         current_sample_id = srx_id
                         current_sample_srx = True
         # GSM SOFT file parsed, save it in a list
@@ -1151,101 +1356,128 @@ class Geofetcher:
     def _write(self, f_var_value, content, msg_pre=None, omit_newline=False):
         fp = expandpath(f_var_value)
         self._LOGGER.info((msg_pre or "") + fp)
-        with open(fp, 'w') as f:
+        with open(fp, "w") as f:
             f.write(content)
             if not omit_newline:
                 f.write("\n")
 
 
 def _parse_cmdl(cmdl):
-    parser = argparse.ArgumentParser(description="Automatic GEO and SRA data downloader")
+    parser = argparse.ArgumentParser(
+        description="Automatic GEO and SRA data downloader"
+    )
 
     parser.add_argument(
-        "-V", "--version",
-        action="version",
-        version=f"%(prog)s {__version__}")
+        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
 
     # Required
     parser.add_argument(
-        "-i", "--input", dest="input", required=True,
-        help="required: a GEO (GSE) accession, or a file with a list of GSE numbers")
+        "-i",
+        "--input",
+        dest="input",
+        required=True,
+        help="required: a GEO (GSE) accession, or a file with a list of GSE numbers",
+    )
 
     # Optional
     parser.add_argument(
-        "-n", "--name",
-        help="Specify a project name. Defaults to GSE number")
+        "-n", "--name", help="Specify a project name. Defaults to GSE number"
+    )
 
     parser.add_argument(
-        "-m", "--metadata-root",
+        "-m",
+        "--metadata-root",
         dest="metadata_root",
         default=safe_echo("SRAMETA"),
         help="Specify a parent folder location to store metadata. "
-             "The project name will be added as a subfolder "
-             "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]")
+        "The project name will be added as a subfolder "
+        "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]",
+    )
 
     parser.add_argument(
-        "-u", "--metadata-folder",
+        "-u",
+        "--metadata-folder",
         help="Specify an absolute folder location to store metadata. "
-             "No subfolder will be added. Overrides value of --metadata-root "
-             "[Default: Not used (--metadata-root is used by default)]")
+        "No subfolder will be added. Overrides value of --metadata-root "
+        "[Default: Not used (--metadata-root is used by default)]",
+    )
 
     parser.add_argument(
-        "--just-metadata", action="store_true",
-        help="If set, don't actually run downloads, just create metadata")
+        "--just-metadata",
+        action="store_true",
+        help="If set, don't actually run downloads, just create metadata",
+    )
 
     parser.add_argument(
-        "-r", "--refresh-metadata", action="store_true",
-        help="If set, re-download metadata even if it exists.")
+        "-r",
+        "--refresh-metadata",
+        action="store_true",
+        help="If set, re-download metadata even if it exists.",
+    )
 
     parser.add_argument(
-        "--acc-anno", action="store_true",
+        "--acc-anno",
+        action="store_true",
         help="Also produce annotation sheets for each accession, not just"
-             " for the whole project combined")
+        " for the whole project combined",
+    )
 
     parser.add_argument(
-        "--use-key-subset", action="store_true",
-        help="Use just the keys defined in this module when writing out metadata.")
+        "--use-key-subset",
+        action="store_true",
+        help="Use just the keys defined in this module when writing out metadata.",
+    )
 
     parser.add_argument(
-        "-x", "--split-experiments", action="store_true",
+        "-x",
+        "--split-experiments",
+        action="store_true",
         help="""Split SRR runs into individual samples. By default, SRX
             experiments with multiple SRR Runs will have a single entry in the
             annotation table, with each run as a separate row in the
             subannotation table. This setting instead treats each run as a
-            separate sample""")
+            separate sample""",
+    )
 
     parser.add_argument(
-        "--config-template", default=None,
-        help="Project config yaml file template.")
+        "--config-template", default=None, help="Project config yaml file template."
+    )
 
     parser.add_argument(
-        "-k", "--skip",
+        "-k",
+        "--skip",
         default=0,
         type=int,
-        help="Skip some accessions. [Default: no skip].")
+        help="Skip some accessions. [Default: no skip].",
+    )
 
     parser.add_argument(
-        "-p", "--processed",
+        "-p",
+        "--processed",
         default=False,
         action="store_true",
-        help="Download processed data [Default: download raw data].")
+        help="Download processed data [Default: download raw data].",
+    )
 
     parser.add_argument(
         "--data-source",
         dest="supp_by",
-        choices=['all', 'samples', 'series'],
-        default='all',
+        choices=["all", "samples", "series"],
+        default="all",
         help="Optional: Specifies the source of data on the GEO record"
-             " to retrieve processed data, which may be attached to the"
-             " collective series entity, or to individual samples. "
-             "Allowable values are: samples, series or both (all). "
-             "Ignored unless 'processed' flag is set. [Default: all]")
+        " to retrieve processed data, which may be attached to the"
+        " collective series entity, or to individual samples. "
+        "Allowable values are: samples, series or both (all). "
+        "Ignored unless 'processed' flag is set. [Default: all]",
+    )
 
     parser.add_argument(
         "--filter",
         default=None,
         help="Optional: Filter regex for processed filenames [Default: None]."
-             "Ignored unless 'processed' flag is set.")
+        "Ignored unless 'processed' flag is set.",
+    )
 
     parser.add_argument(
         "--filter-size",
@@ -1254,63 +1486,89 @@ def _parse_cmdl(cmdl):
         help="""Optional: Filter size for processed files
                 that are stored as sample repository [Default: None].
                 Supported input formats : 12B, 12KB, 12MB, 12GB. 
-                Ignored unless 'processed' flag is set.""")
+                Ignored unless 'processed' flag is set.""",
+    )
 
     parser.add_argument(
-        "-g", "--geo-folder",
+        "-g",
+        "--geo-folder",
         default=safe_echo("GEODATA"),
         help="Optional: Specify a location to store processed GEO files."
-             " Ignored unless 'processed' flag is set."
-             "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
+        " Ignored unless 'processed' flag is set."
+        "[Default: $GEODATA:" + safe_echo("GEODATA") + "]",
+    )
 
     parser.add_argument(
-        "-b", "--bam-folder", dest="bam_folder", default=safe_echo("SRABAM"),
+        "-b",
+        "--bam-folder",
+        dest="bam_folder",
+        default=safe_echo("SRABAM"),
         help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
-            [Default: $SRABAM:""" + safe_echo("SRABAM") + "]")
+            [Default: $SRABAM:"""
+        + safe_echo("SRABAM")
+        + "]",
+    )
 
     parser.add_argument(
-        "-f", "--fq-folder", dest="fq_folder", default=safe_echo("SRAFQ"),
+        "-f",
+        "--fq-folder",
+        dest="fq_folder",
+        default=safe_echo("SRAFQ"),
         help="""Optional: Specify folder of fastq files. Geofetch will not
             download sra files when corresponding fastq files already exist.
-            [Default: $SRAFQ:""" + safe_echo("SRAFQ") + "]")
+            [Default: $SRAFQ:"""
+        + safe_echo("SRAFQ")
+        + "]",
+    )
 
     parser.add_argument(
-        "-P", "--pipeline_interfaces", default=None,
+        "-P",
+        "--pipeline_interfaces",
+        default=None,
         help="Optional: Specify one or more filepaths to pipeline interface yaml files. "
-             "These will be added to the project config file to make it immediately "
-             "compatible with looper. [Default: null]")
+        "These will be added to the project config file to make it immediately "
+        "compatible with looper. [Default: null]",
+    )
 
     # Deprecated; these are for bam conversion which now happens in sra_convert
     # it still works here but I hide it so people don't use it, because it's confusing.
     parser.add_argument(
-        "-s", "--sra-folder", dest="sra_folder", default=safe_echo("SRARAW"),
+        "-s",
+        "--sra-folder",
+        dest="sra_folder",
+        default=safe_echo("SRARAW"),
         help=argparse.SUPPRESS,
         # help="Optional: Specify a location to store sra files "
         #   "[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
     )
     parser.add_argument(
-        "--bam-conversion", action="store_true",
+        "--bam-conversion",
+        action="store_true",
         # help="Turn on sequential bam conversion. Default: No conversion.",
-        help=argparse.SUPPRESS)
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
-        "--picard-path", dest="picard_path", default=safe_echo("PICARD"),
+        "--picard-path",
+        dest="picard_path",
+        default=safe_echo("PICARD"),
         # help="Specify a path to the picard jar, if you want to convert "
         # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
-        help=argparse.SUPPRESS)
+        help=argparse.SUPPRESS,
+    )
 
     parser = add_logging_options(parser)
     return parser.parse_args(cmdl)
 
 
 def safe_echo(var):
-    """ Returns an environment variable if it exists, or an empty string if not"""
+    """Returns an environment variable if it exists, or an empty string if not"""
     return os.getenv(var, "")
 
 
 class InvalidSoftLineException(Exception):
-    """ Exception related to parsing SOFT line. """
+    """Exception related to parsing SOFT line."""
 
     def __init__(self, l):
         """
@@ -1322,7 +1580,7 @@ class InvalidSoftLineException(Exception):
 
 
 def main():
-    """ Run the script. """
+    """Run the script."""
     args = _parse_cmdl(sys.argv[1:])
     Geofetcher(args).fetch_all()
 

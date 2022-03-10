@@ -7,7 +7,7 @@ import subprocess
 import re
 
 
-__author__ = ["Vince Reuter", "Nathan Sheffield"]
+__author__ = ["Vince Reuter", "Nathan Sheffield", "Oleksandr Khoroshevskyi"]
 __email__ = "vreuter@virginia.edu"
 
 __all__ = ["parse_accessions"]
@@ -64,7 +64,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
         actual data associated with the accession
     """
 
-    acc_GSE_list = OrderedDict()
+    acc_GSE_list = {}
 
     if not os.path.isfile(input_arg):
         _LOGGER.info("Trying {} (not a file) as accession...".format(input_arg))
@@ -93,7 +93,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
             return
         else:
             acc_GSE = input_arg
-            acc_GSE_list[acc_GSE] = OrderedDict()
+            acc_GSE_list[acc_GSE] = {}
     else:
         _LOGGER.info("Accession list file found: {}".format(input_arg))
 

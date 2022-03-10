@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__author__ = "Nathan Sheffield"
+__author__ = ["Vince Reuter", "Nathan Sheffield", "Oleksandr Khoroshevskyi"]
 
 # Outline:
 # INPUT: A list of GSE ids, optionally including GSM ids to limit to.
@@ -16,7 +16,6 @@ __author__ = "Nathan Sheffield"
 # 4. Parse the SRA RunInfo csv file and use the download_link field to grab the .sra file
 
 import argparse
-from collections import OrderedDict
 import copy
 import csv
 import os
@@ -58,7 +57,7 @@ EXP_SUPP_METADATA_FILE = "_annotation_series_processed.csv"
 NUM_RETRIES = 3
 
 
-class Geofetch:
+class Geofetcher:
 
     def __init__(self, args):
         self.args = args
@@ -122,7 +121,7 @@ class Geofetch:
         else:
             self.file_pipeline_interfaces = "null"
 
-    def run_geofetch(self):
+    def fetch_all(self):
         """ Main script driver/workflow """
 
         acc_GSE_list = parse_accessions(self.args.input, self.metadata_expanded, self.args.just_metadata)
@@ -133,8 +132,8 @@ class Geofetch:
         # acc_GSE = "GSE61150" # example
 
         # This loop populates a list of metadata.
-        metadata_dict = OrderedDict()
-        subannotation_dict = OrderedDict()
+        metadata_dict = {}
+        subannotation_dict = {}
         failed_runs = []
         processed_metadata_samples = []
         processed_metadata_exp = []
@@ -234,7 +233,7 @@ class Geofetch:
                 # Corresponding to each sample.
                 # For multi samples (samples with multiple runs), we keep track of these
                 # relations in a separate table, which is called the subannotation table.
-                gsm_multi_table = OrderedDict()
+                gsm_multi_table = {}
                 file_read = open(file_sra, 'r')
                 file_write = open(file_srafilt, 'w')
                 self._LOGGER.info("Parsing SRA file to download SRR records")
@@ -393,14 +392,14 @@ class Geofetch:
         else:
             # Combine individual accessions into project-level annotations, and write
             # individual accession files (if requested)
-            metadata_dict_combined = OrderedDict()
+            metadata_dict_combined = {}
             for acc_GSE, gsm_metadata in metadata_dict.items():
                 file_annotation = os.path.join(self.metadata_expanded, acc_GSE + '_annotation.csv')
                 if self.args.acc_anno:
                     self.write_gsm_annotation(gsm_metadata, file_annotation, use_key_subset=self.args.use_key_subset)
                 metadata_dict_combined.update(gsm_metadata)
 
-            subannotation_dict_combined = OrderedDict()
+            subannotation_dict_combined = {}
             for acc_GSE, gsm_multi_table in subannotation_dict.items():
                 file_subannotation = os.path.join(
                     self.metadata_expanded, acc_GSE + '_subannotation.csv')
@@ -1093,7 +1092,7 @@ class Geofetch:
         :param str file_gsm: full path to GSM.soft metafile
         :return OrderedDict: Ordered Dictionary of experiment information (gsm_metadata)
         """
-        gsm_metadata = OrderedDict()
+        gsm_metadata = {}
 
         # Get GSM#s (away from sample_name)
         GSM_limit_list = list(acc_GSE_list[acc_GSE].keys())
@@ -1114,10 +1113,15 @@ class Geofetch:
                     continue
                 current_sample_id = pl['SAMPLE']
                 current_sample_srx = False
-                columns_init = [("sample_name", ""), ("protocol", ""),
-                                ("organism", ""), ("read_type", ""),
-                                ("data_source", None), ("SRR", None), ("SRX", None)]
-                gsm_metadata[current_sample_id] = OrderedDict(columns_init)
+                gsm_metadata[current_sample_id] = {
+                    "sample_name": "",
+                    "protocol": "",
+                    "organism": "",
+                    "read_type": "",
+                    "data_source": None,
+                    "SRR": None,
+                    "SRX": None
+                }
 
                 self._LOGGER.debug(f"Found sample: {current_sample_id}")
                 samples_list.append(current_sample_id)
@@ -1227,32 +1231,36 @@ def _parse_cmdl(cmdl):
         help="Download processed data [Default: download raw data].")
 
     parser.add_argument(
-        "--stored-in",
+        "--data-source",
         dest="supp_by",
         choices=['all', 'samples', 'series'],
         default='all',
-        help="""Optional: {processed} Specify GEO location where processed data is stored 
-                and has to be downloaded. Processed data is stored in
-                samples and experiments.
-                Allowable values are: samples, series or both (all). [Default: all]""")
+        help="Optional: Specifies the source of data on the GEO record"
+             " to retrieve processed data, which may be attached to the"
+             " collective series entity, or to individual samples. "
+             "Allowable values are: samples, series or both (all). "
+             "Ignored unless 'processed' flag is set. [Default: all]")
 
     parser.add_argument(
         "--filter",
         default=None,
-        help="Optional: {processed} Filter regex for processed filenames [Default: None].")
+        help="Optional: Filter regex for processed filenames [Default: None]."
+             "Ignored unless 'processed' flag is set.")
 
     parser.add_argument(
         "--filter-size",
         dest="filter_size",
         default=None,
-        help="""Optional: {processed} Filter size for processed files
+        help="""Optional: Filter size for processed files
                 that are stored as sample repository [Default: None].
-                Supported input formats : 12B, 12KB, 12MB, 12GB """)
+                Supported input formats : 12B, 12KB, 12MB, 12GB. 
+                Ignored unless 'processed' flag is set.""")
 
     parser.add_argument(
         "-g", "--geo-folder",
         default=safe_echo("GEODATA"),
-        help="Optional: {processed} Specify a location to store processed GEO files "
+        help="Optional: Specify a location to store processed GEO files."
+             " Ignored unless 'processed' flag is set."
              "[Default: $GEODATA:" + safe_echo("GEODATA") + "]")
 
     parser.add_argument(
@@ -1316,7 +1324,7 @@ class InvalidSoftLineException(Exception):
 def main():
     """ Run the script. """
     args = _parse_cmdl(sys.argv[1:])
-    Geofetch(args).run_geofetch()
+    Geofetcher(args).fetch_all()
 
 
 if __name__ == "__main__":

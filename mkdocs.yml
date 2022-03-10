@@ -9,7 +9,7 @@ nav:
     - Introduction: README.md
     - Install and configure: install.md
     - SRA convert: sra_convert.md
-  - How-to Guides Tutorials:
+  - How-to Guides:
     - Specifying samples to download: file-specification.md
     - Download processed data: processed-data-downloading.md
     - Download raw data: row-data-downloading.md

@@ -1,8 +1,8 @@
 # Changelog
 
-## [1.0.0] -- 2022-02-25
+## [0.8.0] -- 2022-03-10
 - Added `--filter-size` argument.
-- Added `--stored-in` argument.
+- Added `--data-source` argument.
 - Removed `--tar_re` argument.
 - Added PEP for processed data.
 - Updated regex filter (case-insensitive update).

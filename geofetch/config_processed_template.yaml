@@ -8,5 +8,4 @@ sample_modifiers:
   derive:
     attributes: [output_file_path]
     sources:
-      FILES: {geo_folder}/{SRA}/{sample_name}
-
+      FILES: {geo_folder}/{GSE}/{sample_name}

@@ -10,47 +10,23 @@ REQDIR = "requirements"
 # Additional keyword arguments for setup().
 extra = {}
 
+# Ordinary dependencies
+DEPENDENCIES = []
+with open("requirements/requirements-all.txt", "r") as reqs_file:
+    for line in reqs_file:
+        if not line.strip():
+            continue
+        # DEPENDENCIES.append(line.split("=")[0].rstrip("<>"))
+        DEPENDENCIES.append(line)
+extra["install_requires"] = DEPENDENCIES
 
-def read_reqs(reqs_name):
-    deps = []
-    with open(os.path.join(REQDIR, "requirements-{}.txt".format(reqs_name)), 'r') as f:
-        for l in f:
-            if not l.strip():
-                continue
-            #deps.append(l.split("=")[0].rstrip("<>"))
-            deps.append(l)
-    return deps
-
-
-# 2to3
-if sys.version_info >= (3, ):
-    extra["use_2to3"] = True
-extra["install_requires"] = read_reqs("all")
-
-
-# Additional files to include with package
-def get_static(name, condition=None):
-    static = [os.path.join(name, f) for f in os.listdir(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), name))]
-    if condition is None:
-        return static
-    else:
-        return [i for i in filter(lambda x: eval(condition), static)]
-
-
-# scripts to be added to the $PATH
-# scripts = get_static("scripts", condition="'.' in x")
 scripts = None
 
 with open("{}/_version.py".format(PACKAGE), 'r') as versionfile:
     version = versionfile.readline().split()[-1].strip("\"'\n")
 
-# Handle the pypi README formatting.
-try:
-    import pypandoc
-    long_description = pypandoc.convert_file('README.md', 'rst')
-except(IOError, ImportError, OSError, RuntimeError):
-    long_description = open('README.md').read()
+with open("README.md") as f:
+    long_description = f.read()
 
 setup(
     name=PACKAGE,

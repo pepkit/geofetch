@@ -26,8 +26,8 @@ import sys
 # import tarfile
 import time
 
-from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
-from _version import __version__
+from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from ._version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
 from ubiquerg import expandpath, is_command_callable

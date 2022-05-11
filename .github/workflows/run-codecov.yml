@@ -1,0 +1,21 @@
+name: Run codecov
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  pytest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [3.9]
+        os: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        file: ./coverage.xml
+        name: py-${{ matrix.python-version }}-${{ matrix.os }}

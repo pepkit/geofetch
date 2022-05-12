@@ -961,7 +961,10 @@ class Geofetcher:
                                 {"files": [], "GSE": gse_numb}
                             )
                         else:
-                            pl = parse_SOFT_line(line_gsm.strip("\n"))
+                            try:
+                                pl = parse_SOFT_line(line_gsm.strip("\n"))
+                            except IndexError:
+                                continue
                             element_keys = list(pl.keys())[0]
                             element_values = list(pl.values())[0]
                             if not re.findall(SUPP_FILE_PATTERN, line_gsm):
@@ -1227,7 +1230,7 @@ class Geofetcher:
 
         :param str file_gse: full path to GSE.soft metafile
         :param str file_sra: full path to SRA.csv metafile that has to be downloaded
-        :param OrderedDict gsm_metadata: dict of GSM metadata
+        :param dict gsm_metadata: dict of GSM metadata
         """
         #
         acc_SRP = None
@@ -1286,9 +1289,9 @@ class Geofetcher:
         A simple state machine to parse SOFT formatted files (Here, the GSM file)
 
         :param str acc_GSE: GSE number (Series accession)
-        :param OrderedDict acc_GSE_list: list of GSE
+        :param dict acc_GSE_list: list of GSE
         :param str file_gsm: full path to GSM.soft metafile
-        :return OrderedDict: Ordered Dictionary of experiment information (gsm_metadata)
+        :return dict: dictionary of experiment information (gsm_metadata)
         """
         gsm_metadata = {}
 

@@ -686,7 +686,7 @@ class Geofetcher:
 
         template_values = {
             "project_name": self.project_name,
-            "sample_table": file_annotation_path,
+            "sample_table": os.path.basename(file_annotation_path),
             "geo_folder": self.args.geo_folder,
             "pipeline_interfaces": self.file_pipeline_interfaces,
         }

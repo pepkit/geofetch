@@ -63,8 +63,8 @@ GSE_PATTERN = re.compile(r"(GSE\d{4,8})")
 SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
 SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
-SAMPLE_SUPP_METADATA_FILE = "_annotation_sample_processed.csv"
-EXP_SUPP_METADATA_FILE = "_annotation_series_processed.csv"
+SAMPLE_SUPP_METADATA_FILE = "_samples.csv"
+EXP_SUPP_METADATA_FILE = "_series.csv"
 
 # How many times should we retry failing prefetch call?
 NUM_RETRIES = 3
@@ -1367,6 +1367,9 @@ def _parse_cmdl(cmdl):
         description="Automatic GEO and SRA data downloader"
     )
 
+    processed_group = parser.add_argument_group("processed")
+    raw_group = parser.add_argument_group("raw")
+
     parser.add_argument(
         "-V", "--version", action="version", version=f"%(prog)s {__version__}"
     )
@@ -1417,6 +1420,27 @@ def _parse_cmdl(cmdl):
     )
 
     parser.add_argument(
+        "--config-template", default=None, help="Project config yaml file template."
+    )
+
+    parser.add_argument(
+        "-P",
+        "--pipeline_interfaces",
+        default=None,
+        help="Optional: Specify one or more filepaths to pipeline interface yaml files. "
+        "These will be added to the project config file to make it immediately "
+        "compatible with looper. [Default: null]",
+    )
+
+    parser.add_argument(
+        "-k",
+        "--skip",
+        default=0,
+        type=int,
+        help="Skip some accessions. [Default: no skip].",
+    )
+
+    parser.add_argument(
         "--acc-anno",
         action="store_true",
         help="Also produce annotation sheets for each accession, not just"
@@ -1429,30 +1453,7 @@ def _parse_cmdl(cmdl):
         help="Use just the keys defined in this module when writing out metadata.",
     )
 
-    parser.add_argument(
-        "-x",
-        "--split-experiments",
-        action="store_true",
-        help="""Split SRR runs into individual samples. By default, SRX
-            experiments with multiple SRR Runs will have a single entry in the
-            annotation table, with each run as a separate row in the
-            subannotation table. This setting instead treats each run as a
-            separate sample""",
-    )
-
-    parser.add_argument(
-        "--config-template", default=None, help="Project config yaml file template."
-    )
-
-    parser.add_argument(
-        "-k",
-        "--skip",
-        default=0,
-        type=int,
-        help="Skip some accessions. [Default: no skip].",
-    )
-
-    parser.add_argument(
+    processed_group.add_argument(
         "-p",
         "--processed",
         default=False,
@@ -1460,7 +1461,7 @@ def _parse_cmdl(cmdl):
         help="Download processed data [Default: download raw data].",
     )
 
-    parser.add_argument(
+    processed_group.add_argument(
         "--data-source",
         dest="supp_by",
         choices=["all", "samples", "series"],
@@ -1472,14 +1473,14 @@ def _parse_cmdl(cmdl):
         "Ignored unless 'processed' flag is set. [Default: all]",
     )
 
-    parser.add_argument(
+    processed_group.add_argument(
         "--filter",
         default=None,
         help="Optional: Filter regex for processed filenames [Default: None]."
         "Ignored unless 'processed' flag is set.",
     )
 
-    parser.add_argument(
+    processed_group.add_argument(
         "--filter-size",
         dest="filter_size",
         default=None,
@@ -1489,7 +1490,7 @@ def _parse_cmdl(cmdl):
                 Ignored unless 'processed' flag is set.""",
     )
 
-    parser.add_argument(
+    processed_group.add_argument(
         "-g",
         "--geo-folder",
         default=safe_echo("GEODATA"),
@@ -1498,7 +1499,18 @@ def _parse_cmdl(cmdl):
         "[Default: $GEODATA:" + safe_echo("GEODATA") + "]",
     )
 
-    parser.add_argument(
+    raw_group.add_argument(
+        "-x",
+        "--split-experiments",
+        action="store_true",
+        help="""Split SRR runs into individual samples. By default, SRX
+            experiments with multiple SRR Runs will have a single entry in the
+            annotation table, with each run as a separate row in the
+            subannotation table. This setting instead treats each run as a
+            separate sample""",
+    )
+
+    raw_group.add_argument(
         "-b",
         "--bam-folder",
         dest="bam_folder",
@@ -1510,7 +1522,7 @@ def _parse_cmdl(cmdl):
         + "]",
     )
 
-    parser.add_argument(
+    raw_group.add_argument(
         "-f",
         "--fq-folder",
         dest="fq_folder",
@@ -1522,18 +1534,9 @@ def _parse_cmdl(cmdl):
         + "]",
     )
 
-    parser.add_argument(
-        "-P",
-        "--pipeline_interfaces",
-        default=None,
-        help="Optional: Specify one or more filepaths to pipeline interface yaml files. "
-        "These will be added to the project config file to make it immediately "
-        "compatible with looper. [Default: null]",
-    )
-
     # Deprecated; these are for bam conversion which now happens in sra_convert
     # it still works here but I hide it so people don't use it, because it's confusing.
-    parser.add_argument(
+    raw_group.add_argument(
         "-s",
         "--sra-folder",
         dest="sra_folder",
@@ -1542,14 +1545,14 @@ def _parse_cmdl(cmdl):
         # help="Optional: Specify a location to store sra files "
         #   "[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
     )
-    parser.add_argument(
+    raw_group.add_argument(
         "--bam-conversion",
         action="store_true",
         # help="Turn on sequential bam conversion. Default: No conversion.",
         help=argparse.SUPPRESS,
     )
 
-    parser.add_argument(
+    raw_group.add_argument(
         "--picard-path",
         dest="picard_path",
         default=safe_echo("PICARD"),

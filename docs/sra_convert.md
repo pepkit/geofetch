@@ -15,4 +15,4 @@ This effectively makes it easier to interact with *project-level* management of 
 
 ## Tutorial
 
-See the [tutorial](tutorial.md) for an example of how to use `sraconvert`.
+See the [tutorial](raw-data-downloading.md) for an example of how to use `sraconvert`.

@@ -30,7 +30,5 @@ You can add `--just-metadata` if you want to download metadata without the raw S
 geofetch -i GSE95654 --just-metadata
 ```
 
-For more details, check out the [usage](usage.md) reference, [installation instructions](install.md), or head on over to the [tutorial](tutorial.md) for a detailed walkthrough.
-
-
+For more details, check out the [usage](usage.md) reference, [installation instructions](install.md), or head on over to the [tutorial for raw data](raw-data-downloading.md) and [tutorial for processed data](processed-data-downloading.md) for a detailed walkthrough.
 

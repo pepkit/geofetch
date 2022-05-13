@@ -448,6 +448,7 @@ class Geofetcher:
 
         #######################################################################################
 
+        # saving PEPs for processed data
         if self.args.processed:
             processed_metadata_samples = self.unify_list_keys(
                 processed_metadata_samples
@@ -458,6 +459,13 @@ class Geofetcher:
             for key_in_list in list_of_keys:
                 processed_metadata_samples = self.expand_metadata_list(
                     processed_metadata_samples, key_in_list
+                )
+
+            list_of_keys_series = self.get_list_of_keys(processed_metadata_exp)
+            self._LOGGER.info("Expanding metadata list...")
+            for key_in_list in list_of_keys_series:
+                processed_metadata_exp = self.expand_metadata_list(
+                    processed_metadata_exp, key_in_list
                 )
 
             if self.supp_by == "all":
@@ -567,6 +575,14 @@ class Geofetcher:
             self._write(config, template, msg_pre="  Config file: ")
 
     def expand_metadata_list(self, metadata_list, dict_key):
+        """
+        Expanding list items in the list by creating new items or joining them
+
+        :param list metadata_list: list of dicts that store metadata
+        :param str dict_key: key in the dictionaries that have to be expanded
+
+        :return str: path to file written
+        """
         try:
             element_is_list = any(
                 type(list_item[dict_key]) is list for list_item in metadata_list
@@ -591,7 +607,7 @@ class Geofetcher:
                             metadata_list[n_elem].update(sample_char)
                         else:
                             just_string = True
-                            this_string += elem
+                            this_string += ", " + elem
 
                     if just_string:
                         metadata_list[n_elem][dict_key] = this_string
@@ -613,12 +629,28 @@ class Geofetcher:
 
     @staticmethod
     def get_list_of_keys(list_of_dict):
+        """
+        Getting list of all keys that are in the dictionaries in the list
+
+        :param list list_of_dict: list of dicts with metadata
+
+        :return list: list of dictionary keys
+        """
+
         list_of_keys = []
         for element in list_of_dict:
             list_of_keys.extend(list(element.keys()))
         return list(set(list_of_keys))
 
     def unify_list_keys(self, processed_meta_list):
+        """
+        Unifying list of dicts with metadata, so every dict will have
+            same keys
+
+        :param list processed_meta_list: list of dicts with metadata
+
+        :return str: list of unified dicts with metadata
+        """
         list_of_keys = self.get_list_of_keys(processed_meta_list)
         for k in list_of_keys:
             for list_elem in range(len(processed_meta_list)):

@@ -117,7 +117,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                 else:
                     sample_name = gsm
 
-                if acc_GSE_list.has_key(gse):  # GSE already has a GSM; add the next one
+                if gse in acc_GSE_list:  # GSE already has a GSM; add the next one
                     acc_GSE_list[gse][gsm] = sample_name
                 else:
                     acc_GSE_list[gse] = OrderedDict({gsm: sample_name})

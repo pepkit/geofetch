@@ -607,7 +607,11 @@ class Geofetcher:
                             metadata_list[n_elem].update(sample_char)
                         else:
                             just_string = True
-                            this_string += ", " + elem
+                            if this_string != "":
+                                ", ".join([this_string, elem])
+                            else:
+                                this_string = elem
+
 
                     if just_string:
                         metadata_list[n_elem][dict_key] = this_string

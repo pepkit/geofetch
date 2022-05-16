@@ -1,6 +1,5 @@
 """ Independently-importable utilities to circumvent true scripts. """
 
-from collections import OrderedDict
 import logging
 import os
 import subprocess
@@ -120,7 +119,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                 if gse in acc_GSE_list:  # GSE already has a GSM; add the next one
                     acc_GSE_list[gse][gsm] = sample_name
                 else:
-                    acc_GSE_list[gse] = OrderedDict({gsm: sample_name})
+                    acc_GSE_list[gse] = {gsm: sample_name}
             else:
                 # No GSM limit; use empty dict.
                 acc_GSE_list[gse] = {}

@@ -26,8 +26,8 @@ import sys
 # import tarfile
 import time
 
-from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
-from ._version import __version__
+from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from _version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
 from ubiquerg import expandpath, is_command_callable
@@ -222,6 +222,10 @@ class Geofetcher:
                     ) = self.get_list_of_processed_files(file_gse, file_gsm)
                     processed_metadata_samples.extend(meta_processed_samples)
                     processed_metadata_exp.extend(meta_processed_series)
+
+                    # taking into account list of GSM that is specified in the input file
+                    gsm_list = acc_GSE_list[acc_GSE]
+                    meta_processed_samples = self.filter_gsm(meta_processed_samples, gsm_list)
 
                     if not self.args.just_metadata:
                         data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
@@ -630,6 +634,29 @@ class Geofetcher:
             self._LOGGER.warning("Value Error: %s" % err1)
             return metadata_list
 
+    def filter_gsm(self, meta_processed_samples: list, gsm_list: dict) -> list:
+        """
+        Getting metadata list of all samples of one experiment and filtering it
+        by the list of GSM that was specified in the input files.
+        And then changing names of the sample names.
+
+        :param meta_processed_samples: list of metadata dicts of samples
+        :param gsm_list: list of dicts where GSM (samples) are keys and
+            sample names are values. Where values can be empty string
+        """
+
+        if gsm_list.keys():
+            new_gsm_list = []
+            for gsm_sample in meta_processed_samples:
+                if gsm_sample["Sample_geo_accession"] in gsm_list.keys():
+                    gsm_sample_new = gsm_sample
+                    if gsm_list[gsm_sample["Sample_geo_accession"]] != "":
+                        gsm_sample_new["sample_name"] = gsm_list[gsm_sample["Sample_geo_accession"]]
+                    new_gsm_list.append(gsm_sample_new)
+            return new_gsm_list
+        return meta_processed_samples
+
+
     @staticmethod
     def get_list_of_keys(list_of_dict):
         """
@@ -955,7 +982,6 @@ class Geofetcher:
         :param str file_gsm: the path to gse metafile
         :return list: list of metadata of processed files
         """
-
         tar_re = re.compile(r".*\.tar$")
         gse_numb = None
         meta_processed_samples = []
@@ -1051,7 +1077,7 @@ class Geofetcher:
                     # expand meta_processed_samples with information about type and size
                     file_info_add = self.read_tar_filelist(filelist_path)
                     for index_nr in range(len(meta_processed_samples)):
-                        file_name = meta_processed_samples[index_nr]["sample_name"]
+                        file_name = meta_processed_samples[index_nr]["file"]
                         meta_processed_samples[index_nr].update(
                             file_info_add[file_name]
                         )
@@ -1144,7 +1170,11 @@ class Geofetcher:
             new_dict = meta_elem.copy()
             new_dict["file_url"] = meta_elem["file"]
             new_dict["file"] = os.path.basename(meta_elem["file"])
-            new_dict["sample_name"] = os.path.basename(meta_elem["file"])
+            # new_dict["sample_name"] = os.path.basename(meta_elem["file"])
+            try:
+                new_dict["sample_name"] = str(meta_elem["Sample_title"])
+            except KeyError:
+                new_dict["sample_name"] = os.path.basename(meta_elem["file"])
             separated_list.append(new_dict)
         return separated_list
 
@@ -1174,7 +1204,7 @@ class Geofetcher:
                     filtered_list.append(meta_elem)
         else:
             self._LOGGER.info(
-                "\033[32mTotal number of files after size filter NOOOONE???? \033[0m"
+                "\033[32mTotal number of files after size filter NONE?? \033[0m"
             )
             return meta_list
         self._LOGGER.info(

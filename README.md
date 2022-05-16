@@ -1,4 +1,4 @@
-# <img src="docs/img/geofetch_logo.svg" alt="geofetch logo" height="70"/>
+# <img src="docs/img/geofetch_logo.svg" alt="geofetch logo" height="70">
 
 [![PEP compatible](http://pepkit.github.io/img/PEP-compatible-green.svg)](http://pepkit.github.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)

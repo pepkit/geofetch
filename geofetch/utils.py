@@ -112,7 +112,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                 if len(fields) > 2 and gsm != "":
                     # There must have been a limit (GSM specified)
                     # include a name if it doesn't already exist
-                    sample_name = fields[2].rstrip()
+                    sample_name = fields[2].rstrip().replace(" ", "_")
                 else:
                     sample_name = gsm
 

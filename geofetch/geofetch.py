@@ -26,8 +26,8 @@ import sys
 # import tarfile
 import time
 
-from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
-from _version import __version__
+from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from ._version import __version__
 
 from logmuse import add_logging_options, logger_via_cli
 from ubiquerg import expandpath, is_command_callable
@@ -225,7 +225,9 @@ class Geofetcher:
 
                     # taking into account list of GSM that is specified in the input file
                     gsm_list = acc_GSE_list[acc_GSE]
-                    meta_processed_samples = self.filter_gsm(meta_processed_samples, gsm_list)
+                    meta_processed_samples = self.filter_gsm(
+                        meta_processed_samples, gsm_list
+                    )
 
                     if not self.args.just_metadata:
                         data_geo_folder = os.path.join(self.args.geo_folder, acc_GSE)
@@ -651,11 +653,12 @@ class Geofetcher:
                 if gsm_sample["Sample_geo_accession"] in gsm_list.keys():
                     gsm_sample_new = gsm_sample
                     if gsm_list[gsm_sample["Sample_geo_accession"]] != "":
-                        gsm_sample_new["sample_name"] = gsm_list[gsm_sample["Sample_geo_accession"]]
+                        gsm_sample_new["sample_name"] = gsm_list[
+                            gsm_sample["Sample_geo_accession"]
+                        ]
                     new_gsm_list.append(gsm_sample_new)
             return new_gsm_list
         return meta_processed_samples
-
 
     @staticmethod
     def get_list_of_keys(list_of_dict):

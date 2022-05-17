@@ -26,8 +26,8 @@ import sys
 # import tarfile
 import time
 
-from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
-from ._version import __version__
+from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from _version import __version__
 
 from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable
@@ -103,7 +103,7 @@ class Geofetcher:
         # self.args = args
         global _LOGGER
         #  _LOGGER = logger_via_cli(args, name="geofetch")
-        _LOGGER = init_logger(name="geofetch")
+        _LOGGER = init_logger(name="geofetch", verbosity=verbosity, logfile=None)
         self._LOGGER = _LOGGER
 
         if name:
@@ -268,14 +268,73 @@ class Geofetcher:
                         meta_processed_samples,
                         meta_processed_series,
                     ) = self.get_list_of_processed_files(file_gse, file_gsm)
-                    processed_metadata_samples.extend(meta_processed_samples)
-                    processed_metadata_exp.extend(meta_processed_series)
 
                     # taking into account list of GSM that is specified in the input file
                     gsm_list = acc_GSE_list[acc_GSE]
                     meta_processed_samples = self.filter_gsm(
                         meta_processed_samples, gsm_list
                     )
+
+                    list_of_keys = self.get_list_of_keys(meta_processed_samples)
+                    self._LOGGER.info("Expanding metadata list...")
+                    for key_in_list in list_of_keys:
+                        meta_processed_samples = self.expand_metadata_list(
+                            meta_processed_samples, key_in_list
+                        )
+
+                    list_of_keys_series = self.get_list_of_keys(meta_processed_series)
+                    self._LOGGER.info("Expanding metadata list...")
+                    for key_in_list in list_of_keys_series:
+                        meta_processed_series = self.expand_metadata_list(
+                            meta_processed_series, key_in_list
+                        )
+
+                    # adding metadata from current experiment to the project
+                    processed_metadata_samples.extend(meta_processed_samples)
+                    processed_metadata_exp.extend(meta_processed_series)
+
+                    # save PEP for each accession
+                    if self.acc_anno and len(acc_GSE_list.keys()) > 1:
+                        print("deos it work?")
+                        if self.supp_by == "all":
+                            print("deos it work?1")
+                            # samples
+                            pep_acc_path_sample = os.path.join(
+                                self.metadata_raw,
+                                acc_GSE,
+                                acc_GSE + SAMPLE_SUPP_METADATA_FILE,
+                            )
+                            self.write_processed_annotation(
+                                meta_processed_samples, pep_acc_path_sample
+                            )
+
+                            # series
+                            pep_acc_path_exp = os.path.join(
+                                self.metadata_raw,
+                                acc_GSE,
+                                acc_GSE + EXP_SUPP_METADATA_FILE,
+                            )
+                            self.write_processed_annotation(
+                                meta_processed_series, pep_acc_path_exp
+                            )
+                        elif self.supp_by == "samples":
+                            pep_acc_path_sample = os.path.join(
+                                self.metadata_raw,
+                                acc_GSE,
+                                acc_GSE + SAMPLE_SUPP_METADATA_FILE,
+                            )
+                            self.write_processed_annotation(
+                                meta_processed_samples, pep_acc_path_sample
+                            )
+                        elif self.supp_by == "series":
+                            pep_acc_path_exp = os.path.join(
+                                self.metadata_raw,
+                                acc_GSE,
+                                acc_GSE + EXP_SUPP_METADATA_FILE,
+                            )
+                            self.write_processed_annotation(
+                                meta_processed_series, pep_acc_path_exp
+                            )
 
                     if not self.just_metadata:
                         data_geo_folder = os.path.join(self.geo_folder, acc_GSE)
@@ -313,6 +372,7 @@ class Geofetcher:
                                 self.download_processed_file(file_url, data_geo_folder)
                 except Exception as processed_exception:
                     failed_runs.append(acc_GSE)
+                    self._LOGGER.warning(f"Error occurred: {processed_exception}")
 
             else:
                 # download gsm metadata
@@ -504,24 +564,6 @@ class Geofetcher:
 
         # saving PEPs for processed data
         if self.processed:
-            processed_metadata_samples = self.unify_list_keys(
-                processed_metadata_samples
-            )
-
-            list_of_keys = self.get_list_of_keys(processed_metadata_samples)
-            self._LOGGER.info("Expanding metadata list...")
-            for key_in_list in list_of_keys:
-                processed_metadata_samples = self.expand_metadata_list(
-                    processed_metadata_samples, key_in_list
-                )
-
-            list_of_keys_series = self.get_list_of_keys(processed_metadata_exp)
-            self._LOGGER.info("Expanding metadata list...")
-            for key_in_list in list_of_keys_series:
-                processed_metadata_exp = self.expand_metadata_list(
-                    processed_metadata_exp, key_in_list
-                )
-
             if self.supp_by == "all":
                 supp_sample_path_meta = os.path.join(
                     self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
@@ -778,6 +820,11 @@ class Geofetcher:
             )
             return False
 
+        # create folder if does not exist
+        pep_file_folder = os.path.split(file_annotation_path)[0]
+        if not os.path.exists(pep_file_folder):
+            os.makedirs(pep_file_folder)
+
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
 
@@ -808,7 +855,7 @@ class Geofetcher:
 
         # save .yaml file
         yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
-        config = os.path.join(self.metadata_raw, yaml_name)
+        config = os.path.join(pep_file_folder, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
         return True
 

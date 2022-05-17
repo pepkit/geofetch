@@ -6,8 +6,12 @@ import subprocess
 import re
 
 
-__author__ = ["Vince Reuter", "Nathan Sheffield", "Oleksandr Khoroshevskyi"]
-__email__ = "vreuter@virginia.edu"
+__author__ = [
+    "Oleksandr Khoroshevskyi",
+    "Vince Reuter",
+    "Nathan Sheffield",
+]
+__email__ = "bnt4me@virginia.edu"
 
 __all__ = ["parse_accessions"]
 

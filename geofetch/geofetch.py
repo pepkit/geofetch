@@ -26,8 +26,8 @@ import sys
 # import tarfile
 import time
 
-from utils import Accession, parse_accessions, parse_SOFT_line, convert_size
-from _version import __version__
+from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from ._version import __version__
 
 from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable
@@ -295,9 +295,7 @@ class Geofetcher:
 
                     # save PEP for each accession
                     if self.acc_anno and len(acc_GSE_list.keys()) > 1:
-                        print("deos it work?")
                         if self.supp_by == "all":
-                            print("deos it work?1")
                             # samples
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,

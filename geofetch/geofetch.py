@@ -281,8 +281,6 @@ class Geofetcher:
                     list_of_keys = self.get_list_of_keys(meta_processed_samples)
                     self._LOGGER.info("Expanding metadata list...")
                     for key_in_list in list_of_keys:
-                        if key_in_list == "Sample_description":
-                            print(key_in_list)
                         meta_processed_samples = self.expand_metadata_list(
                             meta_processed_samples, key_in_list
                         )

@@ -274,10 +274,15 @@ class Geofetcher:
                     meta_processed_samples = self.filter_gsm(
                         meta_processed_samples, gsm_list
                     )
+                    # Unify keys:
+                    meta_processed_samples = self.unify_list_keys(meta_processed_samples)
+                    meta_processed_series = self.unify_list_keys(meta_processed_series)
 
                     list_of_keys = self.get_list_of_keys(meta_processed_samples)
                     self._LOGGER.info("Expanding metadata list...")
                     for key_in_list in list_of_keys:
+                        if key_in_list == "Sample_description":
+                            print(key_in_list)
                         meta_processed_samples = self.expand_metadata_list(
                             meta_processed_samples, key_in_list
                         )
@@ -417,7 +422,7 @@ class Geofetcher:
                             gsm_metadata[experiment]["gsm_id"]
                         ]
                     except KeyError:
-                        pass
+                        _LOGGER.warning(f"Error in sample_name ...")
                     if not sample_name or sample_name == "":
                         temp = gsm_metadata[experiment]["Sample_title"]
                         # Now do a series of transformations to cleanse the sample name
@@ -1748,7 +1753,9 @@ def main():
     """Run the script."""
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
+    print(args_dict)
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
+    # print(ab.get_list_of_processed_files())
 
 
 if __name__ == "__main__":

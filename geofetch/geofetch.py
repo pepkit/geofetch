@@ -275,7 +275,9 @@ class Geofetcher:
                         meta_processed_samples, gsm_list
                     )
                     # Unify keys:
-                    meta_processed_samples = self.unify_list_keys(meta_processed_samples)
+                    meta_processed_samples = self.unify_list_keys(
+                        meta_processed_samples
+                    )
                     meta_processed_series = self.unify_list_keys(meta_processed_series)
 
                     list_of_keys = self.get_list_of_keys(meta_processed_samples)

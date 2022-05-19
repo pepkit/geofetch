@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0] -- 2022-03-10
+- Added `--filter-size` argument.
+- Added `--data-source` argument.
+- Removed `--tar_re` argument.
+- Added PEP for processed data.
+- Updated regex filter (case-insensitive update).
+- Changed way of downloading processed data (downloading each file separately).
+- Fixed code errors.
+- Separated sample and experiment processed data.
+
+
 ## [0.7.0] -- 2020-05-21
 - Fixed user interface for bam conversions
 - Added regex filter for processed data filenames, which will also auto-extract from tar archives

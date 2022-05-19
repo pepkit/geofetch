@@ -8,10 +8,12 @@ nav:
   - Getting started:
     - Introduction: README.md
     - Install and configure: install.md
-    - Tutorial: tutorial.md
     - SRA convert: sra_convert.md
+    - Tutorial for processed data: processed-data-downloading.md
+    - Tutorial for raw data: raw-data-downloading.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md
+    - Set SRA data download location: howto-location.md
   - Reference:
     - Metadata output: metadata_output.md
     - Usage: usage.md

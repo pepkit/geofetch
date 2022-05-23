@@ -1,0 +1,11 @@
+pep_version: 2.1.0
+project_name: {project_name}
+sample_table: {sample_table}
+
+sample_modifiers:
+  append:
+    output_file_path: FILES
+  derive:
+    attributes: [output_file_path]
+    sources:
+      FILES: {geo_folder}/{GSE}/{file}

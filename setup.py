@@ -41,6 +41,7 @@ setup(
     version=version,
     description="Downloads data and metadata from GEO and SRA and creates standard PEPs.",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",

@@ -218,7 +218,7 @@ class Geofetcher:
             elif ncount == self.skip + 1:
                 self._LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
             self._LOGGER.info(
-                f"\033[38;5;228mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
+                f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
             )
 
             if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
@@ -696,12 +696,21 @@ class Geofetcher:
                     for elem in metadata_list[n_elem][dict_key]:
                         separated_elements = elem.split(": ")
                         if len(separated_elements) >= 2:
-                            list_of_elem = [
-                                separated_elements[0],
-                                ": ".join(separated_elements[1:]),
-                            ]
-                            sample_char = dict([list_of_elem])
-                            metadata_list[n_elem].update(sample_char)
+
+                            # if first element is larger than 40 then treat it like simple string
+                            if len(separated_elements[0]) > 40:
+                                just_string = True
+                                if this_string != "":
+                                    this_string = ", ".join([this_string, elem])
+                                else:
+                                    this_string = elem
+                            else:
+                                list_of_elem = [
+                                    separated_elements[0],
+                                    ": ".join(separated_elements[1:]),
+                                ]
+                                sample_char = dict([list_of_elem])
+                                metadata_list[n_elem].update(sample_char)
                         else:
                             just_string = True
                             if this_string != "":

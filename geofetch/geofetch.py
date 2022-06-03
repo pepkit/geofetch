@@ -1708,7 +1708,7 @@ def _parse_cmdl(cmdl):
         " to retrieve processed data, which may be attached to the"
         " collective series entity, or to individual samples. "
         "Allowable values are: samples, series or both (all). "
-        "Ignored unless 'processed' flag is set. [Default: all]",
+        "Ignored unless 'processed' flag is set. [Default: samples]",
     )
 
     processed_group.add_argument(

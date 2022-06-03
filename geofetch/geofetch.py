@@ -298,9 +298,10 @@ class Geofetcher:
                             meta_processed_series, key_in_list
                         )
 
-                    # adding metadata from current experiment to the project
-                    processed_metadata_samples.extend(meta_processed_samples)
-                    processed_metadata_exp.extend(meta_processed_series)
+                    if not self.acc_anno:
+                        # adding metadata from current experiment to the project
+                        processed_metadata_samples.extend(meta_processed_samples)
+                        processed_metadata_exp.extend(meta_processed_series)
 
                     # save PEP for each accession
                     if self.acc_anno and len(acc_GSE_list.keys()) > 1:
@@ -571,36 +572,37 @@ class Geofetcher:
 
         # saving PEPs for processed data
         if self.processed:
-            if self.supp_by == "all":
-                supp_sample_path_meta = os.path.join(
-                    self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
-                )
-                self.write_processed_annotation(
-                    processed_metadata_samples, supp_sample_path_meta
-                )
+            if not self.acc_anno:
+                if self.supp_by == "all":
+                    supp_sample_path_meta = os.path.join(
+                        self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                    )
+                    self.write_processed_annotation(
+                        processed_metadata_samples, supp_sample_path_meta
+                    )
 
-                supp_series_path_meta = os.path.join(
-                    self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
-                )
-                self.write_processed_annotation(
-                    processed_metadata_exp, supp_series_path_meta
-                )
+                    supp_series_path_meta = os.path.join(
+                        self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                    )
+                    self.write_processed_annotation(
+                        processed_metadata_exp, supp_series_path_meta
+                    )
 
-            elif self.supp_by == "samples":
-                supp_sample_path_meta = os.path.join(
-                    self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
-                )
-                self.write_processed_annotation(
-                    processed_metadata_samples, supp_sample_path_meta
-                )
+                elif self.supp_by == "samples":
+                    supp_sample_path_meta = os.path.join(
+                        self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                    )
+                    self.write_processed_annotation(
+                        processed_metadata_samples, supp_sample_path_meta
+                    )
 
-            elif self.supp_by == "series":
-                supp_series_path_meta = os.path.join(
-                    self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
-                )
-                self.write_processed_annotation(
-                    processed_metadata_exp, supp_series_path_meta
-                )
+                elif self.supp_by == "series":
+                    supp_series_path_meta = os.path.join(
+                        self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                    )
+                    self.write_processed_annotation(
+                        processed_metadata_exp, supp_series_path_meta
+                    )
         else:
             # Combine individual accessions into project-level annotations, and write
             # individual accession files (if requested)

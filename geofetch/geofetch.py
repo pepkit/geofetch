@@ -98,6 +98,8 @@ class Geofetcher:
         verbosity=None,
         logdev=False,
         input=None,
+        column_max_length=50,
+        **kwargs,
     ):
 
         # self.args = args
@@ -170,6 +172,8 @@ class Geofetcher:
         self.silent = silent
         self.verbosity = verbosity
         self.logdev = logdev
+
+        self.column_max_length = column_max_length
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
@@ -840,6 +844,15 @@ class Geofetcher:
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
 
+        # filtering huge annotation strings that are repeating for each sample
+        processed_metadata, proj_meta = self.separate_common_meta(
+            processed_metadata, self.column_max_length
+        )
+        meta_list_str = [
+            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+        ]
+        modifiers_str = "\n    ".join(d for d in meta_list_str)
+
         with open(file_annotation_path, "w") as m_file:
             dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
             dict_writer.writeheader()
@@ -859,6 +872,7 @@ class Geofetcher:
             "sample_table": os.path.basename(file_annotation_path),
             "geo_folder": self.geo_folder,
             "pipeline_interfaces": self.file_pipeline_interfaces,
+            "additional_columns": modifiers_str,
         }
 
         for k, v in template_values.items():
@@ -870,6 +884,46 @@ class Geofetcher:
         config = os.path.join(pep_file_folder, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
         return True
+
+    def separate_common_meta(self, meta_list, max_len=50):
+        """
+        This function is separating information for the experiment from a sample
+        :param list meta_list: list of dictionaries of samples
+        :param int max_len: threshold of the length of the common value that can be stored in the sample table
+        :return set: Return is a set of list, where 1 list is
+        list of samples metadata dictionaries and 2: list of common samples metadata
+        dictionaries that are linked to the project.
+        """
+        list_of_keys = self.get_list_of_keys(meta_list)
+        list_keys_diff = []
+        # finding columns with common values
+        for this_key in list_of_keys:
+            value = ""
+            for nb_sample in enumerate(meta_list):
+                if nb_sample[0] == 0:
+                    value = meta_list[nb_sample[0]][this_key]
+                    if len(str(value)) < max_len:
+                        list_keys_diff.append(this_key)
+                        break
+                else:
+                    if value != meta_list[nb_sample[0]][this_key]:
+                        list_keys_diff.append(this_key)
+                        break
+
+        list_keys_diff = set(list_keys_diff)
+
+        # separating sample and common metadata and creating 2 lists
+        new_meta_project = []
+        for this_key in list_of_keys:
+            first_key = True
+            for nb_sample in enumerate(meta_list):
+                if this_key not in list_keys_diff:
+                    if first_key:
+                        new_meta_project.append({this_key: nb_sample[1][this_key]})
+                        first_key = False
+                    del meta_list[nb_sample[0]][this_key]
+
+        return meta_list, new_meta_project
 
     def download_SRA_file(self, run_name):
         """
@@ -1628,6 +1682,12 @@ def _parse_cmdl(cmdl):
         action="store_true",
         help="Use just the keys defined in this module when writing out metadata.",
     )
+    parser.add_argument(
+        "--column-max-length",
+        type=int,
+        default=50,
+        help="The length threshold of the constant sample attributes that could be stored in sample table",
+    )
 
     processed_group.add_argument(
         "-p",
@@ -1762,9 +1822,7 @@ def main():
     """Run the script."""
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
-    print(args_dict)
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
-    # print(ab.get_list_of_processed_files())
 
 
 if __name__ == "__main__":

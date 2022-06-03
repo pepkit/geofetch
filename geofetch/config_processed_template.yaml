@@ -5,6 +5,7 @@ sample_table: {sample_table}
 sample_modifiers:
   append:
     output_file_path: FILES
+    {additional_columns}
   derive:
     attributes: [output_file_path]
     sources:

@@ -187,3 +187,53 @@ class TestFilters:
     def test_size_filter(self, meta_list, output, initiate_geofetcher):
         result = initiate_geofetcher.run_size_filter(meta_list)
         assert result == output
+
+    @pytest.mark.parametrize(
+        "init_meta_data,  result_sample, result_proj,",
+        [
+            (
+                [
+                    {
+                        "name": "Antonio",
+                        "number": 1,
+                        "car": "Fiat",
+                    },
+                    {
+                        "name": "Markus",
+                        "number": 1,
+                        "car": "Jeep",
+                    },
+                    {
+                        "name": "Pablo",
+                        "number": 1,
+                        "car": "Jeep",
+                    },
+                ],
+                [
+                    {
+                        "name": "Antonio",
+                        "car": "Fiat",
+                    },
+                    {
+                        "name": "Markus",
+                        "car": "Jeep",
+                    },
+                    {
+                        "name": "Pablo",
+                        "car": "Jeep",
+                    },
+                ],
+                [
+                    {
+                        "number": 1,
+                    },
+                ],
+            )
+        ],
+    )
+    def test_large_meta_separation(
+        self, init_meta_data, result_sample, result_proj, initiate_geofetcher
+    ):
+        samp, proj = initiate_geofetcher.separate_common_meta(init_meta_data, max_len=0)
+        assert samp == result_sample
+        assert proj == result_proj

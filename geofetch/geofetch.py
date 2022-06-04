@@ -26,7 +26,7 @@ import sys
 # import tarfile
 import time
 
-from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size
+from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size, clean_soft_files
 from ._version import __version__
 
 from logmuse import add_logging_options, init_logger
@@ -99,6 +99,7 @@ class Geofetcher:
         logdev=False,
         input=None,
         column_max_length=50,
+        clean=False,
         **kwargs,
     ):
 
@@ -174,6 +175,7 @@ class Geofetcher:
         self.logdev = logdev
 
         self.column_max_length = column_max_length
+        self.clean = clean
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
@@ -562,6 +564,11 @@ class Geofetcher:
 
         # Logging additional information about processing
         self._LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
+
+        # Logging cleaning process:
+        if self.clean:
+            self._LOGGER.info(f"Cleaning soft files ...")
+            clean_soft_files(self.metadata_raw)
 
         if len(failed_runs) > 0:
             self._LOGGER.warn(
@@ -1688,6 +1695,12 @@ def _parse_cmdl(cmdl):
         "--column-max-length",
         type=int,
         default=50,
+        help="The length threshold of the constant sample attributes that could be stored in sample table",
+    )
+
+    parser.add_argument(
+        "--clean",
+        action="store_true",
         help="The length threshold of the constant sample attributes that could be stored in sample table",
     )
 

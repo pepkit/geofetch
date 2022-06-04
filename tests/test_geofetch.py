@@ -1,6 +1,7 @@
-from geofetch import parse_accessions, Geofetcher
+from geofetch import parse_accessions, Geofetcher, utils
 import os
 import pytest
+import shutil
 
 INPUT_ACC_FILE = "tests/test_files/input_acc.txt"
 GSE_FILES = "tests/test_files/soft_files"
@@ -237,3 +238,14 @@ class TestFilters:
         samp, proj = initiate_geofetcher.separate_common_meta(init_meta_data, max_len=0)
         assert samp == result_sample
         assert proj == result_proj
+
+
+def test_clean_func(tmpdir):
+    """
+    Testing deleting soft files
+    """
+    files_dir = os.path.join(GSE_FILES, "GSE138657")
+    for file_name in os.listdir(files_dir):
+        shutil.copyfile(os.path.join(files_dir, file_name), os.path.join(tmpdir, file_name))
+    utils.clean_soft_files(tmpdir)
+

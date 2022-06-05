@@ -112,7 +112,10 @@ class Geofetcher:
         if name:
             self.project_name = name
         else:
-            self.project_name = os.path.splitext(os.path.basename(input))[0]
+            try:
+                self.project_name = os.path.splitext(os.path.basename(input))[0]
+            except TypeError:
+                self.project_name = "project_name"
 
         if metadata_folder:
             self.metadata_expanded = expandpath(metadata_folder)
@@ -135,9 +138,8 @@ class Geofetcher:
         self.config_template = config_template
 
         # if user specified a pipeline interface path, add it into the project config
-        self.pipeline_interfaces = pipeline_interfaces
-        if self.pipeline_interfaces:
-            self.file_pipeline_interfaces = self.pipeline_interfaces
+        if pipeline_interfaces:
+            self.file_pipeline_interfaces = pipeline_interfaces
         else:
             self.file_pipeline_interfaces = "null"
 
@@ -305,7 +307,7 @@ class Geofetcher:
                         processed_metadata_samples.extend(meta_processed_samples)
                         processed_metadata_exp.extend(meta_processed_series)
 
-                    # save PEP for each accession
+                    # save PEP for each accession if acc-anno flag is true
                     if self.acc_anno and len(acc_GSE_list.keys()) > 1:
                         if self.supp_by == "all":
                             # samples
@@ -429,7 +431,7 @@ class Geofetcher:
                             gsm_metadata[experiment]["gsm_id"]
                         ]
                     except KeyError:
-                        _LOGGER.warning(f"Error in sample_name ...")
+                        _LOGGER.info(f"KeyError in sample_name, creating new...")
                     if not sample_name or sample_name == "":
                         temp = gsm_metadata[experiment]["Sample_title"]
                         # Now do a series of transformations to cleanse the sample name
@@ -504,7 +506,7 @@ class Geofetcher:
 
                     # Write to filtered SRA Runinfo file
                     wwrite.writerow(line)
-                    self._LOGGER.info(f"Get SRR: {run_name} ({experiment})")
+                    self._LOGGER.info(f"Getting SRR: {run_name} ({experiment})")
                     bam_file = (
                         ""
                         if self.bam_folder == ""
@@ -610,79 +612,10 @@ class Geofetcher:
                     self.write_processed_annotation(
                         processed_metadata_exp, supp_series_path_meta
                     )
+
+        # saving PEPs for raw data
         else:
-            # Combine individual accessions into project-level annotations, and write
-            # individual accession files (if requested)
-            metadata_dict_combined = {}
-            for acc_GSE, gsm_metadata in metadata_dict.items():
-                file_annotation = os.path.join(
-                    self.metadata_expanded, acc_GSE + "_annotation.csv"
-                )
-                if self.acc_anno:
-                    self.write_gsm_annotation(
-                        gsm_metadata,
-                        file_annotation,
-                        use_key_subset=self.use_key_subset,
-                    )
-                metadata_dict_combined.update(gsm_metadata)
-
-            subannotation_dict_combined = {}
-            for acc_GSE, gsm_multi_table in subannotation_dict.items():
-                file_subannotation = os.path.join(
-                    self.metadata_expanded, acc_GSE + "_subannotation.csv"
-                )
-                if self.acc_anno:
-                    self.write_subannotation(gsm_multi_table, file_subannotation)
-                subannotation_dict_combined.update(gsm_multi_table)
-            self._LOGGER.info(
-                "Creating complete project annotation sheets and config file..."
-            )
-            # If the project included more than one GSE, we can now output combined
-            # annotation tables for the entire project.
-
-            # Write combined annotation sheet
-            file_annotation = os.path.join(
-                self.metadata_raw, self.project_name + "_annotation.csv"
-            )
-            self.write_gsm_annotation(
-                metadata_dict_combined,
-                file_annotation,
-                use_key_subset=self.use_key_subset,
-            )
-
-            # Write combined subannotation table
-            if len(subannotation_dict_combined) > 0:
-                file_subannotation = os.path.join(
-                    self.metadata_raw, self.project_name + "_subannotation.csv"
-                )
-                self.write_subannotation(
-                    subannotation_dict_combined, file_subannotation
-                )
-            else:
-                file_subannotation = "null"
-
-            # Write project config file
-            if not self.config_template:
-                geofetchdir = os.path.dirname(__file__)
-                self.config_template = os.path.join(geofetchdir, "config_template.yaml")
-
-            with open(self.config_template, "r") as template_file:
-                template = template_file.read()
-
-            template_values = {
-                "project_name": self.project_name,
-                "annotation": os.path.basename(file_annotation),
-                "subannotation": os.path.basename(file_subannotation),
-                "pipeline_interfaces": self.file_pipeline_interfaces,
-            }
-
-            for k, v in template_values.items():
-                placeholder = "{" + str(k) + "}"
-                template = template.replace(placeholder, str(v))
-
-            # save .yaml file
-            config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
-            self._write(config, template, msg_pre="  Config file: ")
+            self.write_raw_annotation(metadata_dict, subannotation_dict)
 
     def expand_metadata_list(self, metadata_list, dict_key):
         """
@@ -893,6 +826,77 @@ class Geofetcher:
         config = os.path.join(pep_file_folder, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
         return True
+
+    def write_raw_annotation(self, metadata_dict, subannotation_dict):
+        """
+        Combining individual accessions into project-level annotations, and writeing
+        individual accession files (if requested)
+        :param dict metadata_dict: dictionary of metadata
+        :param dict subannotation_dict: dictionary of sub-annotation metadata
+        """
+
+        metadata_dict_combined = {}
+        for acc_GSE, gsm_metadata in metadata_dict.items():
+            file_annotation = os.path.join(
+                self.metadata_expanded, acc_GSE + "_annotation.csv"
+            )
+            if self.acc_anno:
+                self.write_gsm_annotation(
+                    gsm_metadata,
+                    file_annotation,
+                    use_key_subset=self.use_key_subset,
+                )
+            metadata_dict_combined.update(gsm_metadata)
+        subannotation_dict_combined = {}
+        for acc_GSE, gsm_multi_table in subannotation_dict.items():
+            file_subannotation = os.path.join(
+                self.metadata_expanded, acc_GSE + "_subannotation.csv"
+            )
+            if self.acc_anno:
+                self.write_subannotation(gsm_multi_table, file_subannotation)
+            subannotation_dict_combined.update(gsm_multi_table)
+        self._LOGGER.info(
+            "Creating complete project annotation sheets and config file..."
+        )
+        # If the project included more than one GSE, we can now output combined
+        # annotation tables for the entire project.
+        # Write combined annotation sheet
+        file_annotation = os.path.join(
+            self.metadata_raw, self.project_name + "_annotation.csv"
+        )
+        self.write_gsm_annotation(
+            metadata_dict_combined,
+            file_annotation,
+            use_key_subset=self.use_key_subset,
+        )
+        # Write combined subannotation table
+        if len(subannotation_dict_combined) > 0:
+            file_subannotation = os.path.join(
+                self.metadata_raw, self.project_name + "_subannotation.csv"
+            )
+            self.write_subannotation(
+                subannotation_dict_combined, file_subannotation
+            )
+        else:
+            file_subannotation = "null"
+        # Write project config file
+        if not self.config_template:
+            geofetchdir = os.path.dirname(__file__)
+            self.config_template = os.path.join(geofetchdir, "config_template.yaml")
+        with open(self.config_template, "r") as template_file:
+            template = template_file.read()
+        template_values = {
+            "project_name": self.project_name,
+            "annotation": os.path.basename(file_annotation),
+            "subannotation": os.path.basename(file_subannotation),
+            "pipeline_interfaces": self.file_pipeline_interfaces,
+        }
+        for k, v in template_values.items():
+            placeholder = "{" + str(k) + "}"
+            template = template.replace(placeholder, str(v))
+        # save .yaml file
+        config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
+        self._write(config, template, msg_pre="  Config file: ")
 
     def separate_common_meta(self, meta_list, max_len=50):
         """
@@ -1838,7 +1842,6 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
-
 
 if __name__ == "__main__":
     try:

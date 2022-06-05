@@ -394,6 +394,7 @@ class Geofetcher:
                 # download gsm metadata
                 result = self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
                 if not result:
+                    del metadata_dict[acc_GSE]
                     continue
                 # Parse metadata from SRA
                 # Produce an annotated output from the GSM and SRARunInfo files.
@@ -834,6 +835,15 @@ class Geofetcher:
         :param dict metadata_dict: dictionary of metadata
         :param dict subannotation_dict: dictionary of sub-annotation metadata
         """
+
+        if self.clean:
+            clean_soft_files(os.path.join(self.metadata_raw))
+
+        try:
+            assert len(metadata_dict) > 0
+        except AssertionError:
+            _LOGGER.warning("\033[33mNo PEP created, as no raw data was found!!!\033[0m")
+            return False
 
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():

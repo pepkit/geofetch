@@ -309,5 +309,8 @@ def clean_soft_files(meta_dir: str):
     dir_files = os.listdir(meta_dir)
 
     for item in dir_files:
-        if item.endswith(".soft") or item.endswith("_file_list.txt"):
+        if item.endswith(".soft") \
+                or item.endswith("_file_list.txt")\
+                or item.endswith("SRA.csv")\
+                or item.endswith("SRA_filt.csv"):
             os.remove(os.path.join(meta_dir, item))

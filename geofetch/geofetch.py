@@ -26,7 +26,13 @@ import sys
 # import tarfile
 import time
 
-from .utils import Accession, parse_accessions, parse_SOFT_line, convert_size, clean_soft_files
+from .utils import (
+    Accession,
+    parse_accessions,
+    parse_SOFT_line,
+    convert_size,
+    clean_soft_files,
+)
 from ._version import __version__
 
 from logmuse import add_logging_options, init_logger
@@ -394,7 +400,8 @@ class Geofetcher:
                 # download gsm metadata
                 result = self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
                 if not result:
-                    del metadata_dict[acc_GSE]
+                    # delete current acc if no raw data was found
+                    # del metadata_dict[acc_GSE]
                     continue
                 # Parse metadata from SRA
                 # Produce an annotated output from the GSM and SRARunInfo files.
@@ -842,8 +849,24 @@ class Geofetcher:
         try:
             assert len(metadata_dict) > 0
         except AssertionError:
-            _LOGGER.warning("\033[33mNo PEP created, as no raw data was found!!!\033[0m")
+            _LOGGER.warning(
+                "\033[33mNo PEP created, as no raw data was found!!!\033[0m"
+            )
             return False
+
+        # checking sample_name value if it's not empty,
+        # otherwise pulling from title
+        for key, value in metadata_dict.items():
+            fixed_dict = {}
+            for key_sample, value_sample in value.items():
+                fixed_dict[key_sample] = value_sample
+                if (
+                    value_sample["sample_name"] == ""
+                    or value_sample["sample_name"] == None
+                ):
+                    fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
+
+            metadata_dict[key] = fixed_dict
 
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():
@@ -884,9 +907,7 @@ class Geofetcher:
             file_subannotation = os.path.join(
                 self.metadata_raw, self.project_name + "_subannotation.csv"
             )
-            self.write_subannotation(
-                subannotation_dict_combined, file_subannotation
-            )
+            self.write_subannotation(subannotation_dict_combined, file_subannotation)
         else:
             file_subannotation = "null"
         # Write project config file
@@ -1852,6 +1873,7 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
+
 
 if __name__ == "__main__":
     try:

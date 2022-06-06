@@ -1385,7 +1385,7 @@ class Geofetcher:
         if self.filter_size is not None:
             filtered_list = []
             for meta_elem in meta_list:
-                if meta_elem[col_name] <= self.filter_size:
+                if int(meta_elem[col_name]) <= self.filter_size:
                     filtered_list.append(meta_elem)
         else:
             self._LOGGER.info(

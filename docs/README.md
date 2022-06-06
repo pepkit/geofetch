@@ -1,5 +1,6 @@
 # <img src="img/geofetch_logo.svg" class="img-header">
 
+![Run pytests](https://github.com/pepkit/geofetch/workflows/Run%20pytests/badge.svg)
 [![PEP compatible](http://pepkit.github.io/img/PEP-compatible-green.svg)](http://pepkit.github.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -24,10 +25,15 @@ You can add `--processed` if you want to download processed files from the given
 geofetch -i GSE95654 --processed
 ```
 
+
 You can add `--just-metadata` if you want to download metadata without the raw SRA files or processed GEO files.
 
 ```console
 geofetch -i GSE95654 --just-metadata
+```
+
+```console
+geofetch -i GSE95654 --processed --just-metadata
 ```
 
 For more details, check out the [usage](usage.md) reference, [installation instructions](install.md), or head on over to the [tutorial for raw data](raw-data-downloading.md) and [tutorial for processed data](processed-data-downloading.md) for a detailed walkthrough.

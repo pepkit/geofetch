@@ -26,14 +26,14 @@ import sys
 # import tarfile
 import time
 
-from utils import (
+from .utils import (
     Accession,
     parse_accessions,
     parse_SOFT_line,
     convert_size,
     clean_soft_files,
 )
-from _version import __version__
+from ._version import __version__
 
 from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable

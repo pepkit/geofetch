@@ -741,6 +741,53 @@ class Geofetcher:
                     processed_meta_list[list_elem][k] = ""
         return processed_meta_list
 
+    def delete_rare_keys(self, metadata_list, threshold=0.001):
+        """
+        Deleting columns where 99,9% rows are empty
+        :param list metadata_list: list of dictionaries with metadata
+        :param float threshold: threshold of percentage empty raw
+        :return list: list of dicts without weird keys LOL
+        """
+        list_keys = self.get_list_of_keys(metadata_list)
+        delete_keys = []
+        for key in list_keys:
+            empty_quantity = 0
+            for sample in metadata_list:
+                if sample[key] == "" or sample[key] == " ":
+                    empty_quantity += 1
+            percentage = empty_quantity / len(list_keys)
+            if percentage > threshold:
+                delete_keys.append(key)
+
+        for key in delete_keys:
+            for sample in enumerate(metadata_list):
+                del metadata_list[sample[0]][key]
+
+        return metadata_list
+
+    def find_genome(self, metadata_list):
+        """
+        Create new genome table by joining few columns
+        """
+        list_keys = self.get_list_of_keys(metadata_list)
+        genome_keys = ["Assembly",
+                       "assembly",
+                       "ASSEMBLY",
+                       "Genome_build",
+                       "genome_build",
+                       "genome build",
+                       "Genome build",
+                       ]
+        proj_gen_keys = list(set(list_keys).intersection(genome_keys))
+
+        for sample in enumerate(metadata_list):
+            sample_genome = ""
+            for key in proj_gen_keys:
+                sample_genome = ' '.join([sample_genome, sample[1][key]])
+            metadata_list[sample[0]]["sample_genome"] = sample_genome
+        return metadata_list
+
+
     def write_gsm_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
         """
         Write metadata sheet out as an annotation file.
@@ -789,6 +836,11 @@ class Geofetcher:
 
         self._LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = self.unify_list_keys(processed_metadata)
+
+        # delete rare keys
+        processed_metadata = self.delete_rare_keys(processed_metadata)
+        processed_metadata = self.find_genome(processed_metadata)
+
 
         # filtering huge annotation strings that are repeating for each sample
         processed_metadata, proj_meta = self.separate_common_meta(
@@ -1426,6 +1478,8 @@ class Geofetcher:
             # new_dict["sample_name"] = os.path.basename(meta_elem["file"])
             try:
                 new_dict["sample_name"] = str(meta_elem["Sample_title"])
+                if new_dict["sample_name"] == "" or new_dict["sample_name"] is None:
+                    raise KeyError("sample_name Does not exist. Creating .. ")
             except KeyError:
                 new_dict["sample_name"] = os.path.basename(meta_elem["file"])
             separated_list.append(new_dict)

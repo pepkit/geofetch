@@ -11,6 +11,7 @@ looper:
 
 sample_modifiers:
   append:
+    {additional_columns}
     SRR_files: SRA
     pipeline_interfaces: {pipeline_interfaces}
   derive:

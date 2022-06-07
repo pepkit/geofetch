@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__author__ = ["Vince Reuter", "Nathan Sheffield", "Oleksandr Khoroshevskyi"]
+__author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
 # Outline:
 # INPUT: A list of GSE ids, optionally including GSM ids to limit to.
@@ -104,7 +104,9 @@ class Geofetcher:
         verbosity=None,
         logdev=False,
         input=None,
-        column_max_length=50,
+        const_limit_project=50,
+        const_limit_discard=250,
+        attr_limit_truncate=500,
         clean=False,
         **kwargs,
     ):
@@ -182,7 +184,10 @@ class Geofetcher:
         self.verbosity = verbosity
         self.logdev = logdev
 
-        self.column_max_length = column_max_length
+        self.const_limit_project = const_limit_project
+        self.const_limit_discard = const_limit_discard
+        self.attr_limit_truncate = attr_limit_truncate
+
         self.clean = clean
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
@@ -322,9 +327,7 @@ class Geofetcher:
                                 acc_GSE,
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
-                            self.write_processed_annotation(
-                                meta_processed_samples, pep_acc_path_sample
-                            )
+                            self.write_processed_annotation(meta_processed_samples, pep_acc_path_sample)
 
                             # series
                             pep_acc_path_exp = os.path.join(
@@ -332,27 +335,21 @@ class Geofetcher:
                                 acc_GSE,
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
-                            self.write_processed_annotation(
-                                meta_processed_series, pep_acc_path_exp
-                            )
+                            self.write_processed_annotation(meta_processed_series, pep_acc_path_exp)
                         elif self.supp_by == "samples":
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,
                                 acc_GSE,
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
-                            self.write_processed_annotation(
-                                meta_processed_samples, pep_acc_path_sample
-                            )
+                            self.write_processed_annotation(meta_processed_samples, pep_acc_path_sample)
                         elif self.supp_by == "series":
                             pep_acc_path_exp = os.path.join(
                                 self.metadata_raw,
                                 acc_GSE,
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
-                            self.write_processed_annotation(
-                                meta_processed_series, pep_acc_path_exp
-                            )
+                            self.write_processed_annotation(meta_processed_series, pep_acc_path_exp)
 
                     if not self.just_metadata:
                         data_geo_folder = os.path.join(self.geo_folder, acc_GSE)
@@ -439,7 +436,7 @@ class Geofetcher:
                             gsm_metadata[experiment]["gsm_id"]
                         ]
                     except KeyError:
-                        _LOGGER.info(f"KeyError in sample_name, creating new...")
+                        self._LOGGER.info(f"KeyError in sample_name, creating new...")
                     if not sample_name or sample_name == "":
                         temp = gsm_metadata[experiment]["Sample_title"]
                         # Now do a series of transformations to cleanse the sample name
@@ -594,32 +591,24 @@ class Geofetcher:
                     supp_sample_path_meta = os.path.join(
                         self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
                     )
-                    self.write_processed_annotation(
-                        processed_metadata_samples, supp_sample_path_meta
-                    )
+                    self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
                     supp_series_path_meta = os.path.join(
                         self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
                     )
-                    self.write_processed_annotation(
-                        processed_metadata_exp, supp_series_path_meta
-                    )
+                    self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
                 elif self.supp_by == "samples":
                     supp_sample_path_meta = os.path.join(
                         self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
                     )
-                    self.write_processed_annotation(
-                        processed_metadata_samples, supp_sample_path_meta
-                    )
+                    self.write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
                 elif self.supp_by == "series":
                     supp_series_path_meta = os.path.join(
                         self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
                     )
-                    self.write_processed_annotation(
-                        processed_metadata_exp, supp_series_path_meta
-                    )
+                    self.write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
         # saving PEPs for raw data
         else:
@@ -656,6 +645,13 @@ class Geofetcher:
                                 just_string = True
                                 if this_string != "":
                                     this_string = ", ".join([this_string, elem])
+                                else:
+                                    this_string = elem
+                            # additional elem for all bed files
+                            elif len(separated_elements[0].split("(")) > 1:
+                                just_string = True
+                                if this_string != "":
+                                    this_string = "(".join([this_string, elem])
                                 else:
                                     this_string = elem
                             else:
@@ -786,7 +782,7 @@ class Geofetcher:
             )
             return False
 
-        # create folder if does not exist
+        # create folder if it does not exist
         pep_file_folder = os.path.split(file_annotation_path)[0]
         if not os.path.exists(pep_file_folder):
             os.makedirs(pep_file_folder)
@@ -796,7 +792,7 @@ class Geofetcher:
 
         # filtering huge annotation strings that are repeating for each sample
         processed_metadata, proj_meta = self.separate_common_meta(
-            processed_metadata, self.column_max_length
+            processed_metadata, self.const_limit_project, self.const_limit_discard, self.attr_limit_truncate
         )
         meta_list_str = [
             f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
@@ -849,7 +845,7 @@ class Geofetcher:
         try:
             assert len(metadata_dict) > 0
         except AssertionError:
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "\033[33mNo PEP created, as no raw data was found!!!\033[0m"
             )
             return False
@@ -862,7 +858,7 @@ class Geofetcher:
                 fixed_dict[key_sample] = value_sample
                 if (
                     value_sample["sample_name"] == ""
-                    or value_sample["sample_name"] == None
+                    or value_sample["sample_name"] is None
                 ):
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
 
@@ -880,6 +876,16 @@ class Geofetcher:
                     use_key_subset=self.use_key_subset,
                 )
             metadata_dict_combined.update(gsm_metadata)
+
+        # filtering huge annotation strings that are repeating for each sample
+        metadata_dict_combined, proj_meta = self.separate_common_meta(
+            metadata_dict_combined, self.const_limit_project, self.const_limit_discard, self.attr_limit_truncate
+        )
+        meta_list_str = [
+            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+        ]
+        modifiers_str = "\n    ".join(d for d in meta_list_str)
+
         subannotation_dict_combined = {}
         for acc_GSE, gsm_multi_table in subannotation_dict.items():
             file_subannotation = os.path.join(
@@ -916,11 +922,13 @@ class Geofetcher:
             self.config_template = os.path.join(geofetchdir, "config_template.yaml")
         with open(self.config_template, "r") as template_file:
             template = template_file.read()
+
         template_values = {
             "project_name": self.project_name,
             "annotation": os.path.basename(file_annotation),
             "subannotation": os.path.basename(file_subannotation),
             "pipeline_interfaces": self.file_pipeline_interfaces,
+            "additional_columns": modifiers_str,
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
@@ -929,30 +937,46 @@ class Geofetcher:
         config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
         self._write(config, template, msg_pre="  Config file: ")
 
-    def separate_common_meta(self, meta_list, max_len=50):
+    def separate_common_meta(self, meta_list, max_len=50, del_limit=250, attr_limit_truncate=500):
         """
         This function is separating information for the experiment from a sample
-        :param list meta_list: list of dictionaries of samples
+        :param list or dict meta_list: list of dictionaries of samples
         :param int max_len: threshold of the length of the common value that can be stored in the sample table
-        :return set: Return is a set of list, where 1 list is
+        :param int del_limit: threshold of the length of the common value that have to be deleted
+        :param int attr_limit_truncate: max length of the attribute in the sample csv
+        :return set: Return is a set of list, where 1 list (or dict) is
         list of samples metadata dictionaries and 2: list of common samples metadata
         dictionaries that are linked to the project.
         """
+        input_is_dict = False
+        if isinstance(meta_list, dict):
+            input_is_dict = True
+            new_meta_list = []
+            for key in meta_list:
+                new_dict = meta_list[key]
+                new_dict["big_key"] = key
+                new_meta_list.append(new_dict)
+
+            meta_list = new_meta_list
+
         list_of_keys = self.get_list_of_keys(meta_list)
         list_keys_diff = []
         # finding columns with common values
         for this_key in list_of_keys:
             value = ""
             for nb_sample in enumerate(meta_list):
-                if nb_sample[0] == 0:
-                    value = meta_list[nb_sample[0]][this_key]
-                    if len(str(value)) < max_len:
-                        list_keys_diff.append(this_key)
-                        break
-                else:
-                    if value != meta_list[nb_sample[0]][this_key]:
-                        list_keys_diff.append(this_key)
-                        break
+                try:
+                    if nb_sample[0] == 0:
+                        value = meta_list[nb_sample[0]][this_key]
+                        if len(str(value)) < max_len and len(str(value)) < del_limit:
+                            list_keys_diff.append(this_key)
+                            break
+                    else:
+                        if value != meta_list[nb_sample[0]][this_key]:
+                            list_keys_diff.append(this_key)
+                            break
+                except KeyError:
+                    pass
 
         list_keys_diff = set(list_keys_diff)
 
@@ -961,11 +985,34 @@ class Geofetcher:
         for this_key in list_of_keys:
             first_key = True
             for nb_sample in enumerate(meta_list):
-                if this_key not in list_keys_diff:
-                    if first_key:
-                        new_meta_project.append({this_key: nb_sample[1][this_key]})
-                        first_key = False
-                    del meta_list[nb_sample[0]][this_key]
+                try:
+                    if this_key not in list_keys_diff:
+                        if first_key:
+                            if len(str(nb_sample[1][this_key])) <= del_limit:
+                                new_meta_project.append({this_key: nb_sample[1][this_key]})
+                            first_key = False
+                        del meta_list[nb_sample[0]][this_key]
+                except KeyError:
+                    pass
+
+        # Truncate huge information in metadata
+        new_list = []
+        for this_item in meta_list:
+            new_item_list = {}
+            for key, value in this_item.items():
+                if len(str(value)) < attr_limit_truncate:
+                    new_item_list[key] = value
+                else:
+                    new_item_list[key] = value[0:attr_limit_truncate] + " ..."
+            new_list.append(new_item_list)
+
+        meta_list = new_list
+
+        if input_is_dict:
+            new_sample_dict = {}
+            for sample in meta_list:
+                new_sample_dict[sample["big_key"]] = sample
+            meta_list = new_sample_dict
 
         return meta_list, new_meta_project
 
@@ -1726,6 +1773,7 @@ def _parse_cmdl(cmdl):
         action="store_true",
         help="Use just the keys defined in this module when writing out metadata.",
     )
+
     parser.add_argument(
         "--column-max-length",
         type=int,
@@ -1737,6 +1785,29 @@ def _parse_cmdl(cmdl):
         "--clean",
         action="store_true",
         help="The length threshold of the constant sample attributes that could be stored in sample table",
+    )
+
+    parser.add_argument(
+        "--const-limit-project",
+        type=int,
+        default=50,
+        help="Limit of the number of the constant sample characters that should be put in project yaml. [Default: 50]",
+    )
+
+    parser.add_argument(
+        "--const-limit-discard",
+        type=int,
+        default=250,
+        help="Limit of the number of the constant sample characters that should be discarded [Default: 50]",
+    )
+
+    parser.add_argument(
+        "--attr-limit-truncate",
+        type=int,
+        default=500,
+        help="Limit of the number of sammple characters."
+             "Any attribute with more than X characters will truncate to the first X,"
+             " where X is a number of characters [Default: 500]",
     )
 
     processed_group.add_argument(

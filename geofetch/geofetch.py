@@ -26,14 +26,14 @@ import sys
 # import tarfile
 import time
 
-from .utils import (
+from utils import (
     Accession,
     parse_accessions,
     parse_SOFT_line,
     convert_size,
     clean_soft_files,
 )
-from ._version import __version__
+from _version import __version__
 
 from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable
@@ -741,7 +741,7 @@ class Geofetcher:
                     processed_meta_list[list_elem][k] = ""
         return processed_meta_list
 
-    def delete_rare_keys(self, metadata_list, threshold=0.001):
+    def delete_rare_keys(self, metadata_list, threshold=0.0001):
         """
         Deleting columns where 99,9% rows are empty
         :param list metadata_list: list of dictionaries with metadata
@@ -838,9 +838,8 @@ class Geofetcher:
         processed_metadata = self.unify_list_keys(processed_metadata)
 
         # delete rare keys
-        processed_metadata = self.delete_rare_keys(processed_metadata)
         processed_metadata = self.find_genome(processed_metadata)
-
+        processed_metadata = self.delete_rare_keys(processed_metadata)
 
         # filtering huge annotation strings that are repeating for each sample
         processed_metadata, proj_meta = self.separate_common_meta(

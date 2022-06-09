@@ -2,18 +2,6 @@
 
 __author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
-# Outline:
-# INPUT: A list of GSE ids, optionally including GSM ids to limit to.
-# example: GSE61150
-# 1. Grab SOFT file from
-# http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc=GSE61150&form=text&view=full
-# 2. parse it, produce a table with all needed fields.
-# 3. Grab SRA values from field, use this link to grab SRA metadata:
-# http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term=SRX079566
-# http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term=SRP055171
-# http://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term=SRX883589
-
-# 4. Parse the SRA RunInfo csv file and use the download_link field to grab the .sra file
 
 import argparse
 import copy
@@ -85,7 +73,8 @@ class Geofetcher:
         just_metadata=False,
         refresh_metadata=False,
         config_template=None,
-        pipeline_interfaces=None,
+        pipeline_samples=None,
+        pipeline_project=None,
         skip=0,
         acc_anno=False,
         use_key_subset=False,
@@ -145,11 +134,18 @@ class Geofetcher:
         self.refresh_metadata = refresh_metadata
         self.config_template = config_template
 
-        # if user specified a pipeline interface path, add it into the project config
-        if pipeline_interfaces:
-            self.file_pipeline_interfaces = pipeline_interfaces
+        # if user specified a pipeline interface path for samples, add it into the project config
+        if pipeline_samples and pipeline_samples != "null":
+            self.file_pipeline_samples = pipeline_samples
+            self.file_pipeline_samples = "pipeline_interfaces: ;l" + self.file_pipeline_samples
         else:
-            self.file_pipeline_interfaces = "null"
+            self.file_pipeline_samples = ""
+
+        # if user specified a pipeline interface path, add it into the project config
+        if pipeline_project:
+            self.file_pipeline_project = f"looper:\n    pipeline_interfaces: {pipeline_project}"
+        else:
+            self.file_pipeline_project = ""
 
         self.skip = skip
         self.acc_anno = acc_anno
@@ -741,30 +737,6 @@ class Geofetcher:
                     processed_meta_list[list_elem][k] = ""
         return processed_meta_list
 
-    def delete_rare_keys(self, metadata_list, threshold=0.0001):
-        """
-        Deleting columns where 99,9% rows are empty
-        :param list metadata_list: list of dictionaries with metadata
-        :param float threshold: threshold of percentage empty raw
-        :return list: list of dicts without weird keys LOL
-        """
-        list_keys = self.get_list_of_keys(metadata_list)
-        delete_keys = []
-        for key in list_keys:
-            empty_quantity = 0
-            for sample in metadata_list:
-                if sample[key] == "" or sample[key] == " ":
-                    empty_quantity += 1
-            percentage = empty_quantity / len(list_keys)
-            if percentage > threshold:
-                delete_keys.append(key)
-
-        for key in delete_keys:
-            for sample in enumerate(metadata_list):
-                del metadata_list[sample[0]][key]
-
-        return metadata_list
-
     def find_genome(self, metadata_list):
         """
         Create new genome table by joining few columns
@@ -786,7 +758,6 @@ class Geofetcher:
                 sample_genome = ' '.join([sample_genome, sample[1][key]])
             metadata_list[sample[0]]["sample_genome"] = sample_genome
         return metadata_list
-
 
     def write_gsm_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
         """
@@ -839,7 +810,6 @@ class Geofetcher:
 
         # delete rare keys
         processed_metadata = self.find_genome(processed_metadata)
-        processed_metadata = self.delete_rare_keys(processed_metadata)
 
         # filtering huge annotation strings that are repeating for each sample
         processed_metadata, proj_meta = self.separate_common_meta(
@@ -868,7 +838,8 @@ class Geofetcher:
             "project_name": self.project_name,
             "sample_table": os.path.basename(file_annotation_path),
             "geo_folder": self.geo_folder,
-            "pipeline_interfaces": self.file_pipeline_interfaces,
+            "pipeline_samples": self.file_pipeline_samples,
+            "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
         }
 
@@ -978,7 +949,8 @@ class Geofetcher:
             "project_name": self.project_name,
             "annotation": os.path.basename(file_annotation),
             "subannotation": os.path.basename(file_subannotation),
-            "pipeline_interfaces": self.file_pipeline_interfaces,
+            "pipeline_samples": self.file_pipeline_samples,
+            "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
         }
         for k, v in template_values.items():
@@ -1797,15 +1769,25 @@ def _parse_cmdl(cmdl):
         "--config-template", default=None, help="Project config yaml file template."
     )
 
+    # Optional
     parser.add_argument(
-        "-P",
-        "--pipeline_interfaces",
+        "--pipeline_samples",
         default=None,
-        help="Optional: Specify one or more filepaths to pipeline interface yaml files. "
+        help="Optional: Specify one or more filepaths to SAMPLES pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "
         "compatible with looper. [Default: null]",
     )
 
+    # Optional
+    parser.add_argument(
+        "--pipeline_project",
+        default=None,
+        help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
+        "These will be added to the project config file to make it immediately "
+        "compatible with looper. [Default: null]",
+    )
+
+    # Optional
     parser.add_argument(
         "-k",
         "--skip",
@@ -1825,13 +1807,6 @@ def _parse_cmdl(cmdl):
         "--use-key-subset",
         action="store_true",
         help="Use just the keys defined in this module when writing out metadata.",
-    )
-
-    parser.add_argument(
-        "--column-max-length",
-        type=int,
-        default=50,
-        help="The length threshold of the constant sample attributes that could be stored in sample table",
     )
 
     parser.add_argument(

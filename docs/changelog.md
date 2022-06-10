@@ -7,7 +7,7 @@
 - Added `--const-limit-project` argument.
 - Added `--const-limit-discard` argument.
 - Added `--attr-limit-truncate` argument.
-- Disable creating combined pep when flag `--acc-anno` is set.
+- Disabled creating combined pep when flag `--acc-anno` is set.
 - Improved finding and separating metadata keys and genotype information
 
 ## [0.8.0] -- 2022-03-10

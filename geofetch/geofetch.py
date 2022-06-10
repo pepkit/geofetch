@@ -1830,41 +1830,37 @@ def _parse_cmdl(cmdl):
     parser.add_argument(
         "--acc-anno",
         action="store_true",
-        help="Also produce annotation sheets for each accession, not just"
-        " for the whole project combined",
-    )
-
-    parser.add_argument(
-        "--use-key-subset",
-        action="store_true",
-        help="Use just the keys defined in this module when writing out metadata.",
+        help="Optional: Produce annotation sheets for each accession."
+             " Project combined PEP for the whole project won't be produced.",
     )
 
     parser.add_argument(
         "--discard-soft",
         action="store_true",
-        help="The length threshold of the constant sample attributes that could be stored in sample table",
+        help="Optional: After creation of PEP files, all soft and additional files will be deleted",
     )
 
     parser.add_argument(
         "--const-limit-project",
         type=int,
         default=50,
-        help="Limit of the number of the constant sample characters that should be put in project yaml. [Default: 50]",
+        help="Optional: Limit of the number of the constant sample characters "
+             "that should not be in project yaml. [Default: 50]",
     )
 
     parser.add_argument(
         "--const-limit-discard",
         type=int,
         default=250,
-        help="Limit of the number of the constant sample characters that should be discarded [Default: 50]",
+        help="Optional: Limit of the number of the constant sample characters "
+             "that should not be discarded [Default: 250]",
     )
 
     parser.add_argument(
         "--attr-limit-truncate",
         type=int,
         default=500,
-        help="Limit of the number of sammple characters."
+        help="Optional: Limit of the number of sample characters."
         "Any attribute with more than X characters will truncate to the first X,"
         " where X is a number of characters [Default: 500]",
     )
@@ -1902,6 +1898,7 @@ def _parse_cmdl(cmdl):
         default=None,
         help="""Optional: Filter size for processed files
                 that are stored as sample repository [Default: None].
+                Works only for sample data.
                 Supported input formats : 12B, 12KB, 12MB, 12GB. 
                 Ignored unless 'processed' flag is set.""",
     )
@@ -1975,6 +1972,12 @@ def _parse_cmdl(cmdl):
         # help="Specify a path to the picard jar, if you want to convert "
         # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
         help=argparse.SUPPRESS,
+    )
+
+    raw_group.add_argument(
+        "--use-key-subset",
+        action="store_true",
+        help="Use just the keys defined in this module when writing out metadata.",
     )
 
     parser = add_logging_options(parser)

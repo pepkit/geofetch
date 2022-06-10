@@ -1,4 +1,6 @@
-# <img src="./img/geofetch_logo.svg" class="img-header">  Usage reference
+# <img src="img/geofetch_logo.svg" class="img-header">
+
+Usage reference
 
 `geofetch` command-line usage instructions:
 

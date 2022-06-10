@@ -1831,7 +1831,7 @@ def _parse_cmdl(cmdl):
         "--acc-anno",
         action="store_true",
         help="Optional: Produce annotation sheets for each accession."
-             " Project combined PEP for the whole project won't be produced.",
+        " Project combined PEP for the whole project won't be produced.",
     )
 
     parser.add_argument(
@@ -1845,7 +1845,7 @@ def _parse_cmdl(cmdl):
         type=int,
         default=50,
         help="Optional: Limit of the number of the constant sample characters "
-             "that should not be in project yaml. [Default: 50]",
+        "that should not be in project yaml. [Default: 50]",
     )
 
     parser.add_argument(
@@ -1853,7 +1853,7 @@ def _parse_cmdl(cmdl):
         type=int,
         default=250,
         help="Optional: Limit of the number of the constant sample characters "
-             "that should not be discarded [Default: 250]",
+        "that should not be discarded [Default: 250]",
     )
 
     parser.add_argument(

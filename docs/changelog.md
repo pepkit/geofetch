@@ -9,6 +9,8 @@
 - Added `--attr-limit-truncate` argument.
 - Disabled creating combined pep when flag `--acc-anno` is set.
 - Improved finding and separating metadata keys and genotype information
+- Added standardization of column names by replacing characters to lowercase and spaces by underscore.
+
 
 ## [0.8.0] -- 2022-03-10
 - Added `--filter-size` argument.

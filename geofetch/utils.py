@@ -297,6 +297,11 @@ def convert_size(size_str: str) -> int:
         abb = abbreviation[0][1:]
         size_in_bytes = int(size_numb[0]) * abbreviation_dict[abb]
 
+    if not isinstance(size_in_bytes, int):
+        raise ValueError(
+            f"Incorrect type of file size was provided! You provided:'{size_str}'"
+        )
+
     return size_in_bytes
 
 

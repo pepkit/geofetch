@@ -169,7 +169,11 @@ class Geofetcher:
             self.metadata_raw = os.path.join(self.metadata_raw, self.project_name)
 
         if filter_size is not None:
-            self.filter_size = convert_size(filter_size.lower())
+            try:
+                self.filter_size = convert_size(filter_size.lower())
+            except ValueError as message:
+                self._LOGGER.error(message)
+                raise SystemExit()
         else:
             self.filter_size = filter_size
 
@@ -196,7 +200,8 @@ class Geofetcher:
         if not just_metadata and not processed:
             if not is_command_callable("prefetch"):
                 raise SystemExit(
-                    "You must first install the sratoolkit, with prefetch in your PATH."
+                    "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
+                    " Installation instruction: http://geofetch.databio.org/en/latest/install/"
                 )
 
         # Some sanity checks before proceeding
@@ -312,6 +317,14 @@ class Geofetcher:
                         meta_processed_series = self.expand_metadata_list(
                             meta_processed_series, key_in_list
                         )
+
+                    # convert column names to lowercase and underscore
+                    meta_processed_samples = self.standardize_colnames(
+                        meta_processed_samples
+                    )
+                    meta_processed_series = self.standardize_colnames(
+                        meta_processed_series
+                    )
 
                     if not self.acc_anno:
                         # adding metadata from current experiment to the project
@@ -763,13 +776,8 @@ class Geofetcher:
         """
         list_keys = self.get_list_of_keys(metadata_list)
         genome_keys = [
-            "Assembly",
             "assembly",
-            "ASSEMBLY",
-            "Genome_build",
             "genome_build",
-            "genome build",
-            "Genome build",
         ]
         proj_gen_keys = list(set(list_keys).intersection(genome_keys))
 
@@ -1069,6 +1077,29 @@ class Geofetcher:
             meta_list = new_sample_dict
 
         return meta_list, new_meta_project
+
+    def standardize_colnames(self, meta_list):
+        """
+        Standardize column names by lower-casing and underscore
+        :param list meta_list: list of dictionaries of samples
+        """
+        new_metalist = []
+        list_keys = self.get_list_of_keys(meta_list)
+        for item_nb, values in enumerate(meta_list):
+            new_metalist.append({})
+            for key in list_keys:
+                try:
+                    new_key_name = (
+                        key.lower()
+                        .strip()
+                        .replace("  ", " ")
+                        .replace(" ", "_")
+                        .replace("-", "_")
+                    )
+                    new_metalist[item_nb][new_key_name] = values[key]
+                except KeyError:
+                    pass
+        return new_metalist
 
     def download_SRA_file(self, run_name):
         """
@@ -1802,7 +1833,7 @@ def _parse_cmdl(cmdl):
 
     # Optional
     parser.add_argument(
-        "--pipeline_samples",
+        "--pipeline-samples",
         default=None,
         help="Optional: Specify one or more filepaths to SAMPLES pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "
@@ -1811,7 +1842,7 @@ def _parse_cmdl(cmdl):
 
     # Optional
     parser.add_argument(
-        "--pipeline_project",
+        "--pipeline-project",
         default=None,
         help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "

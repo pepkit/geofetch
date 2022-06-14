@@ -97,6 +97,7 @@ class Geofetcher:
         const_limit_discard=250,
         attr_limit_truncate=500,
         discard_soft=False,
+        add_dotfile=False,
         **kwargs,
     ):
 
@@ -193,6 +194,7 @@ class Geofetcher:
         self.attr_limit_truncate = attr_limit_truncate
 
         self.discard_soft = discard_soft
+        self.add_dotfile = add_dotfile
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
@@ -337,7 +339,7 @@ class Geofetcher:
                             # samples
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE,
+                                acc_GSE + "_samples",
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -347,7 +349,7 @@ class Geofetcher:
                             # series
                             pep_acc_path_exp = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE,
+                                acc_GSE + "_series",
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -356,7 +358,7 @@ class Geofetcher:
                         elif self.supp_by == "samples":
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE,
+                                acc_GSE + "_samples",
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -365,7 +367,7 @@ class Geofetcher:
                         elif self.supp_by == "series":
                             pep_acc_path_exp = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE,
+                                acc_GSE + "_series",
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -610,14 +612,18 @@ class Geofetcher:
             if not self.acc_anno:
                 if self.supp_by == "all":
                     supp_sample_path_meta = os.path.join(
-                        self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                        self.metadata_raw,
+                        "PEP_samples",
+                        self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
                     self.write_processed_annotation(
                         processed_metadata_samples, supp_sample_path_meta
                     )
 
                     supp_series_path_meta = os.path.join(
-                        self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                        self.metadata_raw,
+                        "PEP_series",
+                        self.project_name + EXP_SUPP_METADATA_FILE,
                     )
                     self.write_processed_annotation(
                         processed_metadata_exp, supp_series_path_meta
@@ -625,7 +631,9 @@ class Geofetcher:
 
                 elif self.supp_by == "samples":
                     supp_sample_path_meta = os.path.join(
-                        self.metadata_raw, self.project_name + SAMPLE_SUPP_METADATA_FILE
+                        self.metadata_raw,
+                        "PEP_samples",
+                        self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
                     self.write_processed_annotation(
                         processed_metadata_samples, supp_sample_path_meta
@@ -633,7 +641,9 @@ class Geofetcher:
 
                 elif self.supp_by == "series":
                     supp_series_path_meta = os.path.join(
-                        self.metadata_raw, self.project_name + EXP_SUPP_METADATA_FILE
+                        self.metadata_raw,
+                        "PEP_series",
+                        self.project_name + EXP_SUPP_METADATA_FILE,
                     )
                     self.write_processed_annotation(
                         processed_metadata_exp, supp_series_path_meta
@@ -883,6 +893,12 @@ class Geofetcher:
         yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
         config = os.path.join(pep_file_folder, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
+
+        # save .pep.yaml file
+        if self.add_dotfile:
+            dot_yaml_path = os.path.join(pep_file_folder, ".pep.yaml")
+            self.create_dot_yaml(dot_yaml_path, yaml_name)
+
         return True
 
     def write_raw_annotation(self, metadata_dict, subannotation_dict):
@@ -992,8 +1008,24 @@ class Geofetcher:
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
         # save .yaml file
-        config = os.path.join(self.metadata_raw, self.project_name + "_config.yaml")
+        yaml_name = self.project_name + "_config.yaml"
+        config = os.path.join(self.metadata_raw, yaml_name)
         self._write(config, template, msg_pre="  Config file: ")
+
+        # save .pep.yaml file
+        if self.add_dotfile:
+            dot_yaml_path = os.path.join(self.metadata_raw, ".pep.yaml")
+            self.create_dot_yaml(dot_yaml_path, yaml_name)
+
+    @staticmethod
+    def create_dot_yaml(file_path: str, yaml_path: str):
+        """
+        Function that creates .pep.yaml file that points to actual yaml file
+        :param str file_path: Path to the .pep.yaml file that we want to create
+        :param str yaml_path: path or name of the actual yaml file
+        """
+        with open(file_path, "w+") as file:
+            file.writelines(f"config_file: {yaml_path}")
 
     def separate_common_meta(
         self, meta_list, max_len=50, del_limit=250, attr_limit_truncate=500
@@ -1894,6 +1926,12 @@ def _parse_cmdl(cmdl):
         help="Optional: Limit of the number of sample characters."
         "Any attribute with more than X characters will truncate to the first X,"
         " where X is a number of characters [Default: 500]",
+    )
+
+    parser.add_argument(
+        "--add-dotfile",
+        action="store_true",
+        help="Optional: Add .pep.yaml file that points .yaml PEP file",
     )
 
     processed_group.add_argument(

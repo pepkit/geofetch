@@ -1,12 +1,13 @@
 # Changelog
 
-## [0.9.0] -- 2022-06-10
+## [0.9.0] -- 2022-06-20
 - Updated New pipeline interface.
 - Fixed error sample_name error when title does not exist.
 - Added `--discard-soft` argument.
 - Added `--const-limit-project` argument.
 - Added `--const-limit-discard` argument.
 - Added `--attr-limit-truncate` argument.
+- Added `"--add-dotfile"` argument.
 - Disabled creating combined pep when flag `--acc-anno` is set.
 - Improved finding and separating metadata keys and genotype information
 - Added standardization of column names by replacing characters to lowercase and spaces by underscore.

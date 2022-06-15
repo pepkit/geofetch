@@ -79,7 +79,7 @@ class Geofetcher:
         acc_anno=False,
         use_key_subset=False,
         processed=True,
-        supp_by="samples",
+        data_source="samples",
         filter=None,
         filter_size=None,
         geo_folder=".",
@@ -156,7 +156,7 @@ class Geofetcher:
         self.acc_anno = acc_anno
         self.use_key_subset = use_key_subset
         self.processed = processed
-        self.supp_by = supp_by
+        self.supp_by = data_source
 
         if filter:
             self.filter_re = re.compile(filter.lower())

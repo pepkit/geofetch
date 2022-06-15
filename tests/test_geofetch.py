@@ -66,7 +66,11 @@ class TestListProcessedMetaFiles:
     @pytest.fixture(scope="function")
     def initiate_geofetcher(self, tmpdir):
         instance = Geofetcher(
-            just_metadata=True, processed=True, name="test", metadata_folder=tmpdir
+            just_metadata=True,
+            processed=True,
+            name="test",
+            metadata_folder=tmpdir,
+            data_source="all",
         )
         yield instance
 
@@ -92,14 +96,23 @@ class TestListProcessedMetaFiles:
         assert "GSE138657_GSM.soft" in downloaded_meta_files
         assert "GSE138657_GSE.soft" in downloaded_meta_files
 
-    def test_creating_pep_files(self, initiate_geofetcher):
+    def test_creating_sample_pep_files(self, initiate_geofetcher):
         initiate_geofetcher.fetch_all("GSE138657")
-        downloaded_meta_files = list(os.walk(initiate_geofetcher.metadata_expanded))[0][
+        downloaded_meta_files = list(os.walk(initiate_geofetcher.metadata_expanded + "/PEP_samples"))[0][
             2
         ]
 
         assert "GSE138657_samples.csv" in downloaded_meta_files
         assert "GSE138657_samples.yaml" in downloaded_meta_files
+
+    def test_creating_series_pep_files(self, initiate_geofetcher):
+        initiate_geofetcher.fetch_all("GSE199313")
+        downloaded_meta_files = list(os.walk(initiate_geofetcher.metadata_expanded + "/PEP_series"))[0][
+            2
+        ]
+
+        assert "GSE199313_series.csv" in downloaded_meta_files
+        assert "GSE199313_series.yaml" in downloaded_meta_files
 
 
 class TestDownloadingProcFiles:

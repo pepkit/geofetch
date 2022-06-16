@@ -139,7 +139,7 @@ class Geofetcher:
         if pipeline_samples and pipeline_samples != "null":
             self.file_pipeline_samples = pipeline_samples
             self.file_pipeline_samples = (
-                "pipeline_interfaces: ;l" + self.file_pipeline_samples
+                f"pipeline_interfaces: {self.file_pipeline_samples}"
             )
         else:
             self.file_pipeline_samples = ""
@@ -339,7 +339,7 @@ class Geofetcher:
                             # samples
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE + "_samples",
+                                f"{acc_GSE}_samples",
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -349,7 +349,7 @@ class Geofetcher:
                             # series
                             pep_acc_path_exp = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE + "_series",
+                                f"{acc_GSE}_series",
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -358,7 +358,7 @@ class Geofetcher:
                         elif self.supp_by == "samples":
                             pep_acc_path_sample = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE + "_samples",
+                                f"{acc_GSE}_samples",
                                 acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(
@@ -367,7 +367,7 @@ class Geofetcher:
                         elif self.supp_by == "series":
                             pep_acc_path_exp = os.path.join(
                                 self.metadata_raw,
-                                acc_GSE + "_series",
+                                f"{acc_GSE}_series",
                                 acc_GSE + EXP_SUPP_METADATA_FILE,
                             )
                             self.write_processed_annotation(

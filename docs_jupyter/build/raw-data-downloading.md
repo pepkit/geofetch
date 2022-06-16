@@ -1,5 +1,5 @@
 jupyter:True
-# geofetch tutorial for row data
+# geofetch tutorial for raw data
 
 The [GSE67303 data set](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE67303) has about 250 mb of data across 4 samples, so it's a quick download for a test case. Let's take a quick peek at the geofetch version:
 
@@ -9,7 +9,7 @@ geofetch --version
 ```
 
 ```.output
-geofetch 0.8.0
+geofetch 0.9.0
 
 ```
 
@@ -23,12 +23,16 @@ geofetch -h
 ```.output
 usage: geofetch [-h] [-V] -i INPUT [-n NAME] [-m METADATA_ROOT]
                 [-u METADATA_FOLDER] [--just-metadata] [-r]
-                [--config-template CONFIG_TEMPLATE] [-P PIPELINE_INTERFACES]
-                [-k SKIP] [--acc-anno] [--use-key-subset] [-p]
+                [--config-template CONFIG_TEMPLATE]
+                [--pipeline_samples PIPELINE_SAMPLES]
+                [--pipeline_project PIPELINE_PROJECT] [-k SKIP] [--acc-anno]
+                [--discard-soft] [--const-limit-project CONST_LIMIT_PROJECT]
+                [--const-limit-discard CONST_LIMIT_DISCARD]
+                [--attr-limit-truncate ATTR_LIMIT_TRUNCATE] [-p]
                 [--data-source {all,samples,series}] [--filter FILTER]
                 [--filter-size FILTER_SIZE] [-g GEO_FOLDER] [-x]
-                [-b BAM_FOLDER] [-f FQ_FOLDER] [--silent] [--verbosity V]
-                [--logdev]
+                [-b BAM_FOLDER] [-f FQ_FOLDER] [--use-key-subset] [--silent]
+                [--verbosity V] [--logdev]
 
 Automatic GEO and SRA data downloader
 
@@ -54,16 +58,34 @@ optional arguments:
                         If set, re-download metadata even if it exists.
   --config-template CONFIG_TEMPLATE
                         Project config yaml file template.
-  -P PIPELINE_INTERFACES, --pipeline_interfaces PIPELINE_INTERFACES
-                        Optional: Specify one or more filepaths to pipeline
-                        interface yaml files. These will be added to the
-                        project config file to make it immediately compatible
-                        with looper. [Default: null]
+  --pipeline_samples PIPELINE_SAMPLES
+                        Optional: Specify one or more filepaths to SAMPLES
+                        pipeline interface yaml files. These will be added to
+                        the project config file to make it immediately
+                        compatible with looper. [Default: null]
+  --pipeline_project PIPELINE_PROJECT
+                        Optional: Specify one or more filepaths to PROJECT
+                        pipeline interface yaml files. These will be added to
+                        the project config file to make it immediately
+                        compatible with looper. [Default: null]
   -k SKIP, --skip SKIP  Skip some accessions. [Default: no skip].
-  --acc-anno            Also produce annotation sheets for each accession, not
-                        just for the whole project combined
-  --use-key-subset      Use just the keys defined in this module when writing
-                        out metadata.
+  --acc-anno            Optional: Produce annotation sheets for each
+                        accession. Project combined PEP for the whole project
+                        won't be produced.
+  --discard-soft        Optional: After creation of PEP files, all soft and
+                        additional files will be deleted
+  --const-limit-project CONST_LIMIT_PROJECT
+                        Optional: Limit of the number of the constant sample
+                        characters that should not be in project yaml.
+                        [Default: 50]
+  --const-limit-discard CONST_LIMIT_DISCARD
+                        Optional: Limit of the number of the constant sample
+                        characters that should not be discarded [Default: 250]
+  --attr-limit-truncate ATTR_LIMIT_TRUNCATE
+                        Optional: Limit of the number of sample characters.Any
+                        attribute with more than X characters will truncate to
+                        the first X, where X is a number of characters
+                        [Default: 500]
   --silent              Silence logging. Overrides verbosity.
   --verbosity V         Set logging level (1-5 or logging module level name)
   --logdev              Expand content of logging message format.
@@ -76,15 +98,16 @@ processed:
                         attached to the collective series entity, or to
                         individual samples. Allowable values are: samples,
                         series or both (all). Ignored unless 'processed' flag
-                        is set. [Default: all]
+                        is set. [Default: samples]
   --filter FILTER       Optional: Filter regex for processed filenames
                         [Default: None].Ignored unless 'processed' flag is
                         set.
   --filter-size FILTER_SIZE
                         Optional: Filter size for processed files that are
-                        stored as sample repository [Default: None]. Supported
-                        input formats : 12B, 12KB, 12MB, 12GB. Ignored unless
-                        'processed' flag is set.
+                        stored as sample repository [Default: None]. Works
+                        only for sample data. Supported input formats : 12B,
+                        12KB, 12MB, 12GB. Ignored unless 'processed' flag is
+                        set.
   -g GEO_FOLDER, --geo-folder GEO_FOLDER
                         Optional: Specify a location to store processed GEO
                         files. Ignored unless 'processed' flag is
@@ -105,6 +128,8 @@ raw:
                         Optional: Specify folder of fastq files. Geofetch will
                         not download sra files when corresponding fastq files
                         already exist. [Default: $SRAFQ:]
+  --use-key-subset      Use just the keys defined in this module when writing
+                        out metadata.
 
 ```
 

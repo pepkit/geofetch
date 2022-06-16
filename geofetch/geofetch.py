@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+from string import punctuation
 
 # import tarfile
 import time
@@ -901,6 +902,19 @@ class Geofetcher:
 
         return True
 
+    @staticmethod
+    def sanitize_name(name_str: str):
+        """
+        Function that sanitizing strings. (Replace all odd characters)
+        :param str names_str: Any string value that has to be sanitized.
+        :return: sanitized strings
+        """
+        new_str = name_str
+        for odd_char in list(punctuation):
+            new_str = new_str.replace(odd_char, "_")
+        new_str = new_str.replace(" ", "_").replace("__", "_")
+        return new_str
+
     def write_raw_annotation(self, metadata_dict, subannotation_dict):
         """
         Combining individual accessions into project-level annotations, and writeing
@@ -931,6 +945,11 @@ class Geofetcher:
                     or value_sample["sample_name"] is None
                 ):
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
+
+                # sanitize sample names
+                fixed_dict[key_sample]["sample_name"] = self.sanitize_name(
+                    fixed_dict[key_sample]["sample_name"]
+                )
 
             metadata_dict[key] = fixed_dict
 
@@ -1114,6 +1133,7 @@ class Geofetcher:
         """
         Standardize column names by lower-casing and underscore
         :param list meta_list: list of dictionaries of samples
+        :return : list of dictionaries of samples with standard colnames
         """
         new_metalist = []
         list_keys = self.get_list_of_keys(meta_list)
@@ -1121,16 +1141,14 @@ class Geofetcher:
             new_metalist.append({})
             for key in list_keys:
                 try:
-                    new_key_name = (
-                        key.lower()
-                        .strip()
-                        .replace("  ", " ")
-                        .replace(" ", "_")
-                        .replace("-", "_")
-                    )
+                    new_key_name = key.lower().strip()
+                    new_key_name = self.sanitize_name(new_key_name)
+
                     new_metalist[item_nb][new_key_name] = values[key]
+
                 except KeyError:
                     pass
+
         return new_metalist
 
     def download_SRA_file(self, run_name):
@@ -1530,8 +1548,7 @@ class Geofetcher:
 
         return separated_list
 
-    @staticmethod
-    def separate_file_url(meta_list):
+    def separate_file_url(self, meta_list):
         """
         This method is adding dict key without file_name without path
         """
@@ -1547,6 +1564,10 @@ class Geofetcher:
                     raise KeyError("sample_name Does not exist. Creating .. ")
             except KeyError:
                 new_dict["sample_name"] = os.path.basename(meta_elem["file"])
+
+            # sanitize sample names
+            new_dict["sample_name"] = self.sanitize_name(new_dict["sample_name"])
+
             separated_list.append(new_dict)
         return separated_list
 
@@ -1944,7 +1965,7 @@ def _parse_cmdl(cmdl):
 
     processed_group.add_argument(
         "--data-source",
-        dest="supp_by",
+        dest="data_source",
         choices=["all", "samples", "series"],
         default="samples",
         help="Optional: Specifies the source of data on the GEO record"

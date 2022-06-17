@@ -1,6 +1,7 @@
-from geofetch import parse_accessions, Geofetcher
+from geofetch import parse_accessions, Geofetcher, utils
 import os
 import pytest
+import shutil
 
 INPUT_ACC_FILE = "tests/test_files/input_acc.txt"
 GSE_FILES = "tests/test_files/soft_files"
@@ -65,7 +66,11 @@ class TestListProcessedMetaFiles:
     @pytest.fixture(scope="function")
     def initiate_geofetcher(self, tmpdir):
         instance = Geofetcher(
-            just_metadata=True, processed=True, name="test", metadata_folder=tmpdir
+            just_metadata=True,
+            processed=True,
+            name="test",
+            metadata_folder=tmpdir,
+            data_source="all",
         )
         yield instance
 
@@ -91,14 +96,23 @@ class TestListProcessedMetaFiles:
         assert "GSE138657_GSM.soft" in downloaded_meta_files
         assert "GSE138657_GSE.soft" in downloaded_meta_files
 
-    def test_creating_pep_files(self, initiate_geofetcher):
+    def test_creating_sample_pep_files(self, initiate_geofetcher):
         initiate_geofetcher.fetch_all("GSE138657")
-        downloaded_meta_files = list(os.walk(initiate_geofetcher.metadata_expanded))[0][
-            2
-        ]
+        downloaded_meta_files = list(
+            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_samples")
+        )[0][2]
 
         assert "GSE138657_samples.csv" in downloaded_meta_files
         assert "GSE138657_samples.yaml" in downloaded_meta_files
+
+    def test_creating_series_pep_files(self, initiate_geofetcher):
+        initiate_geofetcher.fetch_all("GSE199313")
+        downloaded_meta_files = list(
+            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_series")
+        )[0][2]
+
+        assert "GSE199313_series.csv" in downloaded_meta_files
+        assert "GSE199313_series.yaml" in downloaded_meta_files
 
 
 class TestDownloadingProcFiles:
@@ -187,3 +201,65 @@ class TestFilters:
     def test_size_filter(self, meta_list, output, initiate_geofetcher):
         result = initiate_geofetcher.run_size_filter(meta_list)
         assert result == output
+
+    @pytest.mark.parametrize(
+        "init_meta_data,  result_sample, result_proj,",
+        [
+            (
+                [
+                    {
+                        "name": "Antonio",
+                        "number": 1,
+                        "car": "Fiat",
+                    },
+                    {
+                        "name": "Markus",
+                        "number": 1,
+                        "car": "Jeep",
+                    },
+                    {
+                        "name": "Pablo",
+                        "number": 1,
+                        "car": "Jeep",
+                    },
+                ],
+                [
+                    {
+                        "name": "Antonio",
+                        "car": "Fiat",
+                    },
+                    {
+                        "name": "Markus",
+                        "car": "Jeep",
+                    },
+                    {
+                        "name": "Pablo",
+                        "car": "Jeep",
+                    },
+                ],
+                [
+                    {
+                        "number": 1,
+                    },
+                ],
+            )
+        ],
+    )
+    def test_large_meta_separation(
+        self, init_meta_data, result_sample, result_proj, initiate_geofetcher
+    ):
+        samp, proj = initiate_geofetcher.separate_common_meta(init_meta_data, max_len=0)
+        assert samp == result_sample
+        assert proj == result_proj
+
+
+def test_clean_func(tmpdir):
+    """
+    Testing deleting soft files
+    """
+    files_dir = os.path.join(GSE_FILES, "GSE138657")
+    for file_name in os.listdir(files_dir):
+        shutil.copyfile(
+            os.path.join(files_dir, file_name), os.path.join(tmpdir, file_name)
+        )
+    utils.clean_soft_files(tmpdir)

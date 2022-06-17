@@ -279,6 +279,11 @@ def split_accn(accn):
 
 
 def convert_size(size_str: str) -> int:
+    """
+    Converting size, that was provided as string with suffix
+    :param str size_str: size as string with suffix: gb, mb, kb or b
+    :return int: size as int value in bytes
+    """
     abbreviation_dict = {"gb": 1073741824, "mb": 1048576, "kb": 1024, "b": 1}
     supported_formats = r"(\dgb|\dmb|\db|\dkb)$"
     reg_number = r"^\d+"
@@ -292,4 +297,27 @@ def convert_size(size_str: str) -> int:
         abb = abbreviation[0][1:]
         size_in_bytes = int(size_numb[0]) * abbreviation_dict[abb]
 
+    if not isinstance(size_in_bytes, int):
+        raise ValueError(
+            f"Incorrect type of file size was provided! You provided:'{size_str}'"
+        )
+
     return size_in_bytes
+
+
+def clean_soft_files(meta_dir: str):
+    """
+    Cleaning, deleting all soft files after downloading files
+    and creating PEPs
+    :param str meta_dir: Path to the metadata files
+    """
+    dir_files = os.listdir(meta_dir)
+
+    for item in dir_files:
+        if (
+            item.endswith(".soft")
+            or item.endswith("_file_list.txt")
+            or item.endswith("SRA.csv")
+            or item.endswith("SRA_filt.csv")
+        ):
+            os.remove(os.path.join(meta_dir, item))

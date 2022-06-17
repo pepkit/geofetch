@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0] -- 2022-06-20
+- Updated `--pipeline-interface` argument that adds it in for looper. `--pipeline-interface` argument was divided into: 
+`--pipeline-samples` and `--pipeline-project`.
+- Fixed empty sample_name error while creating PEP.
+- Added `--discard-soft` argument.
+- Added `--const-limit-project` argument.
+- Added `--const-limit-discard` argument.
+- Added `--attr-limit-truncate` argument.
+- Added `"--add-dotfile"` argument.
+- Disabled creating combined pep when flag `--acc-anno` is set.
+- Improved finding and separating metadata keys and genome assembly information.
+- Added standardization of column names by replacing characters to lowercase and spaces by underscore.
+
+
 ## [0.8.0] -- 2022-03-10
 - Added `--filter-size` argument.
 - Added `--data-source` argument.

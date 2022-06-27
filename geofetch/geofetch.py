@@ -1162,7 +1162,7 @@ class Geofetcher:
         t = 0
         while True:
             t = t + 1
-            subprocess_return = subprocess.call(
+            subprocess_return = subprocess.run(
                 ["prefetch", run_name, "--max-size", "50000000"]
             )
 
@@ -1222,7 +1222,7 @@ class Geofetcher:
         # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
 
         self._LOGGER.info(f"Conversion command: {cmd}")
-        subprocess.call(cmd, shell=True)
+        subprocess.run(cmd, shell=True)
 
     @staticmethod
     def update_columns(metadata, experiment_name, sample_name, read_type):
@@ -1286,7 +1286,7 @@ class Geofetcher:
             + os.path.join(self.sra_folder, run_name + ".sra")
         )
         self._LOGGER.info(f"Command: {cmd}")
-        subprocess.call(cmd, shell=True)
+        subprocess.run(cmd, shell=True)
         if not picard_path:
             self._LOGGER.warning("Can't convert the fastq to bam without picard path")
         else:
@@ -1306,7 +1306,7 @@ class Geofetcher:
             cmd += " SAMPLE_NAME=" + run_name
             cmd += " QUIET=true"
             self._LOGGER.info(f"Conversion command: {cmd}")
-            subprocess.call(cmd, shell=True)
+            subprocess.run(cmd, shell=True)
 
     def write_subannotation(self, tabular_data, filepath, column_names=None):
         """
@@ -1354,7 +1354,7 @@ class Geofetcher:
             # if dir does not exist:
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
-            ret = subprocess.call(
+            ret = subprocess.run(
                 ["wget", "--no-clobber", file_url, "-O", full_filepath]
             )
             self._LOGGER.info(f"\033[38;5;242m{ret}\033[0m")

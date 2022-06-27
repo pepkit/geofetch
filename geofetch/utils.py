@@ -90,7 +90,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                         run_ids.append(r_id)
             _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
-                subprocess.call(["prefetch", r_id, "--max-size", "50000000"])
+                subprocess.run(["prefetch", r_id, "--max-size", "50000000"])
             # Early return if we've just handled SRP accession directly.
             return
         else:
@@ -227,7 +227,7 @@ class Accession(object):
         else:
             cmd = "wget {}".format(full_url)
 
-        subprocess.call(cmd.split(" "))
+        subprocess.run(cmd.split(" "))
 
     @staticmethod
     def _validate(accn):

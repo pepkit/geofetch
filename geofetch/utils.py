@@ -323,6 +323,7 @@ def clean_soft_files(meta_dir: str):
         ):
             os.remove(os.path.join(meta_dir, item))
 
+
 def run_subprocess(*args, **kwargs):
     """Wrapper to gracefully start and stop a running subprocess"""
     p = subprocess.Popen(*args, **kwargs)

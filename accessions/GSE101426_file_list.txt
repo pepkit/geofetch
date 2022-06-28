@@ -1,0 +1,18 @@
+#Archive/File	Name	Time	Size	Type
+Archive	GSE101426_RAW.tar	09/01/2017 11:27:24	6092451840	TAR
+File	GSM2702712_sampled-24-RBL-Donor-1-D0.hqaa.bam	07/13/2017 12:18:42	665334725	BAM
+File	GSM2702712_sampled-24-RBL-Donor-1-D0.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:50	114496498	TDF
+File	GSM2702713_sampled-25-RBL-Donor-1-P3-D1.hqaa.bam	07/13/2017 12:18:44	647602660	BAM
+File	GSM2702713_sampled-25-RBL-Donor-1-P3-D1.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:51	107348252	TDF
+File	GSM2702714_sampled-26-RBL-Donor-1-P3-D2.hqaa.bam	07/13/2017 12:18:44	643984532	BAM
+File	GSM2702714_sampled-26-RBL-Donor-1-P3-D2.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:51	105650219	TDF
+File	GSM2702715_sampled-27-RBL-Donor-1-P3-D5.hqaa.bam	07/13/2017 12:18:45	649353632	BAM
+File	GSM2702715_sampled-27-RBL-Donor-1-P3-D5.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:51	109748740	TDF
+File	GSM2702716_sampled-28-RBL-Donor-1-WT-D1.hqaa.bam	07/13/2017 12:18:46	641282505	BAM
+File	GSM2702716_sampled-28-RBL-Donor-1-WT-D1.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:52	106398419	TDF
+File	GSM2702717_sampled-29-RBL-Donor-1-WT-D2.hqaa.bam	07/13/2017 12:18:48	640037342	BAM
+File	GSM2702717_sampled-29-RBL-Donor-1-WT-D2.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:52	101692025	TDF
+File	GSM2702718_sampled-30-RBL-Donor-1-WT-D5.hqaa.bam	07/13/2017 12:18:49	663625709	BAM
+File	GSM2702718_sampled-30-RBL-Donor-1-WT-D5.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:52	116328689	TDF
+File	GSM2702719_sampled-31-RBL-Donor-1-WT-D7.hqaa.bam	07/13/2017 12:18:49	664373629	BAM
+File	GSM2702719_sampled-31-RBL-Donor-1-WT-D7.hqaa_sorted.bam.count.tdf.gz	07/14/2017 01:09:52	115172644	TDF

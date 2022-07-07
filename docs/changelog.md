@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.0] -- 2022-07-07
+- Fixed subprocesses continuing to run during program interrupt.
+- Fixed issues with compatibility with NCBI API
+
 ## [0.9.0] -- 2022-06-20
 - Updated `--pipeline-interface` argument that adds it in for looper. `--pipeline-interface` argument was divided into: 
 `--pipeline-samples` and `--pipeline-project`.

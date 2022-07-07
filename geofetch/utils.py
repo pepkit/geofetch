@@ -3,6 +3,7 @@
 import logging
 import os
 import subprocess
+import sys
 import re
 
 
@@ -26,8 +27,6 @@ _LOGGER = logging.getLogger(__name__)
 URL_BY_ACC = {
     "GSE": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gse&acc={ACCESSION}&form=text&view=full",
     "GSM": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc={ACCESSION}&form=text&view=full",
-    "SRP": "https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}",
-    "SRX": "https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={ACCESSION}",
 }
 
 
@@ -90,7 +89,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                         run_ids.append(r_id)
             _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
-                subprocess.call(["prefetch", r_id, "--max-size", "50000000"])
+                run_subprocess(["prefetch", r_id, "--max-size", "50000000"])
             # Early return if we've just handled SRP accession directly.
             return
         else:
@@ -227,7 +226,7 @@ class Accession(object):
         else:
             cmd = "wget {}".format(full_url)
 
-        subprocess.call(cmd.split(" "))
+        run_subprocess(cmd.split(" "))
 
     @staticmethod
     def _validate(accn):
@@ -321,3 +320,18 @@ def clean_soft_files(meta_dir: str):
             or item.endswith("SRA_filt.csv")
         ):
             os.remove(os.path.join(meta_dir, item))
+
+
+def run_subprocess(*args, **kwargs):
+    """Wrapper to gracefully start and stop a running subprocess"""
+    p = subprocess.Popen(*args, **kwargs)
+    try:
+        return p.wait()
+    except KeyboardInterrupt:
+        _LOGGER.info(f"Terminating subprocess: {p.pid} | ({p.args})")
+        try:
+            p.terminate()
+            print("Pipeline aborted.")
+        except OSError as ose:
+            _LOGGER.warn(f"Exception raised during subprocess termination: {ose}")
+        sys.exit(1)

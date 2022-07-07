@@ -8,9 +8,10 @@ import copy
 import csv
 import os
 import re
-import subprocess
 import sys
 from string import punctuation
+import requests
+import xmltodict
 
 # import tarfile
 import time
@@ -21,10 +22,11 @@ from .utils import (
     parse_SOFT_line,
     convert_size,
     clean_soft_files,
+    run_subprocess,
 )
 from ._version import __version__
+import logmuse
 
-from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable
 
 _STRING_TYPES = str
@@ -63,6 +65,10 @@ EXP_SUPP_METADATA_FILE = "_series.csv"
 
 # How many times should we retry failing prefetch call?
 NUM_RETRIES = 3
+REQUEST_SLEEP = 0.4
+
+NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={SRP_NUMBER}&retmax=999&rettype=uilist&retmode=json"
+NCBI_EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id={ID}&rettype=runinfo&retmode=xml"
 
 
 class Geofetcher:
@@ -90,22 +96,22 @@ class Geofetcher:
         sra_folder="",
         bam_conversion=False,
         picard_path="",
-        silent=False,
-        verbosity=None,
-        logdev=False,
         input=None,
         const_limit_project=50,
         const_limit_discard=250,
         attr_limit_truncate=500,
         discard_soft=False,
         add_dotfile=False,
+        opts=None,
         **kwargs,
     ):
 
-        # self.args = args
         global _LOGGER
-        #  _LOGGER = logger_via_cli(args, name="geofetch")
-        _LOGGER = init_logger(name="geofetch", verbosity=verbosity, logfile=None)
+        if opts is not None:
+            _LOGGER = logmuse.logger_via_cli(opts)
+        else:
+            _LOGGER = logmuse.init_logger(name="geofetch")
+
         self._LOGGER = _LOGGER
 
         if name:
@@ -186,9 +192,6 @@ class Geofetcher:
         self.sra_folder = sra_folder
         self.bam_conversion = bam_conversion
         self.picard_path = picard_path
-        self.silent = silent
-        self.verbosity = verbosity
-        self.logdev = logdev
 
         self.const_limit_project = const_limit_project
         self.const_limit_discard = const_limit_discard
@@ -267,9 +270,6 @@ class Geofetcher:
             file_gse = os.path.join(self.metadata_expanded, acc_GSE + "_GSE.soft")
             file_gsm = os.path.join(self.metadata_expanded, acc_GSE + "_GSM.soft")
             file_sra = os.path.join(self.metadata_expanded, acc_GSE + "_SRA.csv")
-            file_srafilt = os.path.join(
-                self.metadata_expanded, acc_GSE + "_SRA_filt.csv"
-            )
 
             # Grab the GSE and GSM SOFT files from GEO.
             # The GSE file has metadata describing the experiment, which includes
@@ -419,8 +419,8 @@ class Geofetcher:
                 metadata_dict[acc_GSE] = gsm_metadata
 
                 # download gsm metadata
-                result = self.get_SRA_meta(file_gse, file_sra, gsm_metadata)
-                if not result:
+                SRP_list_result = self.get_SRA_meta(file_gse, gsm_metadata, file_sra)
+                if not SRP_list_result:
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
                     continue
@@ -432,18 +432,11 @@ class Geofetcher:
                 # Corresponding to each sample.
                 # For multi samples (samples with multiple runs), we keep track of these
                 # relations in a separate table, which is called the subannotation table.
-                gsm_multi_table = {}
-                file_read = open(file_sra, "r")
-                file_write = open(file_srafilt, "w")
-                self._LOGGER.info("Parsing SRA file to download SRR records")
-                initialized = False
 
-                input_file = csv.DictReader(file_read)
-                for line in input_file:
-                    if not initialized:
-                        initialized = True
-                        wwrite = csv.DictWriter(file_write, line.keys())
-                        wwrite.writeheader()
+                gsm_multi_table = {}
+                self._LOGGER.info("Parsing SRA file to download SRR records")
+
+                for line in SRP_list_result:
 
                     # Only download if it's in the include list:
                     experiment = line["Experiment"]
@@ -460,15 +453,12 @@ class Geofetcher:
                             gsm_metadata[experiment]["gsm_id"]
                         ]
                     except KeyError:
-                        self._LOGGER.info(f"KeyError in sample_name, creating new...")
+                        self._LOGGER.info(
+                            f"sample_name does not exist, creating new..."
+                        )
                     if not sample_name or sample_name == "":
                         temp = gsm_metadata[experiment]["Sample_title"]
-                        # Now do a series of transformations to cleanse the sample name
-                        temp = temp.replace(" ", "_")
-                        # Do people put commas in their sample names? Yes.
-                        temp = temp.replace(",", "_")
-                        temp = temp.replace("__", "_")
-                        sample_name = temp
+                        sample_name = self.sanitize_name(temp)
 
                     # Otherwise, record that there's SRA data for this run.
                     # And set a few columns that are used as input to the Looper
@@ -531,10 +521,6 @@ class Geofetcher:
                         # The first SRR for this SRX is added to GSM metadata
                         gsm_metadata[experiment]["SRR"] = run_name
 
-                    # gsm_metadata[experiment].update(line)
-
-                    # Write to filtered SRA Runinfo file
-                    wwrite.writerow(line)
                     self._LOGGER.info(f"Getting SRR: {run_name} ({experiment})")
                     bam_file = (
                         ""
@@ -563,9 +549,8 @@ class Geofetcher:
                                 self._LOGGER.warning(
                                     f"Error occurred while downloading SRA file: {err}"
                                 )
-
                         else:
-                            self._LOGGER.info("Dry run (no data download)")
+                            self._LOGGER.info("Dry run (no raw data will be download)")
 
                         if self.bam_conversion and self.bam_folder != "":
                             try:
@@ -586,9 +571,6 @@ class Geofetcher:
                                 self._LOGGER.info(
                                     f"SRA file doesn't exist, please download it first: {err}"
                                 )
-
-                file_read.close()
-                file_write.close()
 
                 # accumulate subannotations
                 subannotation_dict[acc_GSE] = gsm_multi_table
@@ -906,7 +888,7 @@ class Geofetcher:
     def sanitize_name(name_str: str):
         """
         Function that sanitizing strings. (Replace all odd characters)
-        :param str names_str: Any string value that has to be sanitized.
+        :param str name_str: Any string value that has to be sanitized.
         :return: sanitized strings
         """
         new_str = name_str
@@ -1162,7 +1144,7 @@ class Geofetcher:
         t = 0
         while True:
             t = t + 1
-            subprocess_return = subprocess.call(
+            subprocess_return = run_subprocess(
                 ["prefetch", run_name, "--max-size", "50000000"]
             )
 
@@ -1222,7 +1204,7 @@ class Geofetcher:
         # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
 
         self._LOGGER.info(f"Conversion command: {cmd}")
-        subprocess.call(cmd, shell=True)
+        run_subprocess(cmd, shell=True)
 
     @staticmethod
     def update_columns(metadata, experiment_name, sample_name, read_type):
@@ -1286,7 +1268,7 @@ class Geofetcher:
             + os.path.join(self.sra_folder, run_name + ".sra")
         )
         self._LOGGER.info(f"Command: {cmd}")
-        subprocess.call(cmd, shell=True)
+        run_subprocess(cmd, shell=True)
         if not picard_path:
             self._LOGGER.warning("Can't convert the fastq to bam without picard path")
         else:
@@ -1306,7 +1288,7 @@ class Geofetcher:
             cmd += " SAMPLE_NAME=" + run_name
             cmd += " QUIET=true"
             self._LOGGER.info(f"Conversion command: {cmd}")
-            subprocess.call(cmd, shell=True)
+            run_subprocess(cmd, shell=True)
 
     def write_subannotation(self, tabular_data, filepath, column_names=None):
         """
@@ -1354,7 +1336,7 @@ class Geofetcher:
             # if dir does not exist:
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
-            ret = subprocess.call(
+            ret = run_subprocess(
                 ["wget", "--no-clobber", file_url, "-O", full_filepath]
             )
             self._LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
@@ -1682,13 +1664,12 @@ class Geofetcher:
                 if ntry > 4:
                     raise e
 
-    def get_SRA_meta(self, file_gse, file_sra, gsm_metadata):
+    def get_SRA_meta(self, file_gse, gsm_metadata, file_sra=None):
         """
         Parse out the SRA project identifier from the GSE file
-
         :param str file_gse: full path to GSE.soft metafile
-        :param str file_sra: full path to SRA.csv metafile that has to be downloaded
         :param dict gsm_metadata: dict of GSM metadata
+        :param str file_sra: full path to SRA.csv metafile that has to be downloaded
         """
         #
         acc_SRP = None
@@ -1725,22 +1706,77 @@ class Geofetcher:
         # Now we have an SRA number, grab the SraRunInfo Metadata sheet:
         # The SRARunInfo sheet has additional sample metadata, which we will combine
         # with the GSM file to produce a single sample a
+        if file_sra is not None:
+            if not os.path.isfile(file_sra) or self.refresh_metadata:
+                try:
+                    # downloading metadata
+                    srp_list = self.get_SRP_list(acc_SRP)
+                    if file_sra is not None:
+                        with open(file_sra, "w") as m_file:
+                            dict_writer = csv.DictWriter(m_file, srp_list[0].keys())
+                            dict_writer.writeheader()
+                            dict_writer.writerows(srp_list)
 
-        if not os.path.isfile(file_sra) or self.refresh_metadata:
+                    return srp_list
+
+                except Exception as err:
+                    self._LOGGER.warning(
+                        f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
+                        f"Error: {err}  \033[0m"
+                    )
+                    return False
+            else:
+                # open existing annotation
+                self._LOGGER.info(f"Found SRA metadata, opening..")
+                with open(file_sra, "r") as m_file:
+                    reader = csv.reader(m_file)
+                    file_list = []
+                    srp_list = []
+                    for k in reader:
+                        file_list.append(k)
+                    for value_list in file_list[1:]:
+                        srp_list.append(dict(zip(file_list[0], value_list)))
+
+                    return srp_list
+        else:
             try:
-                # downloading metadata
-                Accession(acc_SRP).fetch_metadata(file_sra)
+                srp_list = self.get_SRP_list(acc_SRP)
+                return srp_list
+
             except Exception as err:
                 self._LOGGER.warning(
                     f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
                     f"Error: {err}  \033[0m"
                 )
                 return False
-        else:
-            self._LOGGER.info("Found previous SRA file: " + file_sra)
 
-        self._LOGGER.info(f"SRP: {acc_SRP}")
-        return True
+    def get_SRP_list(self, srp_number: str) -> list:
+        """
+        By using requests and xml searching and getting list of dicts of SRRs
+        :param str srp_number: SRP number
+        :return: list of dicts of SRRs
+        """
+        self._LOGGER.info(f"Downloading {srp_number} sra metadata")
+        ncbi_esearch = NCBI_ESEARCH.format(SRP_NUMBER=srp_number)
+
+        # searching ids responding to srp
+        x = requests.get(ncbi_esearch)
+
+        id_results = x.json()["esearchresult"]["idlist"]
+
+        SRP_list = []
+
+        for result in id_results:
+            id_api = NCBI_EFETCH.format(ID=result)
+            # fetching metadata by id
+            y = requests.get(id_api)
+
+            xml_result = y.text
+
+            SRP_list.append(xmltodict.parse(xml_result)["SraRunInfo"]["Row"])
+            time.sleep(REQUEST_SLEEP)
+
+        return SRP_list
 
     def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm):
         """
@@ -2070,7 +2106,7 @@ def _parse_cmdl(cmdl):
         help="Use just the keys defined in this module when writing out metadata.",
     )
 
-    parser = add_logging_options(parser)
+    logmuse.add_logging_options(parser)
     return parser.parse_args(cmdl)
 
 
@@ -2095,6 +2131,7 @@ def main():
     """Run the script."""
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
+    args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
 
 

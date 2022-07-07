@@ -25,8 +25,8 @@ from .utils import (
     clean_soft_files,
 )
 from ._version import __version__
+import logmuse
 
-from logmuse import add_logging_options, init_logger
 from ubiquerg import expandpath, is_command_callable
 
 _STRING_TYPES = str
@@ -96,22 +96,25 @@ class Geofetcher:
         sra_folder="",
         bam_conversion=False,
         picard_path="",
-        silent=False,
-        verbosity=None,
-        logdev=False,
+        # silent=False,
+        # verbosity=None,
+        # logdev=False,
         input=None,
         const_limit_project=50,
         const_limit_discard=250,
         attr_limit_truncate=500,
         discard_soft=False,
         add_dotfile=False,
+        opts=None,
         **kwargs,
     ):
 
-        # self.args = args
         global _LOGGER
-        #  _LOGGER = logger_via_cli(args, name="geofetch")
-        _LOGGER = init_logger(name="geofetch", verbosity=verbosity, logfile=None)
+        if opts is not None:
+            _LOGGER = logmuse.logger_via_cli(opts)
+        else:
+            _LOGGER = logmuse.init_logger(name="geofetch")
+
         self._LOGGER = _LOGGER
 
         if name:
@@ -192,9 +195,6 @@ class Geofetcher:
         self.sra_folder = sra_folder
         self.bam_conversion = bam_conversion
         self.picard_path = picard_path
-        self.silent = silent
-        self.verbosity = verbosity
-        self.logdev = logdev
 
         self.const_limit_project = const_limit_project
         self.const_limit_discard = const_limit_discard
@@ -2110,7 +2110,7 @@ def _parse_cmdl(cmdl):
         help="Use just the keys defined in this module when writing out metadata.",
     )
 
-    parser = add_logging_options(parser)
+    logmuse.add_logging_options(parser)
     return parser.parse_args(cmdl)
 
 
@@ -2135,6 +2135,7 @@ def main():
     """Run the script."""
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
+    args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
 
 

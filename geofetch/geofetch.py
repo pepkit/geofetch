@@ -456,7 +456,9 @@ class Geofetcher:
                             gsm_metadata[experiment]["gsm_id"]
                         ]
                     except KeyError:
-                        self._LOGGER.info(f"sample_name does not exist, creating new...")
+                        self._LOGGER.info(
+                            f"sample_name does not exist, creating new..."
+                        )
                     if not sample_name or sample_name == "":
                         temp = gsm_metadata[experiment]["Sample_title"]
                         sample_name = self.sanitize_name(temp)
@@ -521,7 +523,6 @@ class Geofetcher:
                     else:
                         # The first SRR for this SRX is added to GSM metadata
                         gsm_metadata[experiment]["SRR"] = run_name
-
 
                     self._LOGGER.info(f"Getting SRR: {run_name} ({experiment})")
                     bam_file = (
@@ -1752,8 +1753,7 @@ class Geofetcher:
                 )
                 return False
 
-
-    def get_SRP_list(self, srp_number: str)-> list:
+    def get_SRP_list(self, srp_number: str) -> list:
         """
         By using requests and xml searching and getting list of dicts of SRRs
         :param str srp_number: SRP number
@@ -1780,7 +1780,6 @@ class Geofetcher:
             time.sleep(REQUEST_SLEEP)
 
         return SRP_list
-
 
     def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm):
         """

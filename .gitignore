@@ -89,3 +89,9 @@ peppy.egg-info/
 docs_jupyter/*
 !docs_jupyter/*.ipynb
 !docs_jupyter/build/*
+
+# envs
+.env/
+env/
+.venv/
+venv/

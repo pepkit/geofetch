@@ -1760,21 +1760,23 @@ class Geofetcher:
         ncbi_esearch = NCBI_ESEARCH.format(SRP_NUMBER=srp_number)
 
         # searching ids responding to srp
-        x = requests.get(ncbi_esearch)
+        x = requests.post(ncbi_esearch)
+
+        if x.status_code != 200:
+            self._LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
+            raise x.raise_for_status()
 
         id_results = x.json()["esearchresult"]["idlist"]
 
-        SRP_list = []
+        id_r_string = ",".join(id_results)
+        id_api = NCBI_EFETCH.format(ID=id_r_string)
+        y = requests.get(id_api)
+        if y.status_code != 200:
+            self._LOGGER.error(f"Error in ncbi efetch response: {x.status_code}")
+            raise y.raise_for_status()
 
-        for result in id_results:
-            id_api = NCBI_EFETCH.format(ID=result)
-            # fetching metadata by id
-            y = requests.get(id_api)
-
-            xml_result = y.text
-
-            SRP_list.append(xmltodict.parse(xml_result)["SraRunInfo"]["Row"])
-            time.sleep(REQUEST_SLEEP)
+        xml_result = y.text
+        SRP_list = xmltodict.parse(xml_result)["SraRunInfo"]["Row"]
 
         return SRP_list
 

@@ -9,7 +9,7 @@ geofetch --version
 ```
 
 ```.output
-geofetch 0.9.0
+geofetch 0.10.1
 
 ```
 
@@ -24,12 +24,12 @@ geofetch -h
 usage: geofetch [-h] [-V] -i INPUT [-n NAME] [-m METADATA_ROOT]
                 [-u METADATA_FOLDER] [--just-metadata] [-r]
                 [--config-template CONFIG_TEMPLATE]
-                [--pipeline_samples PIPELINE_SAMPLES]
-                [--pipeline_project PIPELINE_PROJECT] [-k SKIP] [--acc-anno]
+                [--pipeline-samples PIPELINE_SAMPLES]
+                [--pipeline-project PIPELINE_PROJECT] [-k SKIP] [--acc-anno]
                 [--discard-soft] [--const-limit-project CONST_LIMIT_PROJECT]
                 [--const-limit-discard CONST_LIMIT_DISCARD]
-                [--attr-limit-truncate ATTR_LIMIT_TRUNCATE] [-p]
-                [--data-source {all,samples,series}] [--filter FILTER]
+                [--attr-limit-truncate ATTR_LIMIT_TRUNCATE] [--add-dotfile]
+                [-p] [--data-source {all,samples,series}] [--filter FILTER]
                 [--filter-size FILTER_SIZE] [-g GEO_FOLDER] [-x]
                 [-b BAM_FOLDER] [-f FQ_FOLDER] [--use-key-subset] [--silent]
                 [--verbosity V] [--logdev]
@@ -58,12 +58,12 @@ optional arguments:
                         If set, re-download metadata even if it exists.
   --config-template CONFIG_TEMPLATE
                         Project config yaml file template.
-  --pipeline_samples PIPELINE_SAMPLES
+  --pipeline-samples PIPELINE_SAMPLES
                         Optional: Specify one or more filepaths to SAMPLES
                         pipeline interface yaml files. These will be added to
                         the project config file to make it immediately
                         compatible with looper. [Default: null]
-  --pipeline_project PIPELINE_PROJECT
+  --pipeline-project PIPELINE_PROJECT
                         Optional: Specify one or more filepaths to PROJECT
                         pipeline interface yaml files. These will be added to
                         the project config file to make it immediately
@@ -86,6 +86,8 @@ optional arguments:
                         attribute with more than X characters will truncate to
                         the first X, where X is a number of characters
                         [Default: 500]
+  --add-dotfile         Optional: Add .pep.yaml file that points .yaml PEP
+                        file
   --silent              Silence logging. Overrides verbosity.
   --verbosity V         Set logging level (1-5 or logging module level name)
   --logdev              Expand content of logging message format.
@@ -152,30 +154,53 @@ geofetch -i GSE67303 -n red_algae -m `pwd` --just-metadata
 ```
 
 ```.output
-Metadata folder: /home/nsheff/code/geofetch/docs_jupyter/red_algae
+Metadata folder: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae
 Trying GSE67303 (not a file) as accession...
 Skipped 0 accessions. Starting now.
 Processing accession 1 of 1: 'GSE67303'
-Found previous GSE file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_GSE.soft
-Found previous GSM file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_GSM.soft
+--2022-07-08 12:39:24--  https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gse&acc=GSE67303&form=text&view=full
+Resolving www.ncbi.nlm.nih.gov (www.ncbi.nlm.nih.gov)... 2607:f220:41e:4290::110, 130.14.29.110
+Connecting to www.ncbi.nlm.nih.gov (www.ncbi.nlm.nih.gov)|2607:f220:41e:4290::110|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [geo/text]
+Saving to: ‘/home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSE.soft’
+
+/home/bnt4me/Virgin     [ <=>                ]   3.19K  --.-KB/s    in 0s      
+
+2022-07-08 12:39:24 (134 MB/s) - ‘/home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSE.soft’ saved [3266]
+
+--2022-07-08 12:39:24--  https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc=GSE67303&form=text&view=full
+Resolving www.ncbi.nlm.nih.gov (www.ncbi.nlm.nih.gov)... 2607:f220:41e:4290::110, 130.14.29.110
+Connecting to www.ncbi.nlm.nih.gov (www.ncbi.nlm.nih.gov)|2607:f220:41e:4290::110|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [geo/text]
+Saving to: ‘/home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSM.soft’
+
+/home/bnt4me/Virgin     [ <=>                ]  10.70K  --.-KB/s    in 0.05s   
+
+2022-07-08 12:39:24 (218 KB/s) - ‘/home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSM.soft’ saved [10956]
+
 Processed 4 samples.
 Found SRA Project accession: SRP056574
-Found previous SRA file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_SRA.csv
-SRP: SRP056574
+Downloading SRP056574 sra metadata
 Parsing SRA file to download SRR records
-Get SRR: SRR1930183 (SRX969073)
-Dry run (no data download)
-Get SRR: SRR1930184 (SRX969074)
-Dry run (no data download)
-Get SRR: SRR1930185 (SRX969075)
-Dry run (no data download)
-Get SRR: SRR1930186 (SRX969076)
-Dry run (no data download)
+sample_name does not exist, creating new...
+Getting SRR: SRR1930183 (SRX969073)
+Dry run (no raw data will be download)
+sample_name does not exist, creating new...
+Getting SRR: SRR1930184 (SRX969074)
+Dry run (no raw data will be download)
+sample_name does not exist, creating new...
+Getting SRR: SRR1930185 (SRX969075)
+Dry run (no raw data will be download)
+sample_name does not exist, creating new...
+Getting SRR: SRR1930186 (SRX969076)
+Dry run (no raw data will be download)
 Finished processing 1 accession(s)
 Creating complete project annotation sheets and config file...
-Sample annotation sheet: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_annotation.csv
-Writing: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_annotation.csv
-  Config file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_config.yaml
+Sample annotation sheet: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_annotation.csv
+Writing: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_annotation.csv
+  Config file: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_config.yaml
 
 ```
 
@@ -187,8 +212,8 @@ ls red_algae
 ```
 
 ```.output
-GSE67303_GSE.soft  GSE67303_SRA.csv       red_algae_annotation.csv  submission
-GSE67303_GSM.soft  GSE67303_SRA_filt.csv  red_algae_config.yaml
+GSE67303_annotation.csv  GSE67303_GSE.soft  GSE67303_SRA.csv
+GSE67303_config.yaml     GSE67303_GSM.soft
 
 ```
 
@@ -198,25 +223,29 @@ Finally, there are the 2 files that make up the PEP: the `_config.yaml` file and
 
 
 ```bash
-cat red_algae/red_algae_config.yaml
+cat red_algae/GSE67303_config.yaml
 ```
 
 ```.output
 # Autogenerated by geofetch
 
-name: red_algae
-pep_version: 2.0.0
-sample_table: red_algae_annotation.csv
+name: GSE67303
+pep_version: 2.1.0
+sample_table: GSE67303_annotation.csv
 subsample_table: null
 
 looper:
-  output_dir: red_algae
-  pipeline_interfaces: null
+  output_dir: GSE67303
+  pipeline_interfaces: {pipeline_interfaces}
 
 sample_modifiers:
   append:
+    Sample_growth_protocol_ch1: Cyanidioschyzon merolae cells were grown in 2xMA media
+    Sample_data_processing: Supplementary_files_format_and_content: Excel spreadsheet includes FPKM values for Darkness and Blue-Light exposed samples with p and q values of cuffdiff output.
+    Sample_extract_protocol_ch1: RNA libraries were prepared for sequencing using standard Illumina protocols
+    Sample_treatment_protocol_ch1: Cells were exposed to blue-light (15 µmole m-2s-1) for 30 minutes
     SRR_files: SRA
-    pipeline_interfaces: null
+    
   derive:
     attributes: [read1, read2, SRR_files]
     sources:
@@ -247,7 +276,7 @@ project_modifiers:
   amend:
     sra_convert:
       looper:
-        results_subdir: sra_convert_results      
+        results_subdir: sra_convert_results
       sample_modifiers:
         append:
           SRR_files: SRA
@@ -261,6 +290,8 @@ project_modifiers:
             FQ2: "${SRAFQ}/{SRR}_2.fastq.gz"
 
 
+
+
 ```
 
 There are two important things to note in his file: First, see in the PEP that `sample_table` points to the csv file produced by geofetch. Second, look at the amendment called `sra_convert`. This adds a pipeline interface to the sra conversion pipeline, and adds derived attributes for SRA files and fastq files that rely on environment variables called `$SRARAW` and `$SRAFQ`. These environment variables should point to folders where you store your raw .sra files and the converted fastq files.
@@ -269,7 +300,7 @@ Now let's look at the first 100 characters of the csv file:
 
 
 ```bash
-cut -c -100 red_algae/red_algae_annotation.csv
+cut -c -100 red_algae/GSE67303_annotation.csv
 ```
 
 ```.output
@@ -289,50 +320,65 @@ geofetch -i GSE67303 -n red_algae -m `pwd`
 ```
 
 ```.output
-Metadata folder: /home/nsheff/code/geofetch/docs_jupyter/red_algae
+Metadata folder: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae
 Trying GSE67303 (not a file) as accession...
 Skipped 0 accessions. Starting now.
 Processing accession 1 of 1: 'GSE67303'
-Found previous GSE file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_GSE.soft
-Found previous GSM file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_GSM.soft
+Found previous GSE file: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSE.soft
+Found previous GSM file: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_GSM.soft
 Processed 4 samples.
 Found SRA Project accession: SRP056574
-Found previous SRA file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/GSE67303_SRA.csv
-SRP: SRP056574
+Found SRA metadata, opening..
 Parsing SRA file to download SRR records
-Get SRR: SRR1930183 (SRX969073)
+sample_name does not exist, creating new...
+Getting SRR: SRR1930183 (SRX969073)
 
-2020-05-21T20:20:24 prefetch.2.10.0: 1) Downloading 'SRR1930183'...
-2020-05-21T20:20:24 prefetch.2.10.0:  Downloading via https...
-2020-05-21T20:24:56 prefetch.2.10.0:  https download succeed
-2020-05-21T20:24:56 prefetch.2.10.0: 1) 'SRR1930183' was downloaded successfully
-2020-05-21T20:24:56 prefetch.2.10.0: 'SRR1930183' has 0 unresolved dependencies
-Get SRR: SRR1930184 (SRX969074)
+2022-07-08T16:40:20 prefetch.2.11.2: Current preference is set to retrieve SRA Normalized Format files with full base quality scores.
+2022-07-08T16:40:20 prefetch.2.11.2: 1) Downloading 'SRR1930183'...
+2022-07-08T16:40:20 prefetch.2.11.2: SRA Normalized Format file is being retrieved, if this is different from your preference, it may be due to current file availability.
+2022-07-08T16:40:20 prefetch.2.11.2:  Downloading via HTTPS...
+2022-07-08T16:41:28 prefetch.2.11.2:  HTTPS download succeed
+2022-07-08T16:41:28 prefetch.2.11.2:  'SRR1930183' is valid
+2022-07-08T16:41:28 prefetch.2.11.2: 1) 'SRR1930183' was downloaded successfully
+2022-07-08T16:41:28 prefetch.2.11.2: 'SRR1930183' has 0 unresolved dependencies
+sample_name does not exist, creating new...
+Getting SRR: SRR1930184 (SRX969074)
 
-2020-05-21T20:24:58 prefetch.2.10.0: 1) Downloading 'SRR1930184'...
-2020-05-21T20:24:58 prefetch.2.10.0:  Downloading via https...
-2020-05-21T20:27:20 prefetch.2.10.0:  https download succeed
-2020-05-21T20:27:20 prefetch.2.10.0: 1) 'SRR1930184' was downloaded successfully
-2020-05-21T20:27:20 prefetch.2.10.0: 'SRR1930184' has 0 unresolved dependencies
-Get SRR: SRR1930185 (SRX969075)
+2022-07-08T16:41:39 prefetch.2.11.2: Current preference is set to retrieve SRA Normalized Format files with full base quality scores.
+2022-07-08T16:41:40 prefetch.2.11.2: 1) Downloading 'SRR1930184'...
+2022-07-08T16:41:40 prefetch.2.11.2: SRA Normalized Format file is being retrieved, if this is different from your preference, it may be due to current file availability.
+2022-07-08T16:41:40 prefetch.2.11.2:  Downloading via HTTPS...
+2022-07-08T16:42:43 prefetch.2.11.2:  HTTPS download succeed
+2022-07-08T16:42:43 prefetch.2.11.2:  'SRR1930184' is valid
+2022-07-08T16:42:43 prefetch.2.11.2: 1) 'SRR1930184' was downloaded successfully
+2022-07-08T16:42:43 prefetch.2.11.2: 'SRR1930184' has 0 unresolved dependencies
+sample_name does not exist, creating new...
+Getting SRR: SRR1930185 (SRX969075)
 
-2020-05-21T20:27:21 prefetch.2.10.0: 1) Downloading 'SRR1930185'...
-2020-05-21T20:27:21 prefetch.2.10.0:  Downloading via https...
-2020-05-21T20:33:40 prefetch.2.10.0:  https download succeed
-2020-05-21T20:33:40 prefetch.2.10.0: 1) 'SRR1930185' was downloaded successfully
-2020-05-21T20:33:40 prefetch.2.10.0: 'SRR1930185' has 0 unresolved dependencies
-Get SRR: SRR1930186 (SRX969076)
+2022-07-08T16:42:54 prefetch.2.11.2: Current preference is set to retrieve SRA Normalized Format files with full base quality scores.
+2022-07-08T16:42:55 prefetch.2.11.2: 1) Downloading 'SRR1930185'...
+2022-07-08T16:42:55 prefetch.2.11.2: SRA Normalized Format file is being retrieved, if this is different from your preference, it may be due to current file availability.
+2022-07-08T16:42:55 prefetch.2.11.2:  Downloading via HTTPS...
+2022-07-08T16:45:00 prefetch.2.11.2:  HTTPS download succeed
+2022-07-08T16:45:00 prefetch.2.11.2:  'SRR1930185' is valid
+2022-07-08T16:45:00 prefetch.2.11.2: 1) 'SRR1930185' was downloaded successfully
+2022-07-08T16:45:00 prefetch.2.11.2: 'SRR1930185' has 0 unresolved dependencies
+sample_name does not exist, creating new...
+Getting SRR: SRR1930186 (SRX969076)
 
-2020-05-21T20:33:42 prefetch.2.10.0: 1) Downloading 'SRR1930186'...
-2020-05-21T20:33:42 prefetch.2.10.0:  Downloading via https...
-2020-05-21T20:38:41 prefetch.2.10.0:  https download succeed
-2020-05-21T20:38:41 prefetch.2.10.0: 1) 'SRR1930186' was downloaded successfully
-2020-05-21T20:38:41 prefetch.2.10.0: 'SRR1930186' has 0 unresolved dependencies
+2022-07-08T16:45:11 prefetch.2.11.2: Current preference is set to retrieve SRA Normalized Format files with full base quality scores.
+2022-07-08T16:45:12 prefetch.2.11.2: 1) Downloading 'SRR1930186'...
+2022-07-08T16:45:12 prefetch.2.11.2: SRA Normalized Format file is being retrieved, if this is different from your preference, it may be due to current file availability.
+2022-07-08T16:45:12 prefetch.2.11.2:  Downloading via HTTPS...
+2022-07-08T16:46:49 prefetch.2.11.2:  HTTPS download succeed
+2022-07-08T16:46:49 prefetch.2.11.2:  'SRR1930186' is valid
+2022-07-08T16:46:49 prefetch.2.11.2: 1) 'SRR1930186' was downloaded successfully
+2022-07-08T16:46:49 prefetch.2.11.2: 'SRR1930186' has 0 unresolved dependencies
 Finished processing 1 accession(s)
 Creating complete project annotation sheets and config file...
-Sample annotation sheet: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_annotation.csv
-Writing: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_annotation.csv
-  Config file: /home/nsheff/code/geofetch/docs_jupyter/red_algae/red_algae_config.yaml
+Sample annotation sheet: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_annotation.csv
+Writing: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_annotation.csv
+  Config file: /home/bnt4me/Virginia/repos/geof2/geofetch/docs_jupyter/red_algae/GSE67303_config.yaml
 
 ```
 

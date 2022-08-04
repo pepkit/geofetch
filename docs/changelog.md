@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.1] -- 2022-08-04
+- Updated metadata fetching requests from SRA database
+
 ## [0.10.0] -- 2022-07-07
 - Fixed subprocesses continuing to run during program interrupt.
 - Fixed issues with compatibility with NCBI API

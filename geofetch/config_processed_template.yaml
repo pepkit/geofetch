@@ -12,6 +12,6 @@ sample_modifiers:
   derive:
     attributes: [output_file_path]
     sources:
-      FILES: {geo_folder}/{GSE}/{file}
+      FILES: {geo_folder}/{gse}/{file}
 
 {pipeline_project}

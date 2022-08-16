@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 __author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
 import argparse
@@ -29,6 +31,8 @@ from utils import (
 import logmuse
 from ubiquerg import expandpath, is_command_callable
 from io import StringIO
+from typing import List, Union, Dict
+import peppy
 
 class Geofetcher:
     def __init__(
@@ -173,7 +177,82 @@ class Geofetcher:
         if bam_conversion and not just_metadata and not self.which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
-    def fetch_all(self, input, name=None):
+    def get_project_obj(self, input: str) -> Dict[peppy.Project]:
+        """
+        Function for fetching projects from GEO|SRA and obtaining peppy project
+        :param input: GSE number, or path to file of GSE numbers
+        :return: peppy project or list of project, if acc_anno is set.
+        """
+        acc_GSE_list = parse_accessions(
+            input, self.metadata_expanded, self.just_metadata
+        )
+
+        raw_project_dict = {}
+
+        if self.processed:
+            if self.supp_by == "all":
+                data_source_all = True
+            else:
+                data_source_all = False
+
+            import pandas as pd
+
+            if self.acc_anno:
+                self.acc_anno = False
+                for acc_GSE in acc_GSE_list.keys():
+                    if data_source_all:
+                        # samples
+                        self.supp_by = "samples"
+                        samples_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        if len(samples_list) > 0:
+                            raw_project_dict[acc_GSE + "_samples"] = pd.DataFrame(samples_list)
+
+                        # series
+                        self.supp_by = "series"
+                        series_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        if len(series_list) > 0:
+                            raw_project_dict[acc_GSE + "_series"] = pd.DataFrame(series_list)
+                    else:
+                        ser_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        if len(ser_list) > 0:
+                            raw_project_dict[acc_GSE+"_"+self.supp_by] = pd.DataFrame(ser_list)
+            else:
+                if data_source_all:
+                    # samples
+                    self.supp_by = "samples"
+                    samples_list = self.fetch_all(input=input, just_object=True)
+                    if len(samples_list) > 0:
+                        raw_project_dict["project_samples"] = pd.DataFrame(samples_list)
+
+                    # series
+                    self.supp_by = "series"
+                    series_list = self.fetch_all(input=input, just_object=True)
+                    if len(series_list) > 0:
+                        raw_project_dict["project_series"] = pd.DataFrame(series_list)
+
+                else:
+                    ser_list = self.fetch_all(input=input, just_object=True)
+                    if len(ser_list) > 0:
+                        raw_project_dict["project_" + self.supp_by] = pd.DataFrame(ser_list)
+            print(raw_project_dict)
+
+        else:
+            if self.acc_anno:
+                self.acc_anno = False
+                for acc_GSE in acc_GSE_list.keys():
+                    project_dict = self.fetch_all(input=input, just_object=True)
+                    if len(project_dict) > 0:
+                        raw_project_dict[acc_GSE+"_raw_samples"] = project_dict
+
+            else:
+                ser_dict = self.fetch_all(input=input, just_object=True)
+                if len(ser_dict) > 0:
+                    raw_project_dict["raw_samples"] = ser_dict
+
+
+        return peppy.Project()
+
+    def fetch_all(self, input: str, name: str = None, just_object: bool = False):
         """Main script driver/workflow"""
 
         if name:
@@ -578,28 +657,44 @@ class Geofetcher:
                     )
 
                 elif self.supp_by == "samples":
-                    supp_sample_path_meta = os.path.join(
-                        self.metadata_raw,
-                        "PEP_samples",
-                        self.project_name + SAMPLE_SUPP_METADATA_FILE,
-                    )
-                    self.write_processed_annotation(
-                        processed_metadata_samples, supp_sample_path_meta
-                    )
+                    if just_object:
+                        return processed_metadata_samples
+                    else:
+                        supp_sample_path_meta = os.path.join(
+                            self.metadata_raw,
+                            "PEP_samples",
+                            self.project_name + SAMPLE_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            processed_metadata_samples, supp_sample_path_meta
+                        )
 
                 elif self.supp_by == "series":
-                    supp_series_path_meta = os.path.join(
-                        self.metadata_raw,
-                        "PEP_series",
-                        self.project_name + EXP_SUPP_METADATA_FILE,
-                    )
-                    self.write_processed_annotation(
-                        processed_metadata_exp, supp_series_path_meta
-                    )
+                    if just_object:
+                        return processed_metadata_exp
+                    else:
+                        supp_series_path_meta = os.path.join(
+                            self.metadata_raw,
+                            "PEP_series",
+                            self.project_name + EXP_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            processed_metadata_exp, supp_series_path_meta
+                        )
 
         # saving PEPs for raw data
         else:
-            self.write_raw_annotation(metadata_dict, subannotation_dict)
+            if not just_object:
+                self.write_raw_annotation(metadata_dict, subannotation_dict)
+            else:
+                raw_meta_list = []
+                for meta_key in metadata_dict.keys():
+                    for srx_key in metadata_dict[meta_key].keys():
+                        metadata_dict[meta_key][srx_key]["gse_number"] = meta_key
+                        metadata_dict[meta_key][srx_key]["srx_number"] = srx_key
+                        raw_meta_list.append(metadata_dict[meta_key][srx_key])
+                # TODO: add subannotation_dict!!!!
+                return raw_meta_list
 
     def expand_metadata_list(self, metadata_list, dict_key):
         """
@@ -869,7 +964,7 @@ class Geofetcher:
         Combining individual accessions into project-level annotations, and writeing
         individual accession files (if requested)
         :param dict metadata_dict: dictionary of metadata
-        :param dict subannotation_dict: dictionary of sub-annotation metadata
+        :param dict sub-annotation_dict: dictionary of sub-annotation metadata
         """
 
         if self.discard_soft:
@@ -2109,7 +2204,7 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     args_dict["args"] = args
-    Geofetcher(**args_dict).fetch_all(args_dict["input"])
+    Geofetcher(**args_dict).get_project_obj(args_dict["input"])
 
 
 if __name__ == "__main__":

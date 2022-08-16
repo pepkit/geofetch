@@ -233,8 +233,8 @@ class Accession(object):
                 os.makedirs(dirpath)
 
             # save file:
-                with open(outpath, 'w') as f:
-                    f.write(result_text)
+            with open(outpath, 'w') as f:
+                f.write(result_text)
 
         return result_list
 

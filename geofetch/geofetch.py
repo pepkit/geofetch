@@ -28,6 +28,7 @@ from _version import __version__
 import logmuse
 
 from ubiquerg import expandpath, is_command_callable
+from io import StringIO
 
 _STRING_TYPES = str
 _LOGGER = None
@@ -282,6 +283,7 @@ class Geofetcher:
                 self._LOGGER.info(f"Found previous GSE file: {file_gse}")
                 gse_file_obj = open(file_gse, "r")
                 file_gse_content = gse_file_obj.read().split('\n')
+                file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
 
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
                 file_gsm_content = Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM", clean=self.discard_soft)
@@ -289,6 +291,7 @@ class Geofetcher:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
                 gsm_file_obj = open(file_gsm, "r")
                 file_gsm_content = gsm_file_obj.read().split('\n')
+                file_gsm_content = [elem for elem in file_gsm_content  if len(elem) > 0]
 
             # download processed data
             if self.processed:
@@ -1377,16 +1380,24 @@ class Geofetcher:
                 if tar_re.search(filename):
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
-                    tar_files_list_url = "https" + file_url[3 : index + 1] + "filelist.txt"
+                    tar_files_list_url = "https" + file_url[3: index + 1] + "filelist.txt"
                     # file_list_name
                     filelist_path = os.path.join(
                         self.metadata_expanded, gse_numb + "_file_list.txt"
                     )
-                    self.download_file(
-                        tar_files_list_url,
-                        self.metadata_expanded,
-                        gse_numb + "_file_list.txt",
-                    )
+
+                    if not os.path.isfile(filelist_path) or self.refresh_metadata:
+                        result = requests.get(tar_files_list_url)
+                        if result.ok:
+                            filelist_raw_text = result.text
+                            if not self.discard_soft:
+                                with open(filelist_path, 'w') as f:
+                                    f.write(filelist_raw_text)
+                    else:
+                        self._LOGGER.info(f"Found previous GSM file: {filelist_path}")
+                        filelist_obj = open(filelist_path, "r")
+                        filelist_raw_text = filelist_obj.read()
+
 
                     nb = len(meta_processed_samples) - 1
                     for line_gsm in file_gsm_content:
@@ -1449,7 +1460,7 @@ class Geofetcher:
                     )
 
                     # expand meta_processed_samples with information about type and size
-                    file_info_add = self.read_tar_filelist(filelist_path)
+                    file_info_add = self.read_tar_filelist(filelist_raw_text)
                     for index_nr in range(len(meta_processed_samples)):
                         file_name = meta_processed_samples[index_nr]["file"]
                         meta_processed_samples[index_nr].update(
@@ -1593,29 +1604,28 @@ class Geofetcher:
         return filtered_list
 
     @staticmethod
-    def read_tar_filelist(file_path: str):
+    def read_tar_filelist(raw_text: str):
         """
         Creating list for supplementary files that are listed in "filelist.txt"
         :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
         :return dict: dict of supplementary file names and additional information
         """
-
+        f = StringIO(raw_text)
         files_info = {}
-        with open(file_path, newline="") as csvfile:
-            csv_reader = csv.reader(csvfile, delimiter="\t")
-            line_count = 0
-            for row in csv_reader:
-                if line_count == 0:
-                    name_index = row.index("Name")
-                    size_index = row.index("Size")
-                    type_index = row.index("Type")
+        csv_reader = csv.reader(f, delimiter="\t")
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                name_index = row.index("Name")
+                size_index = row.index("Size")
+                type_index = row.index("Type")
 
-                    line_count += 1
-                else:
-                    files_info[row[name_index]] = {
-                        "file_size": row[size_index],
-                        "type": row[type_index],
-                    }
+                line_count += 1
+            else:
+                files_info[row[name_index]] = {
+                    "file_size": row[size_index],
+                    "type": row[type_index],
+                }
 
         return files_info
 

@@ -16,7 +16,7 @@ import xmltodict
 # import tarfile
 import time
 
-from .utils import (
+from utils import (
     Accession,
     parse_accessions,
     parse_SOFT_line,
@@ -24,7 +24,7 @@ from .utils import (
     clean_soft_files,
     run_subprocess,
 )
-from ._version import __version__
+from _version import __version__
 import logmuse
 
 from ubiquerg import expandpath, is_command_callable
@@ -277,24 +277,26 @@ class Geofetcher:
             # The GSM file has metadata describing each sample, which we will use to
             # produce a sample annotation sheet.
             if not os.path.isfile(file_gse) or self.refresh_metadata:
-                Accession(acc_GSE).fetch_metadata(file_gse)
+                file_gse_content = Accession(acc_GSE).fetch_metadata(file_gse, clean=self.discard_soft)
             else:
                 self._LOGGER.info(f"Found previous GSE file: {file_gse}")
+                gse_file_obj = open(file_gse, "r")
+                file_gse_content = gse_file_obj.read().split('\n')
 
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
-                Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM")
+                file_gsm_content = Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM", clean=self.discard_soft)
             else:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
-
-            # if not os.path.isfile(file_gsm) or not os.path.isfile(file_gse):
+                gsm_file_obj = open(file_gsm, "r")
+                file_gsm_content = gsm_file_obj.read().split('\n')
 
             # download processed data
             if self.processed:
-                try:
+                    #try:
                     (
                         meta_processed_samples,
                         meta_processed_series,
-                    ) = self.get_list_of_processed_files(file_gse, file_gsm)
+                    ) = self.get_list_of_processed_files(file_gse_content, file_gsm_content)
 
                     # taking into account list of GSM that is specified in the input file
                     gsm_list = acc_GSE_list[acc_GSE]
@@ -307,6 +309,7 @@ class Geofetcher:
                     )
                     meta_processed_series = self.unify_list_keys(meta_processed_series)
 
+                    # samples
                     list_of_keys = self.get_list_of_keys(meta_processed_samples)
                     self._LOGGER.info("Expanding metadata list...")
                     for key_in_list in list_of_keys:
@@ -314,6 +317,7 @@ class Geofetcher:
                             meta_processed_samples, key_in_list
                         )
 
+                    # series
                     list_of_keys_series = self.get_list_of_keys(meta_processed_series)
                     self._LOGGER.info("Expanding metadata list...")
                     for key_in_list in list_of_keys_series:
@@ -409,17 +413,17 @@ class Geofetcher:
                             ]
                             for file_url in processed_series_files:
                                 self.download_processed_file(file_url, data_geo_folder)
-                except Exception as processed_exception:
-                    failed_runs.append(acc_GSE)
-                    self._LOGGER.warning(f"Error occurred: {processed_exception}")
+                    # except Exception as processed_exception:
+                    #     failed_runs.append(acc_GSE)
+                    #     self._LOGGER.warning(f"Error occurred: {processed_exception}")
 
             else:
                 # download gsm metadata
-                gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list, file_gsm)
+                gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list, file_gsm_content)
                 metadata_dict[acc_GSE] = gsm_metadata
 
                 # download gsm metadata
-                SRP_list_result = self.get_SRA_meta(file_gse, gsm_metadata, file_sra)
+                SRP_list_result = self.get_SRA_meta(file_gse_content, gsm_metadata, file_sra)
                 if not SRP_list_result:
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
@@ -1345,18 +1349,18 @@ class Geofetcher:
         else:
             self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
-    def get_list_of_processed_files(self, file_gse, file_gsm):
+    def get_list_of_processed_files(self, file_gse_content: list, file_gsm_content: list):
         """
         Given a paths to GSE and GSM metafile create a list of dicts of metadata of processed files
-        :param str file_gse: the path to gse metafile
-        :param str file_gsm: the path to gse metafile
+        :param list file_gse_content: list of lines of gse metafile
+        :param list file_gsm_content: list of lines of gse metafile
         :return list: list of metadata of processed files
         """
         tar_re = re.compile(r".*\.tar$")
         gse_numb = None
         meta_processed_samples = []
         meta_processed_series = {"GSE": "", "files": []}
-        for line in open(file_gse, "r"):
+        for line in file_gse_content:
 
             if re.compile(r"!Series_geo_accession").search(line):
                 gse_numb = self.get_value(line)
@@ -1373,7 +1377,7 @@ class Geofetcher:
                 if tar_re.search(filename):
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
-                    tar_files_list_url = file_url[: index + 1] + "filelist.txt"
+                    tar_files_list_url = "https" + file_url[3 : index + 1] + "filelist.txt"
                     # file_list_name
                     filelist_path = os.path.join(
                         self.metadata_expanded, gse_numb + "_file_list.txt"
@@ -1385,7 +1389,7 @@ class Geofetcher:
                     )
 
                     nb = len(meta_processed_samples) - 1
-                    for line_gsm in open(file_gsm, "r"):
+                    for line_gsm in file_gsm_content:
                         if line_gsm[0] == "^":
                             nb = len(self.check_file_existance(meta_processed_samples))
                             meta_processed_samples.append(
@@ -1589,7 +1593,7 @@ class Geofetcher:
         return filtered_list
 
     @staticmethod
-    def read_tar_filelist(file_path):
+    def read_tar_filelist(file_path: str):
         """
         Creating list for supplementary files that are listed in "filelist.txt"
         :param str file_path: path to the file with information about files that are zipped ("filelist.txt")
@@ -1621,7 +1625,6 @@ class Geofetcher:
         return line_value.split(": ")[-1].rstrip("\n")
 
     def download_processed_file(self, file_url, data_folder):
-
         """
         Given a url for a file, download it, and extract anything passing the filter.
         :param str file_url: the URL of the file to download
@@ -1664,16 +1667,16 @@ class Geofetcher:
                 if ntry > 4:
                     raise e
 
-    def get_SRA_meta(self, file_gse, gsm_metadata, file_sra=None):
+    def get_SRA_meta(self, file_gse_content: list, gsm_metadata, file_sra=None):
         """
         Parse out the SRA project identifier from the GSE file
-        :param str file_gse: full path to GSE.soft metafile
+        :param list file_gse_content: list of content of file_sde_content
         :param dict gsm_metadata: dict of GSM metadata
         :param str file_sra: full path to SRA.csv metafile that has to be downloaded
         """
         #
         acc_SRP = None
-        for line in open(file_gse, "r"):
+        for line in file_gse_content:
             found = re.findall(PROJECT_PATTERN, line)
             if found:
                 acc_SRP = found[0]
@@ -1780,13 +1783,13 @@ class Geofetcher:
 
         return SRP_list
 
-    def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm):
+    def get_gsm_metadata(self, acc_GSE, acc_GSE_list, file_gsm_content: list):
         """
         A simple state machine to parse SOFT formatted files (Here, the GSM file)
 
         :param str acc_GSE: GSE number (Series accession)
         :param dict acc_GSE_list: list of GSE
-        :param str file_gsm: full path to GSM.soft metafile
+        :param list file_gsm_content: list of contents of gsm file
         :return dict: dictionary of experiment information (gsm_metadata)
         """
         gsm_metadata = {}
@@ -1798,7 +1801,7 @@ class Geofetcher:
         current_sample_id = None
         current_sample_srx = False
         samples_list = []
-        for line in open(file_gsm, "r"):
+        for line in file_gsm_content:
             line = line.rstrip()
             if len(line) == 0:  # Apparently SOFT files can contain blank lines
                 continue

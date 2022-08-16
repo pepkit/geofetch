@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import re
+import requests
 
 
 __author__ = [
@@ -181,17 +182,16 @@ class Accession(object):
         self.accn = accn
         self.typename = typename.upper()
 
-    def fetch_metadata(self, outpath=None, typename=None):
+    def fetch_metadata(self, outpath: str = None, typename: str = None, clean: bool = False) -> list:
         """
         Fetch the metadata associated with this accession.
 
-        :param str outpath: path to file to which to write output, optional
         :param str typename: type indicating URL format, use type
             parsed at construction if unspecified
+        :param str outpath: path to file to which to write output, optional
+        :param bool clean: if true, files won't be saved
+        :return: list of lines in soft file
         """
-
-        # TODO: note this sort of type-dependent strategy suggests subclassing.
-        # For now, class is small, but that should maybe be done if it grows.
 
         typename = (typename or self.typename).upper()
         if not is_known_type(typename=typename):
@@ -210,7 +210,16 @@ class Accession(object):
             raise
         _LOGGER.debug("Fetching: '%s'", full_url)
 
-        if outpath:
+        result = requests.get(full_url)
+        if result.ok:
+            result_text = result.text
+            result_list = result_text.replace("\r", "").split("\n")
+            result_list = [elem for elem in result_list if len(elem) > 0]
+
+        else:
+            raise Exception(f"Error in requesting fileL: {full_url}")
+
+        if outpath and not clean:
             # Ensure we have filepath and that needed directories exist.
             if not os.path.splitext(outpath)[1]:
                 _LOGGER.debug("Looks like folder, not file: %s", outpath)
@@ -222,11 +231,12 @@ class Accession(object):
             if not os.path.exists(dirpath):
                 _LOGGER.debug("Forging path to '%s'", dirpath)
                 os.makedirs(dirpath)
-            cmd = "wget -O {} {}".format(outpath, full_url)
-        else:
-            cmd = "wget {}".format(full_url)
 
-        run_subprocess(cmd.split(" "))
+            # save file:
+                with open(outpath, 'w') as f:
+                    f.write(result_text)
+
+        return result_list
 
     @staticmethod
     def _validate(accn):
@@ -335,3 +345,5 @@ def run_subprocess(*args, **kwargs):
         except OSError as ose:
             _LOGGER.warn(f"Exception raised during subprocess termination: {ose}")
         sys.exit(1)
+
+#file_gse_content

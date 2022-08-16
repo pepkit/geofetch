@@ -17,9 +17,9 @@ import xmltodict
 # import tarfile
 import time
 
-from _version import __version__
-from const import *
-from utils import (
+from ._version import __version__
+from .const import *
+from .utils import (
     Accession,
     parse_accessions,
     parse_SOFT_line,
@@ -33,6 +33,8 @@ from ubiquerg import expandpath, is_command_callable
 from io import StringIO
 from typing import List, Union, Dict
 import peppy
+import pandas as pd
+
 
 class Geofetcher:
     def __init__(
@@ -183,6 +185,7 @@ class Geofetcher:
         :param input: GSE number, or path to file of GSE numbers
         :return: peppy project or list of project, if acc_anno is set.
         """
+        self.just_metadata = True
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
         )
@@ -195,8 +198,6 @@ class Geofetcher:
             else:
                 data_source_all = False
 
-            import pandas as pd
-
             if self.acc_anno:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
@@ -205,52 +206,57 @@ class Geofetcher:
                         self.supp_by = "samples"
                         samples_list = self.fetch_all(input=acc_GSE, just_object=True)
                         if len(samples_list) > 0:
-                            raw_project_dict[acc_GSE + "_samples"] = pd.DataFrame(samples_list)
+                            raw_project_dict[acc_GSE + "_samples"] = samples_list
 
                         # series
                         self.supp_by = "series"
                         series_list = self.fetch_all(input=acc_GSE, just_object=True)
                         if len(series_list) > 0:
-                            raw_project_dict[acc_GSE + "_series"] = pd.DataFrame(series_list)
+                            raw_project_dict[acc_GSE + "_series"] = series_list
                     else:
                         ser_list = self.fetch_all(input=acc_GSE, just_object=True)
                         if len(ser_list) > 0:
-                            raw_project_dict[acc_GSE+"_"+self.supp_by] = pd.DataFrame(ser_list)
+                            raw_project_dict[acc_GSE + "_" + self.supp_by] = ser_list
             else:
                 if data_source_all:
                     # samples
                     self.supp_by = "samples"
                     samples_list = self.fetch_all(input=input, just_object=True)
                     if len(samples_list) > 0:
-                        raw_project_dict["project_samples"] = pd.DataFrame(samples_list)
+                        raw_project_dict["project_samples"] = samples_list
 
                     # series
                     self.supp_by = "series"
                     series_list = self.fetch_all(input=input, just_object=True)
                     if len(series_list) > 0:
-                        raw_project_dict["project_series"] = pd.DataFrame(series_list)
+                        raw_project_dict["project_series"] = series_list
 
                 else:
                     ser_list = self.fetch_all(input=input, just_object=True)
                     if len(ser_list) > 0:
-                        raw_project_dict["project_" + self.supp_by] = pd.DataFrame(ser_list)
-            print(raw_project_dict)
+                        raw_project_dict["project_" + self.supp_by] = ser_list
 
         else:
+            # Not sure about below code...
             if self.acc_anno:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
                     project_dict = self.fetch_all(input=input, just_object=True)
                     if len(project_dict) > 0:
-                        raw_project_dict[acc_GSE+"_raw_samples"] = project_dict
+                        raw_project_dict[acc_GSE + "_raw_samples"] = project_dict
 
             else:
                 ser_dict = self.fetch_all(input=input, just_object=True)
                 if len(ser_dict) > 0:
                     raw_project_dict["raw_samples"] = ser_dict
 
+        new_dict = {}
+        for proj_key in raw_project_dict.keys():
+            new_dict[proj_key] = peppy.Project(
+                pd_object=pd.DataFrame(raw_project_dict[proj_key])
+            )
 
-        return peppy.Project()
+        return new_dict
 
     def fetch_all(self, input: str, name: str = None, just_object: bool = False):
         """Main script driver/workflow"""
@@ -315,155 +321,157 @@ class Geofetcher:
             # The GSM file has metadata describing each sample, which we will use to
             # produce a sample annotation sheet.
             if not os.path.isfile(file_gse) or self.refresh_metadata:
-                file_gse_content = Accession(acc_GSE).fetch_metadata(file_gse, clean=self.discard_soft)
+                file_gse_content = Accession(acc_GSE).fetch_metadata(
+                    file_gse, clean=self.discard_soft
+                )
             else:
                 self._LOGGER.info(f"Found previous GSE file: {file_gse}")
                 gse_file_obj = open(file_gse, "r")
-                file_gse_content = gse_file_obj.read().split('\n')
+                file_gse_content = gse_file_obj.read().split("\n")
                 file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
 
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
-                file_gsm_content = Accession(acc_GSE).fetch_metadata(file_gsm, typename="GSM", clean=self.discard_soft)
+                file_gsm_content = Accession(acc_GSE).fetch_metadata(
+                    file_gsm, typename="GSM", clean=self.discard_soft
+                )
             else:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
                 gsm_file_obj = open(file_gsm, "r")
-                file_gsm_content = gsm_file_obj.read().split('\n')
-                file_gsm_content = [elem for elem in file_gsm_content  if len(elem) > 0]
+                file_gsm_content = gsm_file_obj.read().split("\n")
+                file_gsm_content = [elem for elem in file_gsm_content if len(elem) > 0]
 
             # download processed data
             if self.processed:
-                    #try:
-                    (
-                        meta_processed_samples,
-                        meta_processed_series,
-                    ) = self.get_list_of_processed_files(file_gse_content, file_gsm_content)
+                # try:
+                (
+                    meta_processed_samples,
+                    meta_processed_series,
+                ) = self.get_list_of_processed_files(file_gse_content, file_gsm_content)
 
-                    # taking into account list of GSM that is specified in the input file
-                    gsm_list = acc_GSE_list[acc_GSE]
-                    meta_processed_samples = self.filter_gsm(
-                        meta_processed_samples, gsm_list
-                    )
-                    # Unify keys:
-                    meta_processed_samples = self.unify_list_keys(
-                        meta_processed_samples
-                    )
-                    meta_processed_series = self.unify_list_keys(meta_processed_series)
+                # taking into account list of GSM that is specified in the input file
+                gsm_list = acc_GSE_list[acc_GSE]
+                meta_processed_samples = self.filter_gsm(
+                    meta_processed_samples, gsm_list
+                )
+                # Unify keys:
+                meta_processed_samples = self.unify_list_keys(meta_processed_samples)
+                meta_processed_series = self.unify_list_keys(meta_processed_series)
 
-                    # samples
-                    list_of_keys = self.get_list_of_keys(meta_processed_samples)
-                    self._LOGGER.info("Expanding metadata list...")
-                    for key_in_list in list_of_keys:
-                        meta_processed_samples = self.expand_metadata_list(
-                            meta_processed_samples, key_in_list
+                # samples
+                list_of_keys = self.get_list_of_keys(meta_processed_samples)
+                self._LOGGER.info("Expanding metadata list...")
+                for key_in_list in list_of_keys:
+                    meta_processed_samples = self.expand_metadata_list(
+                        meta_processed_samples, key_in_list
+                    )
+
+                # series
+                list_of_keys_series = self.get_list_of_keys(meta_processed_series)
+                self._LOGGER.info("Expanding metadata list...")
+                for key_in_list in list_of_keys_series:
+                    meta_processed_series = self.expand_metadata_list(
+                        meta_processed_series, key_in_list
+                    )
+
+                # convert column names to lowercase and underscore
+                meta_processed_samples = self.standardize_colnames(
+                    meta_processed_samples
+                )
+                meta_processed_series = self.standardize_colnames(meta_processed_series)
+
+                if not self.acc_anno:
+                    # adding metadata from current experiment to the project
+                    processed_metadata_samples.extend(meta_processed_samples)
+                    processed_metadata_exp.extend(meta_processed_series)
+
+                # save PEP for each accession if acc-anno flag is true
+                if self.acc_anno and len(acc_GSE_list.keys()) > 1:
+                    if self.supp_by == "all":
+                        # samples
+                        pep_acc_path_sample = os.path.join(
+                            self.metadata_raw,
+                            f"{acc_GSE}_samples",
+                            acc_GSE + SAMPLE_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            meta_processed_samples, pep_acc_path_sample
                         )
 
-                    # series
-                    list_of_keys_series = self.get_list_of_keys(meta_processed_series)
-                    self._LOGGER.info("Expanding metadata list...")
-                    for key_in_list in list_of_keys_series:
-                        meta_processed_series = self.expand_metadata_list(
-                            meta_processed_series, key_in_list
+                        # series
+                        pep_acc_path_exp = os.path.join(
+                            self.metadata_raw,
+                            f"{acc_GSE}_series",
+                            acc_GSE + EXP_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            meta_processed_series, pep_acc_path_exp
+                        )
+                    elif self.supp_by == "samples":
+                        pep_acc_path_sample = os.path.join(
+                            self.metadata_raw,
+                            f"{acc_GSE}_samples",
+                            acc_GSE + SAMPLE_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            meta_processed_samples, pep_acc_path_sample
+                        )
+                    elif self.supp_by == "series":
+                        pep_acc_path_exp = os.path.join(
+                            self.metadata_raw,
+                            f"{acc_GSE}_series",
+                            acc_GSE + EXP_SUPP_METADATA_FILE,
+                        )
+                        self.write_processed_annotation(
+                            meta_processed_series, pep_acc_path_exp
                         )
 
-                    # convert column names to lowercase and underscore
-                    meta_processed_samples = self.standardize_colnames(
-                        meta_processed_samples
-                    )
-                    meta_processed_series = self.standardize_colnames(
-                        meta_processed_series
-                    )
+                if not self.just_metadata:
+                    data_geo_folder = os.path.join(self.geo_folder, acc_GSE)
+                    self._LOGGER.debug("Data folder: " + data_geo_folder)
 
-                    if not self.acc_anno:
-                        # adding metadata from current experiment to the project
-                        processed_metadata_samples.extend(meta_processed_samples)
-                        processed_metadata_exp.extend(meta_processed_series)
+                    if self.supp_by == "all":
+                        processed_samples_files = [
+                            each_file["file_url"]
+                            for each_file in meta_processed_samples
+                        ]
+                        for file_url in processed_samples_files:
+                            self.download_processed_file(file_url, data_geo_folder)
 
-                    # save PEP for each accession if acc-anno flag is true
-                    if self.acc_anno and len(acc_GSE_list.keys()) > 1:
-                        if self.supp_by == "all":
-                            # samples
-                            pep_acc_path_sample = os.path.join(
-                                self.metadata_raw,
-                                f"{acc_GSE}_samples",
-                                acc_GSE + SAMPLE_SUPP_METADATA_FILE,
-                            )
-                            self.write_processed_annotation(
-                                meta_processed_samples, pep_acc_path_sample
-                            )
+                        processed_series_files = [
+                            each_file["file_url"] for each_file in meta_processed_series
+                        ]
+                        for file_url in processed_series_files:
+                            self.download_processed_file(file_url, data_geo_folder)
 
-                            # series
-                            pep_acc_path_exp = os.path.join(
-                                self.metadata_raw,
-                                f"{acc_GSE}_series",
-                                acc_GSE + EXP_SUPP_METADATA_FILE,
-                            )
-                            self.write_processed_annotation(
-                                meta_processed_series, pep_acc_path_exp
-                            )
-                        elif self.supp_by == "samples":
-                            pep_acc_path_sample = os.path.join(
-                                self.metadata_raw,
-                                f"{acc_GSE}_samples",
-                                acc_GSE + SAMPLE_SUPP_METADATA_FILE,
-                            )
-                            self.write_processed_annotation(
-                                meta_processed_samples, pep_acc_path_sample
-                            )
-                        elif self.supp_by == "series":
-                            pep_acc_path_exp = os.path.join(
-                                self.metadata_raw,
-                                f"{acc_GSE}_series",
-                                acc_GSE + EXP_SUPP_METADATA_FILE,
-                            )
-                            self.write_processed_annotation(
-                                meta_processed_series, pep_acc_path_exp
-                            )
+                    elif self.supp_by == "samples":
+                        processed_samples_files = [
+                            each_file["file_url"]
+                            for each_file in meta_processed_samples
+                        ]
+                        for file_url in processed_samples_files:
+                            self.download_processed_file(file_url, data_geo_folder)
 
-                    if not self.just_metadata:
-                        data_geo_folder = os.path.join(self.geo_folder, acc_GSE)
-                        self._LOGGER.debug("Data folder: " + data_geo_folder)
-
-                        if self.supp_by == "all":
-                            processed_samples_files = [
-                                each_file["file_url"]
-                                for each_file in meta_processed_samples
-                            ]
-                            for file_url in processed_samples_files:
-                                self.download_processed_file(file_url, data_geo_folder)
-
-                            processed_series_files = [
-                                each_file["file_url"]
-                                for each_file in meta_processed_series
-                            ]
-                            for file_url in processed_series_files:
-                                self.download_processed_file(file_url, data_geo_folder)
-
-                        elif self.supp_by == "samples":
-                            processed_samples_files = [
-                                each_file["file_url"]
-                                for each_file in meta_processed_samples
-                            ]
-                            for file_url in processed_samples_files:
-                                self.download_processed_file(file_url, data_geo_folder)
-
-                        elif self.supp_by == "series":
-                            processed_series_files = [
-                                each_file["file_url"]
-                                for each_file in meta_processed_series
-                            ]
-                            for file_url in processed_series_files:
-                                self.download_processed_file(file_url, data_geo_folder)
-                    # except Exception as processed_exception:
-                    #     failed_runs.append(acc_GSE)
-                    #     self._LOGGER.warning(f"Error occurred: {processed_exception}")
+                    elif self.supp_by == "series":
+                        processed_series_files = [
+                            each_file["file_url"] for each_file in meta_processed_series
+                        ]
+                        for file_url in processed_series_files:
+                            self.download_processed_file(file_url, data_geo_folder)
+                # except Exception as processed_exception:
+                #     failed_runs.append(acc_GSE)
+                #     self._LOGGER.warning(f"Error occurred: {processed_exception}")
 
             else:
                 # download gsm metadata
-                gsm_metadata = self.get_gsm_metadata(acc_GSE, acc_GSE_list, file_gsm_content)
+                gsm_metadata = self.get_gsm_metadata(
+                    acc_GSE, acc_GSE_list, file_gsm_content
+                )
                 metadata_dict[acc_GSE] = gsm_metadata
 
                 # download gsm metadata
-                SRP_list_result = self.get_SRA_meta(file_gse_content, gsm_metadata, file_sra)
+                SRP_list_result = self.get_SRA_meta(
+                    file_gse_content, gsm_metadata, file_sra
+                )
                 if not SRP_list_result:
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
@@ -866,9 +874,7 @@ class Geofetcher:
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
-        self._LOGGER.info(
-            "\033[92mFile has been saved successfully\033[0m"
-        )
+        self._LOGGER.info("\033[92mFile has been saved successfully\033[0m")
         return fp
 
     def write_processed_annotation(self, processed_metadata, file_annotation_path):
@@ -1407,7 +1413,9 @@ class Geofetcher:
         else:
             self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
-    def get_list_of_processed_files(self, file_gse_content: list, file_gsm_content: list):
+    def get_list_of_processed_files(
+        self, file_gse_content: list, file_gsm_content: list
+    ):
         """
         Given a paths to GSE and GSM metafile create a list of dicts of metadata of processed files
         :param list file_gse_content: list of lines of gse metafile
@@ -1435,7 +1443,9 @@ class Geofetcher:
                 if tar_re.search(filename):
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
-                    tar_files_list_url = "https" + file_url[3: index + 1] + "filelist.txt"
+                    tar_files_list_url = (
+                        "https" + file_url[3 : index + 1] + "filelist.txt"
+                    )
                     # file_list_name
                     filelist_path = os.path.join(
                         self.metadata_expanded, gse_numb + "_file_list.txt"
@@ -1446,7 +1456,7 @@ class Geofetcher:
                         if result.ok:
                             filelist_raw_text = result.text
                             if not self.discard_soft:
-                                with open(filelist_path, 'w') as f:
+                                with open(filelist_path, "w") as f:
                                     f.write(filelist_raw_text)
                         else:
                             raise Exception(f"error in requesting tar_files_list")
@@ -1454,7 +1464,6 @@ class Geofetcher:
                         self._LOGGER.info(f"Found previous GSM file: {filelist_path}")
                         filelist_obj = open(filelist_path, "r")
                         filelist_raw_text = filelist_obj.read()
-
 
                     nb = len(meta_processed_samples) - 1
                     for line_gsm in file_gsm_content:
@@ -2204,7 +2213,7 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     args_dict["args"] = args
-    Geofetcher(**args_dict).get_project_obj(args_dict["input"])
+    Geofetcher(**args_dict).fetch_all(args_dict["input"])
 
 
 if __name__ == "__main__":

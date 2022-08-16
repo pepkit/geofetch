@@ -170,7 +170,9 @@ class Accession(object):
         self.accn = accn
         self.typename = typename.upper()
 
-    def fetch_metadata(self, outpath: str = None, typename: str = None, clean: bool = False) -> list:
+    def fetch_metadata(
+        self, outpath: str = None, typename: str = None, clean: bool = False
+    ) -> list:
         """
         Fetch the metadata associated with this accession.
 
@@ -221,7 +223,7 @@ class Accession(object):
                 os.makedirs(dirpath)
 
             # save file:
-            with open(outpath, 'w') as f:
+            with open(outpath, "w") as f:
                 f.write(result_text)
 
         return result_list
@@ -334,4 +336,5 @@ def run_subprocess(*args, **kwargs):
             _LOGGER.warning(f"Exception raised during subprocess termination: {ose}")
         sys.exit(1)
 
-#file_gse_content
+
+# file_gse_content

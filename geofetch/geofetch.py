@@ -2,7 +2,6 @@
 
 __author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
-
 import argparse
 import copy
 import csv
@@ -16,6 +15,8 @@ import xmltodict
 # import tarfile
 import time
 
+from _version import __version__
+from const import *
 from utils import (
     Accession,
     parse_accessions,
@@ -24,53 +25,10 @@ from utils import (
     clean_soft_files,
     run_subprocess,
 )
-from _version import __version__
-import logmuse
 
+import logmuse
 from ubiquerg import expandpath, is_command_callable
 from io import StringIO
-
-_STRING_TYPES = str
-_LOGGER = None
-
-# A set of hard-coded keys if you want to limit to just a few instead of taking
-# all information provided in GEO. Use with `--use-key-subset`
-ANNOTATION_SHEET_KEYS = [
-    "sample_name",
-    "protocol",
-    "read_type",
-    "organism",
-    "data_source",
-    "Sample_title",
-    "Sample_source_name_ch1",
-    "Sample_organism_ch1",
-    "Sample_library_selection",
-    "Sample_library_strategy",
-    "Sample_type",
-    "SRR",
-    "SRX",
-    "Sample_geo_accession",
-    "Sample_series_id",
-    "Sample_instrument_model",
-]
-
-# Regex to parse out SRA accession identifiers
-PROJECT_PATTERN = re.compile(r"(SRP\d{4,8})")
-EXPERIMENT_PATTERN = re.compile(r"(SRX\d{4,8})")
-GSE_PATTERN = re.compile(r"(GSE\d{4,8})")
-SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
-SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
-
-SAMPLE_SUPP_METADATA_FILE = "_samples.csv"
-EXP_SUPP_METADATA_FILE = "_series.csv"
-
-# How many times should we retry failing prefetch call?
-NUM_RETRIES = 3
-REQUEST_SLEEP = 0.4
-
-NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={SRP_NUMBER}&retmax=999&rettype=uilist&retmode=json"
-NCBI_EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id={ID}&rettype=runinfo&retmode=xml"
-
 
 class Geofetcher:
     def __init__(
@@ -485,7 +443,7 @@ class Geofetcher:
                         )
 
                         if (
-                            isinstance(gsm_metadata[experiment]["SRR"], _STRING_TYPES)
+                            isinstance(gsm_metadata[experiment]["SRR"], str)
                             and experiment not in gsm_multi_table
                         ):
                             # Only one has been stuck in so far, make a list
@@ -806,14 +764,16 @@ class Geofetcher:
             # keys = gsm_metadata[gsm_metadata.keys().next()].keys()
             keys = list(list(gsm_metadata.values())[0].keys())
 
-        self._LOGGER.info(f"Sample annotation sheet: {file_annotation}")
+        self._LOGGER.info(f"Sample annotation sheet: {file_annotation} . Saving....")
         fp = expandpath(file_annotation)
-        self._LOGGER.info(f"Writing: {fp}")
         with open(fp, "w") as of:
             w = csv.DictWriter(of, keys, extrasaction="ignore")
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
+        self._LOGGER.info(
+            "\033[92mFile has been saved successfully\033[0m"
+        )
         return fp
 
     def write_processed_annotation(self, processed_metadata, file_annotation_path):
@@ -1393,6 +1353,8 @@ class Geofetcher:
                             if not self.discard_soft:
                                 with open(filelist_path, 'w') as f:
                                     f.write(filelist_raw_text)
+                        else:
+                            raise Exception(f"error in requesting tar_files_list")
                     else:
                         self._LOGGER.info(f"Found previous GSM file: {filelist_path}")
                         filelist_obj = open(filelist_path, "r")

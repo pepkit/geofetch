@@ -7,19 +7,7 @@ import sys
 import re
 import requests
 
-
-__author__ = [
-    "Oleksandr Khoroshevskyi",
-    "Vince Reuter",
-    "Nathan Sheffield",
-]
-__email__ = "bnt4me@virginia.edu"
-
-__all__ = ["parse_accessions"]
-
-
 _LOGGER = logging.getLogger(__name__)
-
 
 # This dict provides NCBI lookup URLs for different accession types. SRX
 # identifiers can be used to grab metadata from SRA for a single sample, just as
@@ -343,7 +331,7 @@ def run_subprocess(*args, **kwargs):
             p.terminate()
             print("Pipeline aborted.")
         except OSError as ose:
-            _LOGGER.warn(f"Exception raised during subprocess termination: {ose}")
+            _LOGGER.warning(f"Exception raised during subprocess termination: {ose}")
         sys.exit(1)
 
 #file_gse_content

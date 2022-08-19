@@ -1736,7 +1736,8 @@ class Geofetcher:
                 try:
                     # downloading metadata
                     srp_list = self._get_SRP_list(acc_SRP)
-                    if file_sra is not None:
+                    srp_list = self._unify_list_keys(srp_list)
+                    if file_sra is not None and not self.discard_soft:
                         with open(file_sra, "w") as m_file:
                             dict_writer = csv.DictWriter(m_file, srp_list[0].keys())
                             dict_writer.writeheader()
@@ -1791,16 +1792,22 @@ class Geofetcher:
             self._LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
             raise x.raise_for_status()
         id_results = x.json()["esearchresult"]["idlist"]
+        if len(id_results) > 500:
+            id_results = [id_results[x:x + 100] for x in range(0, len(id_results), 100)]
+        else:
+            id_results = [id_results]
 
-        id_r_string = ",".join(id_results)
-        id_api = NCBI_EFETCH.format(ID=id_r_string)
-        y = requests.get(id_api)
-        if y.status_code != 200:
-            self._LOGGER.error(f"Error in ncbi efetch response: {x.status_code}")
-            raise y.raise_for_status()
+        SRP_list = []
+        for result in id_results:
+            id_r_string = ",".join(result)
+            id_api = NCBI_EFETCH.format(ID=id_r_string)
 
-        xml_result = y.text
-        SRP_list = xmltodict.parse(xml_result)["SraRunInfo"]["Row"]
+            y = requests.get(id_api)
+            if y.status_code != 200:
+                self._LOGGER.error(f"Error in ncbi efetch response in SRA fetching: {x.status_code}")
+                raise y.raise_for_status()
+            xml_result = y.text
+            SRP_list.extend(xmltodict.parse(xml_result)["SraRunInfo"]["Row"])
 
         return SRP_list
 

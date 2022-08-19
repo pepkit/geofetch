@@ -13,6 +13,8 @@ import sys
 from string import punctuation
 import requests
 import xmltodict
+from rich.progress import track
+#from tqdm import tqdm
 
 # import tarfile
 import time
@@ -71,6 +73,7 @@ class Geofetcher:
         attr_limit_truncate: int = 500,
         discard_soft: bool = False,
         add_dotfile: bool = False,
+        disable_progressbar: bool = False,
         opts=None,
         **kwargs,
     ):
@@ -167,6 +170,7 @@ class Geofetcher:
 
         self.discard_soft = discard_soft
         self.add_dotfile = add_dotfile
+        self.disable_progressbar = disable_progressbar
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
@@ -182,6 +186,8 @@ class Geofetcher:
         if bam_conversion and not just_metadata and not self._which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
+        self.just_object = False
+
     def get_project(self, input: str) -> Dict[peppy.Project]:
         """
         Function for fetching projects from GEO|SRA and receiving peppy project
@@ -189,6 +195,8 @@ class Geofetcher:
         :return: peppy project or list of project, if acc_anno is set.
         """
         self.just_metadata = True
+        self.just_object = True
+        self.disable_progressbar = True
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
         )
@@ -207,35 +215,35 @@ class Geofetcher:
                     if data_source_all:
                         # samples
                         self.supp_by = "samples"
-                        samples_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        samples_list = self.fetch_all(input=acc_GSE)
                         if len(samples_list) > 0:
                             raw_project_dict[acc_GSE + "_samples"] = samples_list
 
                         # series
                         self.supp_by = "series"
-                        series_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        series_list = self.fetch_all(input=acc_GSE)
                         if len(series_list) > 0:
                             raw_project_dict[acc_GSE + "_series"] = series_list
                     else:
-                        ser_list = self.fetch_all(input=acc_GSE, just_object=True)
+                        ser_list = self.fetch_all(input=acc_GSE)
                         if len(ser_list) > 0:
                             raw_project_dict[acc_GSE + "_" + self.supp_by] = ser_list
             else:
                 if data_source_all:
                     # samples
                     self.supp_by = "samples"
-                    samples_list = self.fetch_all(input=input, just_object=True)
+                    samples_list = self.fetch_all(input=input)
                     if len(samples_list) > 0:
                         raw_project_dict["project_samples"] = samples_list
 
                     # series
                     self.supp_by = "series"
-                    series_list = self.fetch_all(input=input, just_object=True)
+                    series_list = self.fetch_all(input=input)
                     if len(series_list) > 0:
                         raw_project_dict["project_series"] = series_list
 
                 else:
-                    ser_list = self.fetch_all(input=input, just_object=True)
+                    ser_list = self.fetch_all(input=input)
                     if len(ser_list) > 0:
                         raw_project_dict["project_" + self.supp_by] = ser_list
 
@@ -244,12 +252,12 @@ class Geofetcher:
             if self.acc_anno:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
-                    project_dict = self.fetch_all(input=input, just_object=True)
+                    project_dict = self.fetch_all(input=input)
                     if len(project_dict) > 0:
                         raw_project_dict[acc_GSE + "_raw_samples"] = project_dict
 
             else:
-                ser_dict = self.fetch_all(input=input, just_object=True)
+                ser_dict = self.fetch_all(input=input)
                 if len(ser_dict) > 0:
                     raw_project_dict["raw_samples"] = ser_dict
 
@@ -261,7 +269,7 @@ class Geofetcher:
 
         return new_dict
 
-    def fetch_all(self, input: str, name: str = None, just_object: bool = False):
+    def fetch_all(self, input: str, name: str = None):
         """Main script driver/workflow"""
 
         if name:
@@ -288,7 +296,10 @@ class Geofetcher:
         acc_GSE_keys = acc_GSE_list.keys()
         nkeys = len(acc_GSE_keys)
         ncount = 0
-        for acc_GSE in acc_GSE_list.keys():
+        for acc_GSE in track(acc_GSE_list.keys(),
+                             description="Processing... ",
+                             disable=self.disable_progressbar):
+
             ncount += 1
             if ncount <= self.skip:
                 continue
@@ -638,7 +649,7 @@ class Geofetcher:
                     self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
                 elif self.supp_by == "samples":
-                    if just_object:
+                    if self.just_object:
                         return processed_metadata_samples
                     else:
                         supp_sample_path_meta = os.path.join(
@@ -649,7 +660,7 @@ class Geofetcher:
                         self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
                 elif self.supp_by == "series":
-                    if just_object:
+                    if self.just_object:
                         return processed_metadata_exp
                     else:
                         supp_series_path_meta = os.path.join(
@@ -661,7 +672,7 @@ class Geofetcher:
 
         # saving PEPs for raw data
         else:
-            if not just_object:
+            if not self.just_object:
                 self._write_raw_annotation(metadata_dict, subannotation_dict)
             else:
                 raw_meta_list = []
@@ -670,7 +681,6 @@ class Geofetcher:
                         metadata_dict[meta_key][srx_key]["gse_number"] = meta_key
                         metadata_dict[meta_key][srx_key]["srx_number"] = srx_key
                         raw_meta_list.append(metadata_dict[meta_key][srx_key])
-                # TODO: add subannotation_dict!!!!
                 return raw_meta_list
 
     def _expand_metadata_list(self, metadata_list, dict_key):
@@ -1471,7 +1481,7 @@ class Geofetcher:
                     meta_processed_samples = self._separate_file_url(meta_processed_samples)
 
                     self._LOGGER.info(
-                        f"Total number of processed SAMPLES files found is: "
+                        f"\nTotal number of processed SAMPLES files found is: "
                         f"%s" % str(len(meta_processed_samples))
                     )
 
@@ -1712,7 +1722,7 @@ class Geofetcher:
             # as part of this GEO submission. Can't proceed.
             self._LOGGER.warning(
                 "\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. "
-                "No raw data?\033[0m"
+                "No raw data detected! Continuing anyway...\033[0m"
             )
             # but wait; another possibility: there's no SRP linked to the GSE, but there
             # could still be an SRX linked to the (each) GSM.
@@ -1784,6 +1794,9 @@ class Geofetcher:
         :param str srp_number: SRP number
         :return: list of dicts of SRRs
         """
+        if not srp_number:
+            self._LOGGER.info(f"No srp number in this accession found")
+            return []
         self._LOGGER.info(f"Downloading {srp_number} sra metadata")
         ncbi_esearch = NCBI_ESEARCH.format(SRP_NUMBER=srp_number)
 
@@ -1971,6 +1984,12 @@ def _parse_cmdl(cmdl):
         help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "
         "compatible with looper. [Default: null]",
+    )
+    # Optional
+    parser.add_argument(
+        "--disable-progressbar",
+        action="store_true",
+        help="Optional: Disable progressbar",
     )
 
     # Optional

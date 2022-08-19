@@ -9,3 +9,4 @@ requests>=2.28.1
 xmltodict>=0.13.0
 pandas>=1.4.3
 peppy>=0.34.0
+rich>=12.5.1

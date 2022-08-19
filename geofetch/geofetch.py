@@ -1008,8 +1008,10 @@ class Geofetcher:
                 self.metadata_raw, self.project_name + "_subannotation.csv"
             )
             self._write_subannotation(subannotation_dict_combined, file_subannotation)
+            subanot_path_yaml = f"subsample_table: {os.path.basename(file_subannotation)}"
         else:
             file_subannotation = "null"
+            subanot_path_yaml = f""
         # Write project config file
         if not self.config_template:
             geofetchdir = os.path.dirname(__file__)
@@ -1020,7 +1022,7 @@ class Geofetcher:
         template_values = {
             "project_name": self.project_name,
             "annotation": os.path.basename(file_annotation),
-            "subannotation": f"subsample_table: {os.path.basename(file_subannotation)}",
+            "subannotation": subanot_path_yaml,
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,

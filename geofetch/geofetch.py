@@ -51,7 +51,7 @@ class Geofetcher:
         config_template: str = None,
         pipeline_samples: str = None,
         pipeline_project: str = None,
-        skip=0,
+        skip: int = 0,
         acc_anno: bool = False,
         use_key_subset: bool = False,
         processed: bool = True,
@@ -74,7 +74,7 @@ class Geofetcher:
         opts=None,
         **kwargs,
     ):
-        global _LOGGER
+
         if opts is not None:
             _LOGGER = logmuse.logger_via_cli(opts)
         else:
@@ -182,9 +182,9 @@ class Geofetcher:
         if bam_conversion and not just_metadata and not self._which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
-    def get_project_obj(self, input: str) -> Dict[peppy.Project]:
+    def get_project(self, input: str) -> Dict[peppy.Project]:
         """
-        Function for fetching projects from GEO|SRA and obtaining peppy project
+        Function for fetching projects from GEO|SRA and receiving peppy project
         :param input: GSE number, or path to file of GSE numbers
         :return: peppy project or list of project, if acc_anno is set.
         """
@@ -255,8 +255,8 @@ class Geofetcher:
 
         new_dict = {}
         for proj_key in raw_project_dict.keys():
-            new_dict[proj_key] = peppy.Project(
-                pd_object=pd.DataFrame(raw_project_dict[proj_key])
+            new_dict[proj_key] = peppy.Project().from_pandas(
+                pd.DataFrame(raw_project_dict[proj_key])
             )
 
         return new_dict
@@ -1020,7 +1020,7 @@ class Geofetcher:
         template_values = {
             "project_name": self.project_name,
             "annotation": os.path.basename(file_annotation),
-            "subannotation": os.path.basename(file_subannotation),
+            "subannotation": f"subsample_table: {os.path.basename(file_subannotation)}",
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
@@ -1790,7 +1790,6 @@ class Geofetcher:
         if x.status_code != 200:
             self._LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
             raise x.raise_for_status()
-
         id_results = x.json()["esearchresult"]["idlist"]
 
         id_r_string = ",".join(id_results)

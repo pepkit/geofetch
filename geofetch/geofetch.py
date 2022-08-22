@@ -14,7 +14,7 @@ from string import punctuation
 import requests
 import xmltodict
 from rich.progress import track
-#from tqdm import tqdm
+import yaml
 
 # import tarfile
 import time
@@ -201,7 +201,7 @@ class Geofetcher:
             input, self.metadata_expanded, self.just_metadata
         )
 
-        raw_project_dict = {}
+        project_dict = {}
 
         if self.processed:
             if self.supp_by == "all":
@@ -216,36 +216,30 @@ class Geofetcher:
                         # samples
                         self.supp_by = "samples"
                         samples_list = self.fetch_all(input=acc_GSE)
-                        if len(samples_list) > 0:
-                            raw_project_dict[acc_GSE + "_samples"] = samples_list
+                        project_dict[acc_GSE + "_samples"] = samples_list
 
                         # series
                         self.supp_by = "series"
                         series_list = self.fetch_all(input=acc_GSE)
-                        if len(series_list) > 0:
-                            raw_project_dict[acc_GSE + "_series"] = series_list
+                        project_dict[acc_GSE + "_series"] = series_list
                     else:
                         ser_list = self.fetch_all(input=acc_GSE)
-                        if len(ser_list) > 0:
-                            raw_project_dict[acc_GSE + "_" + self.supp_by] = ser_list
+                        project_dict[acc_GSE + "_" + self.supp_by] = ser_list
             else:
                 if data_source_all:
                     # samples
                     self.supp_by = "samples"
                     samples_list = self.fetch_all(input=input)
-                    if len(samples_list) > 0:
-                        raw_project_dict["project_samples"] = samples_list
+                    project_dict["project_samples"] = samples_list
 
                     # series
                     self.supp_by = "series"
                     series_list = self.fetch_all(input=input)
-                    if len(series_list) > 0:
-                        raw_project_dict["project_series"] = series_list
+                    project_dict["project_series"] = series_list
 
                 else:
                     ser_list = self.fetch_all(input=input)
-                    if len(ser_list) > 0:
-                        raw_project_dict["project_" + self.supp_by] = ser_list
+                    project_dict["project_" + self.supp_by] = ser_list
 
         else:
             # Not sure about below code...
@@ -253,21 +247,13 @@ class Geofetcher:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
                     project_dict = self.fetch_all(input=input)
-                    if len(project_dict) > 0:
-                        raw_project_dict[acc_GSE + "_raw_samples"] = project_dict
+                    project_dict[acc_GSE + "_raw_samples"] = project_dict
 
             else:
                 ser_dict = self.fetch_all(input=input)
-                if len(ser_dict) > 0:
-                    raw_project_dict["raw_samples"] = ser_dict
+                project_dict["raw_samples"] = ser_dict
 
-        new_dict = {}
-        for proj_key in raw_project_dict.keys():
-            new_dict[proj_key] = peppy.Project().from_pandas(
-                pd.DataFrame(raw_project_dict[proj_key])
-            )
-
-        return new_dict
+        return project_dict
 
     def fetch_all(self, input: str, name: str = None):
         """Main script driver/workflow"""
@@ -639,49 +625,43 @@ class Geofetcher:
                         "PEP_samples",
                         self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
-                    self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                    peppy_obj = self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
                     supp_series_path_meta = os.path.join(
                         self.metadata_raw,
                         "PEP_series",
                         self.project_name + EXP_SUPP_METADATA_FILE,
                     )
-                    self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                    peppy_obj = self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
 
                 elif self.supp_by == "samples":
-                    if self.just_object:
-                        return processed_metadata_samples
-                    else:
-                        supp_sample_path_meta = os.path.join(
-                            self.metadata_raw,
-                            "PEP_samples",
-                            self.project_name + SAMPLE_SUPP_METADATA_FILE,
-                        )
-                        self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                    supp_sample_path_meta = os.path.join(
+                        self.metadata_raw,
+                        "PEP_samples",
+                        self.project_name + SAMPLE_SUPP_METADATA_FILE,
+                    )
+                    peppy_obj = self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
 
                 elif self.supp_by == "series":
-                    if self.just_object:
-                        return processed_metadata_exp
-                    else:
-                        supp_series_path_meta = os.path.join(
-                            self.metadata_raw,
-                            "PEP_series",
-                            self.project_name + EXP_SUPP_METADATA_FILE,
-                        )
-                        self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                    supp_series_path_meta = os.path.join(
+                        self.metadata_raw,
+                        "PEP_series",
+                        self.project_name + EXP_SUPP_METADATA_FILE,
+                    )
+                    peppy_obj = self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+
+                else:
+                    return None
+
+                if self.just_object:
+                    return peppy_obj
 
         # saving PEPs for raw data
         else:
-            if not self.just_object:
-                self._write_raw_annotation(metadata_dict, subannotation_dict)
-            else:
-                raw_meta_list = []
-                for meta_key in metadata_dict.keys():
-                    for srx_key in metadata_dict[meta_key].keys():
-                        metadata_dict[meta_key][srx_key]["gse_number"] = meta_key
-                        metadata_dict[meta_key][srx_key]["srx_number"] = srx_key
-                        raw_meta_list.append(metadata_dict[meta_key][srx_key])
-                return raw_meta_list
+            return_value = self._write_raw_annotation(metadata_dict, subannotation_dict)
+            if self.just_object:
+                return return_value
+
 
     def _expand_metadata_list(self, metadata_list, dict_key):
         """
@@ -888,14 +868,6 @@ class Geofetcher:
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
 
-        with open(file_annotation_path, "w") as m_file:
-            dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
-            dict_writer.writeheader()
-            dict_writer.writerows(processed_metadata)
-        self._LOGGER.info(
-            "\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path
-        )
-
         geofetchdir = os.path.dirname(__file__)
         config_template = os.path.join(geofetchdir, "config_processed_template.yaml")
 
@@ -915,17 +887,34 @@ class Geofetcher:
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
 
-        # save .yaml file
-        yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
-        config = os.path.join(pep_file_folder, yaml_name)
-        self._write(config, template, msg_pre="  Config file: ")
+        if not self.just_object:
+            with open(file_annotation_path, "w") as m_file:
+                dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
+                dict_writer.writeheader()
+                dict_writer.writerows(processed_metadata)
+            self._LOGGER.info(
+                "\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path
+            )
 
-        # save .pep.yaml file
-        if self.add_dotfile:
-            dot_yaml_path = os.path.join(pep_file_folder, ".pep.yaml")
-            self._create_dot_yaml(dot_yaml_path, yaml_name)
+            # save .yaml file
+            yaml_name = os.path.split(file_annotation_path)[1][:-4] + ".yaml"
+            config = os.path.join(pep_file_folder, yaml_name)
+            self._write(config, template, msg_pre="  Config file: ")
 
-        return True
+            # save .pep.yaml file
+            if self.add_dotfile:
+                dot_yaml_path = os.path.join(pep_file_folder, ".pep.yaml")
+                self._create_dot_yaml(dot_yaml_path, yaml_name)
+
+            return None
+
+        else:
+            pd_value = pd.DataFrame(processed_metadata)
+
+            conf = yaml.load(template, Loader=yaml.Loader)
+            proj = peppy.Project().from_pandas(pd_value, config=conf)
+            return proj
+
 
     @staticmethod
     def _sanitize_name(name_str: str):
@@ -1011,7 +1000,8 @@ class Geofetcher:
         file_annotation = os.path.join(
             self.metadata_raw, self.project_name + "_annotation.csv"
         )
-        self._write_gsm_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.use_key_subset)
+
+
         # Write combined subannotation table
         if len(subannotation_dict_combined) > 0:
             file_subannotation = os.path.join(
@@ -1022,6 +1012,7 @@ class Geofetcher:
         else:
             file_subannotation = "null"
             subanot_path_yaml = f""
+
         # Write project config file
         if not self.config_template:
             geofetchdir = os.path.dirname(__file__)
@@ -1039,16 +1030,40 @@ class Geofetcher:
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
+            # v1 = v.replace(':', '=')
             template = template.replace(placeholder, str(v))
-        # save .yaml file
-        yaml_name = self.project_name + "_config.yaml"
-        config = os.path.join(self.metadata_raw, yaml_name)
-        self._write(config, template, msg_pre="  Config file: ")
 
-        # save .pep.yaml file
-        if self.add_dotfile:
-            dot_yaml_path = os.path.join(self.metadata_raw, ".pep.yaml")
-            self._create_dot_yaml(dot_yaml_path, yaml_name)
+        if not self.just_object:
+            # write annotation
+            self._write_gsm_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.use_key_subset)
+            # write subannotation
+            if len(subannotation_dict_combined) > 0:
+                self._write_subannotation(subannotation_dict_combined, file_subannotation)
+
+            # save .yaml file
+            yaml_name = self.project_name + "_config.yaml"
+            config = os.path.join(self.metadata_raw, yaml_name)
+            self._write(config, template, msg_pre="  Config file: ")
+
+            # save .pep.yaml file
+            if self.add_dotfile:
+                dot_yaml_path = os.path.join(self.metadata_raw, ".pep.yaml")
+                self._create_dot_yaml(dot_yaml_path, yaml_name)
+
+        else:
+            sddd = [metadata_dict_combined.values()]
+            sdddd = subannotation_dict_combined.values()
+            meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient='index')
+
+            print(meta_df)
+
+            sub_meta_df = pd.DataFrame.from_dict(subannotation_dict_combined, orient='index')
+            if sub_meta_df.empty:
+                sub_meta_df = None
+            conf = yaml.load(template, Loader=yaml.Loader)
+
+            proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
+            return proj
 
     @staticmethod
     def _create_dot_yaml(file_path: str, yaml_path: str):
@@ -1115,7 +1130,7 @@ class Geofetcher:
                         if first_key:
                             if len(str(nb_sample[1][this_key])) <= del_limit:
                                 new_meta_project.append(
-                                    {this_key: nb_sample[1][this_key]}
+                                    {this_key: f'\"{nb_sample[1][this_key]}\"'}
                                 )
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]
@@ -2186,7 +2201,8 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     args_dict["args"] = args
-    Geofetcher(**args_dict).fetch_all(args_dict["input"])
+    #Geofetcher(**args_dict).fetch_all(args_dict["input"])
+    Geofetcher(**args_dict).get_project(args_dict["input"])
 
 
 if __name__ == "__main__":

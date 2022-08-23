@@ -1163,8 +1163,10 @@ class Geofetcher:
                     if this_key not in list_keys_diff:
                         if first_key:
                             if len(str(nb_sample[1][this_key])) <= del_limit:
+                                new_str = nb_sample[1][this_key].replace('"', '')
+                                new_str = re.sub('[^A-Za-z0-9]+', ' ', new_str)
                                 new_meta_project.append(
-                                    {this_key: f'"{nb_sample[1][this_key]}"'}
+                                    {this_key: f'"{new_str}"'}
                                 )
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]

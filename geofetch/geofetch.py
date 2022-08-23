@@ -204,42 +204,13 @@ class Geofetcher:
         project_dict = {}
 
         if self.processed:
-            if self.supp_by == "all":
-                data_source_all = True
-            else:
-                data_source_all = False
-
             if self.acc_anno:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
-                    if data_source_all:
-                        # samples
-                        self.supp_by = "samples"
-                        samples_list = self.fetch_all(input=acc_GSE)
-                        project_dict[acc_GSE + "_samples"] = samples_list
+                    project_dict.update(self.fetch_all(input=acc_GSE, name=acc_GSE))
 
-                        # series
-                        self.supp_by = "series"
-                        series_list = self.fetch_all(input=acc_GSE)
-                        project_dict[acc_GSE + "_series"] = series_list
-                    else:
-                        ser_list = self.fetch_all(input=acc_GSE)
-                        project_dict[acc_GSE + "_" + self.supp_by] = ser_list
             else:
-                if data_source_all:
-                    # samples
-                    self.supp_by = "samples"
-                    samples_list = self.fetch_all(input=input)
-                    project_dict["project_samples"] = samples_list
-
-                    # series
-                    self.supp_by = "series"
-                    series_list = self.fetch_all(input=input)
-                    project_dict["project_series"] = series_list
-
-                else:
-                    ser_list = self.fetch_all(input=input)
-                    project_dict["project_" + self.supp_by] = ser_list
+                project_dict.update(self.fetch_all(input=input, name="project"))
 
         else:
             # Not sure about below code...
@@ -282,9 +253,11 @@ class Geofetcher:
         acc_GSE_keys = acc_GSE_list.keys()
         nkeys = len(acc_GSE_keys)
         ncount = 0
-        for acc_GSE in track(acc_GSE_list.keys(),
-                             description="Processing... ",
-                             disable=self.disable_progressbar):
+        for acc_GSE in track(
+            acc_GSE_list.keys(),
+            description="Processing... ",
+            disable=self.disable_progressbar,
+        ):
 
             ncount += 1
             if ncount <= self.skip:
@@ -346,11 +319,15 @@ class Geofetcher:
                 (
                     meta_processed_samples,
                     meta_processed_series,
-                ) = self._get_list_of_processed_files(file_gse_content, file_gsm_content)
+                ) = self._get_list_of_processed_files(
+                    file_gse_content, file_gsm_content
+                )
 
                 # taking into account list of GSM that is specified in the input file
                 gsm_list = acc_GSE_list[acc_GSE]
-                meta_processed_samples = self._filter_gsm(meta_processed_samples, gsm_list)
+                meta_processed_samples = self._filter_gsm(
+                    meta_processed_samples, gsm_list
+                )
                 # Unify keys:
                 meta_processed_samples = self._unify_list_keys(meta_processed_samples)
                 meta_processed_series = self._unify_list_keys(meta_processed_series)
@@ -359,17 +336,25 @@ class Geofetcher:
                 list_of_keys = self._get_list_of_keys(meta_processed_samples)
                 self._LOGGER.info("Expanding metadata list...")
                 for key_in_list in list_of_keys:
-                    meta_processed_samples = self._expand_metadata_list(meta_processed_samples, key_in_list)
+                    meta_processed_samples = self._expand_metadata_list(
+                        meta_processed_samples, key_in_list
+                    )
 
                 # series
                 list_of_keys_series = self._get_list_of_keys(meta_processed_series)
                 self._LOGGER.info("Expanding metadata list...")
                 for key_in_list in list_of_keys_series:
-                    meta_processed_series = self._expand_metadata_list(meta_processed_series, key_in_list)
+                    meta_processed_series = self._expand_metadata_list(
+                        meta_processed_series, key_in_list
+                    )
 
                 # convert column names to lowercase and underscore
-                meta_processed_samples = self._standardize_colnames(meta_processed_samples)
-                meta_processed_series = self._standardize_colnames(meta_processed_series)
+                meta_processed_samples = self._standardize_colnames(
+                    meta_processed_samples
+                )
+                meta_processed_series = self._standardize_colnames(
+                    meta_processed_series
+                )
 
                 if not self.acc_anno:
                     # adding metadata from current experiment to the project
@@ -385,7 +370,9 @@ class Geofetcher:
                             f"{acc_GSE}_samples",
                             acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                         )
-                        self._write_processed_annotation(meta_processed_samples, pep_acc_path_sample)
+                        self._write_processed_annotation(
+                            meta_processed_samples, pep_acc_path_sample
+                        )
 
                         # series
                         pep_acc_path_exp = os.path.join(
@@ -393,21 +380,27 @@ class Geofetcher:
                             f"{acc_GSE}_series",
                             acc_GSE + EXP_SUPP_METADATA_FILE,
                         )
-                        self._write_processed_annotation(meta_processed_series, pep_acc_path_exp)
+                        self._write_processed_annotation(
+                            meta_processed_series, pep_acc_path_exp
+                        )
                     elif self.supp_by == "samples":
                         pep_acc_path_sample = os.path.join(
                             self.metadata_raw,
                             f"{acc_GSE}_samples",
                             acc_GSE + SAMPLE_SUPP_METADATA_FILE,
                         )
-                        self._write_processed_annotation(meta_processed_samples, pep_acc_path_sample)
+                        self._write_processed_annotation(
+                            meta_processed_samples, pep_acc_path_sample
+                        )
                     elif self.supp_by == "series":
                         pep_acc_path_exp = os.path.join(
                             self.metadata_raw,
                             f"{acc_GSE}_series",
                             acc_GSE + EXP_SUPP_METADATA_FILE,
                         )
-                        self._write_processed_annotation(meta_processed_series, pep_acc_path_exp)
+                        self._write_processed_annotation(
+                            meta_processed_series, pep_acc_path_exp
+                        )
 
                 if not self.just_metadata:
                     data_geo_folder = os.path.join(self.geo_folder, acc_GSE)
@@ -447,11 +440,15 @@ class Geofetcher:
 
             else:
                 # download gsm metadata
-                gsm_metadata = self._get_gsm_metadata(acc_GSE, acc_GSE_list, file_gsm_content)
+                gsm_metadata = self._get_gsm_metadata(
+                    acc_GSE, acc_GSE_list, file_gsm_content
+                )
                 metadata_dict[acc_GSE] = gsm_metadata
 
                 # download gsm metadata
-                SRP_list_result = self._get_SRA_meta(file_gse_content, gsm_metadata, file_sra)
+                SRP_list_result = self._get_SRA_meta(
+                    file_gse_content, gsm_metadata, file_sra
+                )
                 if not SRP_list_result:
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
@@ -495,8 +492,12 @@ class Geofetcher:
                     # Otherwise, record that there's SRA data for this run.
                     # And set a few columns that are used as input to the Looper
                     # print("Updating columns for looper")
-                    self._update_columns(gsm_metadata, experiment, sample_name=sample_name,
-                                         read_type=line["LibraryLayout"])
+                    self._update_columns(
+                        gsm_metadata,
+                        experiment,
+                        sample_name=sample_name,
+                        read_type=line["LibraryLayout"],
+                    )
 
                     # Some experiments are flagged in SRA as having multiple runs.
                     if gsm_metadata[experiment].get("SRR") is not None:
@@ -591,7 +592,9 @@ class Geofetcher:
                                     self._LOGGER.warning(
                                         "Bam conversion failed with sam-dump. Trying fastq-dump..."
                                     )
-                                    self._sra_bam_conversion2(bam_file, run_name, self.picard_path)
+                                    self._sra_bam_conversion2(
+                                        bam_file, run_name, self.picard_path
+                                    )
 
                             except FileNotFoundError as err:
                                 self._LOGGER.info(
@@ -622,17 +625,27 @@ class Geofetcher:
                 if self.supp_by == "all":
                     supp_sample_path_meta = os.path.join(
                         self.metadata_raw,
-                        "PEP_samples",
+                        "s",
                         self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
-                    peppy_obj = self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                    peppy_obj_samples = self._write_processed_annotation(
+                        processed_metadata_samples, supp_sample_path_meta
+                    )
 
                     supp_series_path_meta = os.path.join(
                         self.metadata_raw,
                         "PEP_series",
                         self.project_name + EXP_SUPP_METADATA_FILE,
                     )
-                    peppy_obj = self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                    peppy_obj_series = self._write_processed_annotation(
+                        processed_metadata_exp, supp_series_path_meta
+                    )
+
+                    if self.just_object:
+                        return {
+                            f"{name}_samples": peppy_obj_samples,
+                            f"{name}_series": peppy_obj_series,
+                        }
 
                 elif self.supp_by == "samples":
                     supp_sample_path_meta = os.path.join(
@@ -640,7 +653,11 @@ class Geofetcher:
                         "PEP_samples",
                         self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
-                    peppy_obj = self._write_processed_annotation(processed_metadata_samples, supp_sample_path_meta)
+                    peppy_obj = self._write_processed_annotation(
+                        processed_metadata_samples, supp_sample_path_meta
+                    )
+                    if self.just_object:
+                        return {f"{name}_samples": peppy_obj}
 
                 elif self.supp_by == "series":
                     supp_series_path_meta = os.path.join(
@@ -648,20 +665,20 @@ class Geofetcher:
                         "PEP_series",
                         self.project_name + EXP_SUPP_METADATA_FILE,
                     )
-                    peppy_obj = self._write_processed_annotation(processed_metadata_exp, supp_series_path_meta)
+                    peppy_obj = self._write_processed_annotation(
+                        processed_metadata_exp, supp_series_path_meta
+                    )
+                    if self.just_object:
+                        return {f"{name}_PEP_series": peppy_obj}
 
                 else:
                     return None
-
-                if self.just_object:
-                    return peppy_obj
 
         # saving PEPs for raw data
         else:
             return_value = self._write_raw_annotation(metadata_dict, subannotation_dict)
             if self.just_object:
                 return return_value
-
 
     def _expand_metadata_list(self, metadata_list, dict_key):
         """
@@ -808,7 +825,9 @@ class Geofetcher:
             metadata_list[sample[0]]["sample_genome"] = sample_genome
         return metadata_list
 
-    def _write_gsm_annotation(self, gsm_metadata, file_annotation, use_key_subset=False):
+    def _write_gsm_annotation(
+        self, gsm_metadata, file_annotation, use_key_subset=False
+    ):
         """
         Write metadata sheet out as an annotation file.
 
@@ -861,8 +880,12 @@ class Geofetcher:
         processed_metadata = self._find_genome(processed_metadata)
 
         # filtering huge annotation strings that are repeating for each sample
-        processed_metadata, proj_meta = self._separate_common_meta(processed_metadata, self.const_limit_project,
-                                                                   self.const_limit_discard, self.attr_limit_truncate)
+        processed_metadata, proj_meta = self._separate_common_meta(
+            processed_metadata,
+            self.const_limit_project,
+            self.const_limit_discard,
+            self.attr_limit_truncate,
+        )
         meta_list_str = [
             f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
         ]
@@ -893,7 +916,8 @@ class Geofetcher:
                 dict_writer.writeheader()
                 dict_writer.writerows(processed_metadata)
             self._LOGGER.info(
-                "\033[92mFile %s has been saved successfully\033[0m" % file_annotation_path
+                "\033[92mFile %s has been saved successfully\033[0m"
+                % file_annotation_path
             )
 
             # save .yaml file
@@ -914,7 +938,6 @@ class Geofetcher:
             conf = yaml.load(template, Loader=yaml.Loader)
             proj = peppy.Project().from_pandas(pd_value, config=conf)
             return proj
-
 
     @staticmethod
     def _sanitize_name(name_str: str):
@@ -961,7 +984,9 @@ class Geofetcher:
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
 
                 # sanitize sample names
-                fixed_dict[key_sample]["sample_name"] = self._sanitize_name(fixed_dict[key_sample]["sample_name"])
+                fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
+                    fixed_dict[key_sample]["sample_name"]
+                )
 
             metadata_dict[key] = fixed_dict
 
@@ -971,13 +996,18 @@ class Geofetcher:
                 self.metadata_expanded, acc_GSE + "_annotation.csv"
             )
             if self.acc_anno:
-                self._write_gsm_annotation(gsm_metadata, file_annotation, use_key_subset=self.use_key_subset)
+                self._write_gsm_annotation(
+                    gsm_metadata, file_annotation, use_key_subset=self.use_key_subset
+                )
             metadata_dict_combined.update(gsm_metadata)
 
         # filtering huge annotation strings that are repeating for each sample
-        metadata_dict_combined, proj_meta = self._separate_common_meta(metadata_dict_combined, self.const_limit_project,
-                                                                       self.const_limit_discard,
-                                                                       self.attr_limit_truncate)
+        metadata_dict_combined, proj_meta = self._separate_common_meta(
+            metadata_dict_combined,
+            self.const_limit_project,
+            self.const_limit_discard,
+            self.attr_limit_truncate,
+        )
         meta_list_str = [
             f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
         ]
@@ -1001,14 +1031,15 @@ class Geofetcher:
             self.metadata_raw, self.project_name + "_annotation.csv"
         )
 
-
         # Write combined subannotation table
         if len(subannotation_dict_combined) > 0:
             file_subannotation = os.path.join(
                 self.metadata_raw, self.project_name + "_subannotation.csv"
             )
             self._write_subannotation(subannotation_dict_combined, file_subannotation)
-            subanot_path_yaml = f"subsample_table: {os.path.basename(file_subannotation)}"
+            subanot_path_yaml = (
+                f"subsample_table: {os.path.basename(file_subannotation)}"
+            )
         else:
             file_subannotation = "null"
             subanot_path_yaml = f""
@@ -1030,15 +1061,20 @@ class Geofetcher:
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
-            # v1 = v.replace(':', '=')
             template = template.replace(placeholder, str(v))
 
         if not self.just_object:
             # write annotation
-            self._write_gsm_annotation(metadata_dict_combined, file_annotation, use_key_subset=self.use_key_subset)
+            self._write_gsm_annotation(
+                metadata_dict_combined,
+                file_annotation,
+                use_key_subset=self.use_key_subset,
+            )
             # write subannotation
             if len(subannotation_dict_combined) > 0:
-                self._write_subannotation(subannotation_dict_combined, file_subannotation)
+                self._write_subannotation(
+                    subannotation_dict_combined, file_subannotation
+                )
 
             # save .yaml file
             yaml_name = self.project_name + "_config.yaml"
@@ -1051,13 +1087,11 @@ class Geofetcher:
                 self._create_dot_yaml(dot_yaml_path, yaml_name)
 
         else:
-            sddd = [metadata_dict_combined.values()]
-            sdddd = subannotation_dict_combined.values()
-            meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient='index')
+            meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient="index")
 
-            print(meta_df)
-
-            sub_meta_df = pd.DataFrame.from_dict(subannotation_dict_combined, orient='index')
+            sub_meta_df = pd.DataFrame.from_dict(
+                subannotation_dict_combined, orient="index"
+            )
             if sub_meta_df.empty:
                 sub_meta_df = None
             conf = yaml.load(template, Loader=yaml.Loader)
@@ -1130,7 +1164,7 @@ class Geofetcher:
                         if first_key:
                             if len(str(nb_sample[1][this_key])) <= del_limit:
                                 new_meta_project.append(
-                                    {this_key: f'\"{nb_sample[1][this_key]}\"'}
+                                    {this_key: f'"{nb_sample[1][this_key]}"'}
                                 )
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]
@@ -1492,8 +1526,12 @@ class Geofetcher:
                                 meta_processed_samples[nb]["files"].append(file_url_gsm)
 
                     self._check_file_existance(meta_processed_samples)
-                    meta_processed_samples = self._separate_list_of_files(meta_processed_samples)
-                    meta_processed_samples = self._separate_file_url(meta_processed_samples)
+                    meta_processed_samples = self._separate_list_of_files(
+                        meta_processed_samples
+                    )
+                    meta_processed_samples = self._separate_file_url(
+                        meta_processed_samples
+                    )
 
                     self._LOGGER.info(
                         f"\nTotal number of processed SAMPLES files found is: "
@@ -1509,9 +1547,13 @@ class Geofetcher:
                         )
 
                     if self.filter_re:
-                        meta_processed_samples = self._run_filter(meta_processed_samples)
+                        meta_processed_samples = self._run_filter(
+                            meta_processed_samples
+                        )
                     if self.filter_size:
-                        meta_processed_samples = self._run_size_filter(meta_processed_samples)
+                        meta_processed_samples = self._run_size_filter(
+                            meta_processed_samples
+                        )
 
                 # other files than .tar: saving them into meta_processed_series list
                 else:
@@ -1823,7 +1865,9 @@ class Geofetcher:
             raise x.raise_for_status()
         id_results = x.json()["esearchresult"]["idlist"]
         if len(id_results) > 500:
-            id_results = [id_results[x:x + 100] for x in range(0, len(id_results), 100)]
+            id_results = [
+                id_results[x : x + 100] for x in range(0, len(id_results), 100)
+            ]
         else:
             id_results = [id_results]
 
@@ -1834,7 +1878,9 @@ class Geofetcher:
 
             y = requests.get(id_api)
             if y.status_code != 200:
-                self._LOGGER.error(f"Error in ncbi efetch response in SRA fetching: {x.status_code}")
+                self._LOGGER.error(
+                    f"Error in ncbi efetch response in SRA fetching: {x.status_code}"
+                )
                 raise y.raise_for_status()
             xml_result = y.text
             SRP_list.extend(xmltodict.parse(xml_result)["SraRunInfo"]["Row"])
@@ -2201,8 +2247,9 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     args_dict["args"] = args
-    #Geofetcher(**args_dict).fetch_all(args_dict["input"])
-    Geofetcher(**args_dict).get_project(args_dict["input"])
+    # Geofetcher(**args_dict).fetch_all(args_dict["input"])
+    abc = Geofetcher(**args_dict).get_project(args_dict["input"])
+    abc
 
 
 if __name__ == "__main__":

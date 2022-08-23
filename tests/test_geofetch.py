@@ -248,7 +248,9 @@ class TestFilters:
     def test_large_meta_separation(
         self, init_meta_data, result_sample, result_proj, initiate_geofetcher
     ):
-        samp, proj = initiate_geofetcher._separate_common_meta(init_meta_data, max_len=0)
+        samp, proj = initiate_geofetcher._separate_common_meta(
+            init_meta_data, max_len=0
+        )
         assert samp == result_sample
         assert proj == result_proj
 

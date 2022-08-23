@@ -2247,9 +2247,8 @@ def main():
     args = _parse_cmdl(sys.argv[1:])
     args_dict = vars(args)
     args_dict["args"] = args
-    # Geofetcher(**args_dict).fetch_all(args_dict["input"])
-    abc = Geofetcher(**args_dict).get_project(args_dict["input"])
-    abc
+    Geofetcher(**args_dict).fetch_all(args_dict["input"])
+
 
 
 if __name__ == "__main__":

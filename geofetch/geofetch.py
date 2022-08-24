@@ -56,7 +56,7 @@ class Geofetcher:
         skip: int = 0,
         acc_anno: bool = False,
         use_key_subset: bool = False,
-        processed: bool = True,
+        processed: bool = False,
         data_source: str = "samples",
         filter: str = None,
         filter_size: str = None,
@@ -174,51 +174,59 @@ class Geofetcher:
 
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
-        # check to make sure prefetch is callable
-        if not just_metadata and not processed:
-            if not is_command_callable("prefetch"):
-                raise SystemExit(
-                    "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
-                    " Installation instruction: http://geofetch.databio.org/en/latest/install/"
-                )
-
         # Some sanity checks before proceeding
         if bam_conversion and not just_metadata and not self._which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
         self.just_object = False
 
-    def get_project(self, input: str) -> Dict[peppy.Project]:
+    def get_project(self, input: str, just_metadata: bool = True, discard_soft: bool = True) -> Dict[peppy.Project]:
         """
         Function for fetching projects from GEO|SRA and receiving peppy project
         :param input: GSE number, or path to file of GSE numbers
+        :param just_metadata: process only metadata
+        :param discard_soft:  clean run, without downloading soft files
         :return: peppy project or list of project, if acc_anno is set.
         """
-        self.just_metadata = True
+        self.just_metadata = just_metadata
         self.just_object = True
         self.disable_progressbar = True
+        self.discard_soft = discard_soft
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
         )
 
         project_dict = {}
 
+        # processed data:
         if self.processed:
             if self.acc_anno:
+                nkeys = len(acc_GSE_list.keys())
+                ncount = 0
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
+                    ncount += 1
+                    self._LOGGER.info(
+                        f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
+                    )
                     project_dict.update(self.fetch_all(input=acc_GSE, name=acc_GSE))
-
             else:
                 project_dict.update(self.fetch_all(input=input, name="project"))
 
+        # raw data:
         else:
             # Not sure about below code...
             if self.acc_anno:
                 self.acc_anno = False
+                nkeys = len(acc_GSE_list.keys())
+                ncount = 0
                 for acc_GSE in acc_GSE_list.keys():
+                    ncount += 1
+                    self._LOGGER.info(
+                        f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
+                    )
                     project_dict = self.fetch_all(input=input)
-                    project_dict[acc_GSE + "_raw_samples"] = project_dict
+                    project_dict[acc_GSE + "_raw"] = project_dict
 
             else:
                 ser_dict = self.fetch_all(input=input)
@@ -233,6 +241,14 @@ class Geofetcher:
             self.project_name = name
         else:
             self.project_name = os.path.splitext(os.path.basename(input))[0]
+
+        # check to make sure prefetch is callable
+        if not self.just_metadata and not self.processed:
+            if not is_command_callable("prefetch"):
+                raise SystemExit(
+                    "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
+                    " Installation instruction: http://geofetch.databio.org/en/latest/install/"
+                )
 
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
@@ -264,9 +280,11 @@ class Geofetcher:
                 continue
             elif ncount == self.skip + 1:
                 self._LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
-            self._LOGGER.info(
-                f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
-            )
+
+            if not self.just_object:
+                self._LOGGER.info(
+                    f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
+                )
 
             if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
                 self._LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
@@ -983,13 +1001,15 @@ class Geofetcher:
                 ):
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
 
-                # sanitize sample names
+                # sanitize names
                 fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
                     fixed_dict[key_sample]["sample_name"]
                 )
 
             metadata_dict[key] = fixed_dict
 
+        # TODO: should be checked:
+        # annotation table
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():
             file_annotation = os.path.join(
@@ -1001,6 +1021,19 @@ class Geofetcher:
                 )
             metadata_dict_combined.update(gsm_metadata)
 
+        # subatnotation table
+        subannotation_dict_combined = {}
+        for acc_GSE, gsm_multi_table in subannotation_dict.items():
+            file_subannotation = os.path.join(
+                self.metadata_expanded, acc_GSE + "_subannotation.csv"
+            )
+            if self.acc_anno:
+                self._write_subannotation(gsm_multi_table, file_subannotation)
+            subannotation_dict_combined.update(gsm_multi_table)
+
+        self._LOGGER.info(
+            "Creating complete project annotation sheets and config file..."
+        )
         # filtering huge annotation strings that are repeating for each sample
         metadata_dict_combined, proj_meta = self._separate_common_meta(
             metadata_dict_combined,
@@ -1013,17 +1046,6 @@ class Geofetcher:
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
 
-        subannotation_dict_combined = {}
-        for acc_GSE, gsm_multi_table in subannotation_dict.items():
-            file_subannotation = os.path.join(
-                self.metadata_expanded, acc_GSE + "_subannotation.csv"
-            )
-            if self.acc_anno:
-                self._write_subannotation(gsm_multi_table, file_subannotation)
-            subannotation_dict_combined.update(gsm_multi_table)
-        self._LOGGER.info(
-            "Creating complete project annotation sheets and config file..."
-        )
         # If the project included more than one GSE, we can now output combined
         # annotation tables for the entire project.
         # Write combined annotation sheet
@@ -1063,7 +1085,7 @@ class Geofetcher:
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
 
-        if not self.just_object:
+        if not self.just_object and not self.acc_anno:
             # write annotation
             self._write_gsm_annotation(
                 metadata_dict_combined,
@@ -1089,6 +1111,7 @@ class Geofetcher:
         else:
             meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient="index")
 
+            # TODO: correct error here:
             sub_meta_df = pd.DataFrame.from_dict(
                 subannotation_dict_combined, orient="index"
             )

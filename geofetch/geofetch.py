@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
-
 __author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
 import argparse
@@ -180,7 +178,7 @@ class Geofetcher:
 
         self.just_object = False
 
-    def get_project(self, input: str, just_metadata: bool = True, discard_soft: bool = True) -> Dict[peppy.Project]:
+    def get_project(self, input: str, just_metadata: bool = True, discard_soft: bool = True) -> Dict[peppy.Project, peppy.Project]:
         """
         Function for fetching projects from GEO|SRA and receiving peppy project
         :param input: GSE number, or path to file of GSE numbers
@@ -225,11 +223,11 @@ class Geofetcher:
                     self._LOGGER.info(
                         f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                     )
-                    project_dict = self.fetch_all(input=input)
+                    project_dict = self.fetch_all(input=acc_GSE)
                     project_dict[acc_GSE + "_raw"] = project_dict
 
             else:
-                ser_dict = self.fetch_all(input=input)
+                ser_dict = self.fetch_all(input=acc_GSE_list)
                 project_dict["raw_samples"] = ser_dict
 
         return project_dict
@@ -965,7 +963,8 @@ class Geofetcher:
         :return: sanitized strings
         """
         new_str = name_str
-        for odd_char in list(punctuation):
+        punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
+        for odd_char in list(punctuation1):
             new_str = new_str.replace(odd_char, "_")
         new_str = new_str.replace(" ", "_").replace("__", "_")
         return new_str
@@ -1001,10 +1000,10 @@ class Geofetcher:
                 ):
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
 
-                # sanitize names
-                fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
-                    fixed_dict[key_sample]["sample_name"]
-                )
+                # # sanitize names
+                # fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
+                #     fixed_dict[key_sample]["sample_name"]
+                # )
 
             metadata_dict[key] = fixed_dict
 
@@ -1012,14 +1011,15 @@ class Geofetcher:
         # annotation table
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():
+            gsm_metadata1 = self._standardize_colnames(gsm_metadata)
             file_annotation = os.path.join(
                 self.metadata_expanded, acc_GSE + "_annotation.csv"
             )
             if self.acc_anno:
                 self._write_gsm_annotation(
-                    gsm_metadata, file_annotation, use_key_subset=self.use_key_subset
+                    gsm_metadata1, file_annotation, use_key_subset=self.use_key_subset
                 )
-            metadata_dict_combined.update(gsm_metadata)
+            metadata_dict_combined.update(gsm_metadata1)
 
         # subatnotation table
         subannotation_dict_combined = {}
@@ -1111,12 +1111,17 @@ class Geofetcher:
         else:
             meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient="index")
 
-            # TODO: correct error here:
-            sub_meta_df = pd.DataFrame.from_dict(
-                subannotation_dict_combined, orient="index"
-            )
+            # open list:
+            new_sub_list = []
+            for sub_key in subannotation_dict_combined.keys():
+                new_sub_list.extend([col_item for col_item in subannotation_dict_combined[sub_key]])
+
+            sub_meta_df = pd.DataFrame(new_sub_list, columns=["sample_name", "SRX", "SRR"])
+
             if sub_meta_df.empty:
                 sub_meta_df = None
+            else:
+                sub_meta_df = [sub_meta_df]
             conf = yaml.load(template, Loader=yaml.Loader)
 
             proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
@@ -1133,7 +1138,7 @@ class Geofetcher:
             file.writelines(f"config_file: {yaml_path}")
 
     def _separate_common_meta(
-        self, meta_list, max_len=50, del_limit=250, attr_limit_truncate=500
+        self, meta_list: Union[List, Dict], max_len: int = 50, del_limit: int = 250, attr_limit_truncate: int = 500
     ):
         """
         This function is separating information for the experiment from a sample
@@ -1145,16 +1150,11 @@ class Geofetcher:
         list of samples metadata dictionaries and 2: list of common samples metadata
         dictionaries that are linked to the project.
         """
+        # check if meta_list is dict and converting it to list
         input_is_dict = False
         if isinstance(meta_list, dict):
             input_is_dict = True
-            new_meta_list = []
-            for key in meta_list:
-                new_dict = meta_list[key]
-                new_dict["big_key"] = key
-                new_meta_list.append(new_dict)
-
-            meta_list = new_meta_list
+            meta_list = self._dict_to_list_convector(proj_dict=meta_list)
 
         list_of_keys = self._get_list_of_keys(meta_list)
         list_keys_diff = []
@@ -1210,11 +1210,7 @@ class Geofetcher:
         meta_list = new_list
 
         if input_is_dict:
-            new_sample_dict = {}
-            for sample in meta_list:
-                new_sample_dict[sample["big_key"]] = sample
-            meta_list = new_sample_dict
-
+            meta_list = self._dict_to_list_convector(proj_list=meta_list)
         return meta_list, new_meta_project
 
     def _standardize_colnames(self, meta_list):
@@ -1223,6 +1219,12 @@ class Geofetcher:
         :param list meta_list: list of dictionaries of samples
         :return : list of dictionaries of samples with standard colnames
         """
+        # check if meta_list is dict and converting it to list
+        input_is_dict = False
+        if isinstance(meta_list, dict):
+            input_is_dict = True
+            meta_list = self._dict_to_list_convector(proj_dict=meta_list)
+
         new_metalist = []
         list_keys = self._get_list_of_keys(meta_list)
         for item_nb, values in enumerate(meta_list):
@@ -1237,7 +1239,38 @@ class Geofetcher:
                 except KeyError:
                     pass
 
+        if input_is_dict:
+            new_metalist = self._dict_to_list_convector(proj_list=new_metalist)
+
         return new_metalist
+
+    @staticmethod
+    def _dict_to_list_convector(proj_dict: Dict = None, proj_list: List = None) -> Union[Dict, List]:
+        """
+        Convector project dict to list and vice versa
+        :param proj_dict: project dictionary
+        :param proj_list: project list
+        :return: converted values
+        """
+        if proj_dict is not None:
+            new_meta_list = []
+            for key in proj_dict:
+                new_dict = proj_dict[key]
+                new_dict["big_key"] = key
+                new_meta_list.append(new_dict)
+
+            meta_list = new_meta_list
+
+        elif proj_list is not None:
+            new_sample_dict = {}
+            for sample in proj_list:
+                new_sample_dict[sample["big_key"]] = sample
+            meta_list = new_sample_dict
+
+        else:
+            raise ValueError
+
+        return meta_list
 
     def _download_SRA_file(self, run_name):
         """
@@ -1633,14 +1666,14 @@ class Geofetcher:
         into two different dicts
         """
         separated_list = []
-        if type(meta_list) == list:
+        if isinstance(meta_list, list):
             for meta_elem in meta_list:
                 for file_elem in meta_elem[col_name]:
                     new_dict = meta_elem.copy()
                     new_dict.pop(col_name, None)
                     new_dict["file"] = file_elem
                     separated_list.append(new_dict)
-        elif type(meta_list) == dict:
+        elif isinstance(meta_list, dict):
             for file_elem in meta_list[col_name]:
                 new_dict = meta_list.copy()
                 new_dict.pop(col_name, None)

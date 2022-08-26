@@ -1009,7 +1009,6 @@ class Geofetcher:
 
             metadata_dict[key] = fixed_dict
 
-
         # annotation table
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():
@@ -1548,7 +1547,9 @@ class Geofetcher:
                                     with open(filelist_path, "w") as f:
                                         f.write(filelist_raw_text)
                                 except OSError:
-                                    self._LOGGER.warning(f"{filelist_path} not found. File won't be saved..")
+                                    self._LOGGER.warning(
+                                        f"{filelist_path} not found. File won't be saved.."
+                                    )
 
                         else:
                             raise Exception(f"error in requesting tar_files_list")

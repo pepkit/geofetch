@@ -91,7 +91,9 @@ class TestListProcessedMetaFiles:
         (
             meta_processed_samples,
             meta_processed_series,
-        ) = initiate_geofetcher._get_list_of_processed_files(file_gse_content, file_gsm_content)
+        ) = initiate_geofetcher._get_list_of_processed_files(
+            file_gse_content, file_gsm_content
+        )
         assert len(meta_processed_samples) == sample_len
         assert len(meta_processed_series) == series_len
 

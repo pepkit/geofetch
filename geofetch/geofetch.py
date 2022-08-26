@@ -63,7 +63,7 @@ class Geofetcher:
         bam_folder: str = "",
         fq_folder: str = "",
         sra_folder: str = "",
-        bam_conversion=False,
+        bam_conversion: bool = False,
         picard_path: str = "",
         input: str = None,
         const_limit_project: int = 50,
@@ -180,7 +180,7 @@ class Geofetcher:
 
     def get_project(
         self, input: str, just_metadata: bool = True, discard_soft: bool = True
-    ) -> Dict[peppy.Project, peppy.Project]:
+    ) -> Dict[str, peppy.Project]:
         """
         Function for fetching projects from GEO|SRA and receiving peppy project
         :param input: GSE number, or path to file of GSE numbers

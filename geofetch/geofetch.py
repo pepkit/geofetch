@@ -1541,6 +1541,7 @@ class Geofetcher:
                     if not os.path.isfile(filelist_path) or self.refresh_metadata:
                         result = requests.get(tar_files_list_url)
                         if result.ok:
+                            result.encoding = "UTF-8"
                             filelist_raw_text = result.text
                             if not self.discard_soft:
                                 try:
@@ -1941,6 +1942,7 @@ class Geofetcher:
         x = requests.post(ncbi_esearch)
 
         if x.status_code != 200:
+            x.encoding = "UTF-8"
             self._LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
             raise x.raise_for_status()
         id_results = x.json()["esearchresult"]["idlist"]

@@ -202,6 +202,7 @@ class Accession(object):
 
         result = requests.get(full_url)
         if result.ok:
+            result.encoding = "UTF-8"
             result_text = result.text
             result_list = result_text.replace("\r", "").split("\n")
             result_list = [elem for elem in result_list if len(elem) > 0]

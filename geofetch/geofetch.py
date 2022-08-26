@@ -643,7 +643,7 @@ class Geofetcher:
                 if self.supp_by == "all":
                     supp_sample_path_meta = os.path.join(
                         self.metadata_raw,
-                        "s",
+                        "PEP_samples",
                         self.project_name + SAMPLE_SUPP_METADATA_FILE,
                     )
                     peppy_obj_samples = self._write_processed_annotation(

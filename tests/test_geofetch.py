@@ -1,3 +1,4 @@
+import geofetch
 from geofetch import parse_accessions, Geofetcher, utils
 import os
 import pytest
@@ -15,6 +16,7 @@ def get_soft_path(gse_numb, sample_len, series_len):
     run  test test_file_list
     """
     return (
+        gse_numb,
         os.path.join(GSE_FILES, gse_numb, GSE_SOFT_NAME),
         os.path.join(GSE_FILES, gse_numb, GSM_SOFT_NAME),
         sample_len,
@@ -75,15 +77,21 @@ class TestListProcessedMetaFiles:
         yield instance
 
     @pytest.mark.parametrize(
-        "soft_gse, soft_gsm, sample_len, series_len", processed_meta_file_test
+        "gse_numb,soft_gse, soft_gsm, sample_len, series_len", processed_meta_file_test
     )
     def test_file_list(
-        self, soft_gse, soft_gsm, sample_len, series_len, initiate_geofetcher
+        self, gse_numb, soft_gse, soft_gsm, sample_len, series_len, initiate_geofetcher
     ):
+        file_gse_content = geofetch.Accession(gse_numb).fetch_metadata(
+            soft_gse, typename="GSE", clean=False
+        )
+        file_gsm_content = geofetch.Accession(gse_numb).fetch_metadata(
+            soft_gsm, typename="GSM", clean=False
+        )
         (
             meta_processed_samples,
             meta_processed_series,
-        ) = initiate_geofetcher._get_list_of_processed_files(soft_gse, soft_gsm)
+        ) = initiate_geofetcher._get_list_of_processed_files(file_gse_content, file_gsm_content)
         assert len(meta_processed_samples) == sample_len
         assert len(meta_processed_series) == series_len
 

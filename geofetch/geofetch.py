@@ -178,7 +178,9 @@ class Geofetcher:
 
         self.just_object = False
 
-    def get_project(self, input: str, just_metadata: bool = True, discard_soft: bool = True) -> Dict[peppy.Project, peppy.Project]:
+    def get_project(
+        self, input: str, just_metadata: bool = True, discard_soft: bool = True
+    ) -> Dict[peppy.Project, peppy.Project]:
         """
         Function for fetching projects from GEO|SRA and receiving peppy project
         :param input: GSE number, or path to file of GSE numbers
@@ -223,8 +225,8 @@ class Geofetcher:
                     self._LOGGER.info(
                         f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                     )
-                    project_dict = self.fetch_all(input=acc_GSE)
-                    project_dict[acc_GSE + "_raw"] = project_dict
+                    project = self.fetch_all(input=acc_GSE)
+                    project_dict[acc_GSE + "_raw"] = project
 
             else:
                 ser_dict = self.fetch_all(input=acc_GSE_list)
@@ -999,7 +1001,7 @@ class Geofetcher:
                     or value_sample["sample_name"] is None
                 ):
                     fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
-
+                # TODO: should be corrected:
                 # # sanitize names
                 # fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
                 #     fixed_dict[key_sample]["sample_name"]
@@ -1007,7 +1009,7 @@ class Geofetcher:
 
             metadata_dict[key] = fixed_dict
 
-        # TODO: should be checked:
+
         # annotation table
         metadata_dict_combined = {}
         for acc_GSE, gsm_metadata in metadata_dict.items():
@@ -1015,6 +1017,7 @@ class Geofetcher:
             file_annotation = os.path.join(
                 self.metadata_expanded, acc_GSE + "_annotation.csv"
             )
+            # for each sample
             if self.acc_anno:
                 self._write_gsm_annotation(
                     gsm_metadata1, file_annotation, use_key_subset=self.use_key_subset
@@ -1027,9 +1030,12 @@ class Geofetcher:
             file_subannotation = os.path.join(
                 self.metadata_expanded, acc_GSE + "_subannotation.csv"
             )
+            # for each sample:
             if self.acc_anno:
                 self._write_subannotation(gsm_multi_table, file_subannotation)
             subannotation_dict_combined.update(gsm_multi_table)
+
+        # TODO: were is .yaml file for each acc_anno?
 
         self._LOGGER.info(
             "Creating complete project annotation sheets and config file..."
@@ -1114,9 +1120,13 @@ class Geofetcher:
             # open list:
             new_sub_list = []
             for sub_key in subannotation_dict_combined.keys():
-                new_sub_list.extend([col_item for col_item in subannotation_dict_combined[sub_key]])
+                new_sub_list.extend(
+                    [col_item for col_item in subannotation_dict_combined[sub_key]]
+                )
 
-            sub_meta_df = pd.DataFrame(new_sub_list, columns=["sample_name", "SRX", "SRR"])
+            sub_meta_df = pd.DataFrame(
+                new_sub_list, columns=["sample_name", "SRX", "SRR"]
+            )
 
             if sub_meta_df.empty:
                 sub_meta_df = None
@@ -1138,7 +1148,11 @@ class Geofetcher:
             file.writelines(f"config_file: {yaml_path}")
 
     def _separate_common_meta(
-        self, meta_list: Union[List, Dict], max_len: int = 50, del_limit: int = 250, attr_limit_truncate: int = 500
+        self,
+        meta_list: Union[List, Dict],
+        max_len: int = 50,
+        del_limit: int = 250,
+        attr_limit_truncate: int = 500,
     ):
         """
         This function is separating information for the experiment from a sample
@@ -1186,11 +1200,11 @@ class Geofetcher:
                     if this_key not in list_keys_diff:
                         if first_key:
                             if len(str(nb_sample[1][this_key])) <= del_limit:
-                                new_str = nb_sample[1][this_key].replace('"', '')
-                                new_str = re.sub('[^A-Za-z0-9]+', ' ', new_str)
-                                new_meta_project.append(
-                                    {this_key: f'"{new_str}"'}
-                                )
+                                new_str = nb_sample[1][this_key]
+                                if isinstance(nb_sample[1][this_key], str):
+                                    new_str = nb_sample[1][this_key].replace('"', "")
+                                    new_str = re.sub("[^A-Za-z0-9]+", " ", new_str)
+                                new_meta_project.append({this_key: new_str})
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]
                 except KeyError:
@@ -1245,7 +1259,9 @@ class Geofetcher:
         return new_metalist
 
     @staticmethod
-    def _dict_to_list_convector(proj_dict: Dict = None, proj_list: List = None) -> Union[Dict, List]:
+    def _dict_to_list_convector(
+        proj_dict: Dict = None, proj_list: List = None
+    ) -> Union[Dict, List]:
         """
         Convector project dict to list and vice versa
         :param proj_dict: project dictionary
@@ -1522,13 +1538,18 @@ class Geofetcher:
                         self.metadata_expanded, gse_numb + "_file_list.txt"
                     )
 
+                    # TODO: make new function of code below:
                     if not os.path.isfile(filelist_path) or self.refresh_metadata:
                         result = requests.get(tar_files_list_url)
                         if result.ok:
                             filelist_raw_text = result.text
                             if not self.discard_soft:
-                                with open(filelist_path, "w") as f:
-                                    f.write(filelist_raw_text)
+                                try:
+                                    with open(filelist_path, "w") as f:
+                                        f.write(filelist_raw_text)
+                                except OSError:
+                                    self._LOGGER.warning(f"{filelist_path} not found. File won't be saved..")
+
                         else:
                             raise Exception(f"error in requesting tar_files_list")
                     else:
@@ -2306,7 +2327,6 @@ def main():
     args_dict = vars(args)
     args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
-
 
 
 if __name__ == "__main__":

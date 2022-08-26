@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0] -- 2022-XX-XX
+- Added initialization of peppy Project without saving any files functionality
+- Added progress bar
+- Fixed None issue in config file
+- Changed way of saving soft files to request library
+- 
+
 ## [0.10.1] -- 2022-08-04
 - Updated metadata fetching requests from SRA database
 

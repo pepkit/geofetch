@@ -3,7 +3,7 @@
 name: {project_name}
 pep_version: 2.1.0
 sample_table: {annotation}
-subsample_table: {subannotation}
+{subannotation}
 
 looper:
   output_dir: {project_name}

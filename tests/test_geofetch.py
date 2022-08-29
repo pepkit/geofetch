@@ -1,3 +1,4 @@
+import geofetch
 from geofetch import parse_accessions, Geofetcher, utils
 import os
 import pytest
@@ -15,6 +16,7 @@ def get_soft_path(gse_numb, sample_len, series_len):
     run  test test_file_list
     """
     return (
+        gse_numb,
         os.path.join(GSE_FILES, gse_numb, GSE_SOFT_NAME),
         os.path.join(GSE_FILES, gse_numb, GSM_SOFT_NAME),
         sample_len,
@@ -75,15 +77,23 @@ class TestListProcessedMetaFiles:
         yield instance
 
     @pytest.mark.parametrize(
-        "soft_gse, soft_gsm, sample_len, series_len", processed_meta_file_test
+        "gse_numb,soft_gse, soft_gsm, sample_len, series_len", processed_meta_file_test
     )
     def test_file_list(
-        self, soft_gse, soft_gsm, sample_len, series_len, initiate_geofetcher
+        self, gse_numb, soft_gse, soft_gsm, sample_len, series_len, initiate_geofetcher
     ):
+        file_gse_content = geofetch.Accession(gse_numb).fetch_metadata(
+            soft_gse, typename="GSE", clean=False
+        )
+        file_gsm_content = geofetch.Accession(gse_numb).fetch_metadata(
+            soft_gsm, typename="GSM", clean=False
+        )
         (
             meta_processed_samples,
             meta_processed_series,
-        ) = initiate_geofetcher.get_list_of_processed_files(soft_gse, soft_gsm)
+        ) = initiate_geofetcher._get_list_of_processed_files(
+            file_gse_content, file_gsm_content
+        )
         assert len(meta_processed_samples) == sample_len
         assert len(meta_processed_series) == series_len
 
@@ -137,7 +147,7 @@ class TestDownloadingProcFiles:
         ],
     )
     def test_downloading_files(self, file_url, file_name, tmpdir, initiate_geofetcher):
-        initiate_geofetcher.download_processed_file(file_url, tmpdir)
+        initiate_geofetcher._download_processed_file(file_url, tmpdir)
 
         assert len(tmpdir.listdir()) == 1
         assert os.path.basename(tmpdir.listdir()[0]) == file_name
@@ -178,7 +188,7 @@ class TestFilters:
         ],
     )
     def test_filter(self, meta_list, output, initiate_geofetcher):
-        result = initiate_geofetcher.run_filter(meta_list)
+        result = initiate_geofetcher._run_filter(meta_list)
         assert result == output
 
     @pytest.mark.parametrize(
@@ -199,7 +209,7 @@ class TestFilters:
         ],
     )
     def test_size_filter(self, meta_list, output, initiate_geofetcher):
-        result = initiate_geofetcher.run_size_filter(meta_list)
+        result = initiate_geofetcher._run_size_filter(meta_list)
         assert result == output
 
     @pytest.mark.parametrize(
@@ -248,7 +258,9 @@ class TestFilters:
     def test_large_meta_separation(
         self, init_meta_data, result_sample, result_proj, initiate_geofetcher
     ):
-        samp, proj = initiate_geofetcher.separate_common_meta(init_meta_data, max_len=0)
+        samp, proj = initiate_geofetcher._separate_common_meta(
+            init_meta_data, max_len=0
+        )
         assert samp == result_sample
         assert proj == result_proj
 

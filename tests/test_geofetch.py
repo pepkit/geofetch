@@ -109,20 +109,20 @@ class TestListProcessedMetaFiles:
     def test_creating_sample_pep_files(self, initiate_geofetcher):
         initiate_geofetcher.fetch_all("GSE138657")
         downloaded_meta_files = list(
-            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_samples")
+            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_processed_samples")
         )[0][2]
 
-        assert "GSE138657_samples.csv" in downloaded_meta_files
-        assert "GSE138657_samples.yaml" in downloaded_meta_files
+        assert "PEP_processed_samples.csv" in downloaded_meta_files
+        assert "PEP_processed_samples.yaml" in downloaded_meta_files
 
     def test_creating_series_pep_files(self, initiate_geofetcher):
         initiate_geofetcher.fetch_all("GSE199313")
         downloaded_meta_files = list(
-            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_series")
+            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_processed_series")
         )[0][2]
 
-        assert "GSE199313_series.csv" in downloaded_meta_files
-        assert "GSE199313_series.yaml" in downloaded_meta_files
+        assert "PEP_processed_series.csv" in downloaded_meta_files
+        assert "PEP_processed_series.yaml" in downloaded_meta_files
 
 
 class TestDownloadingProcFiles:

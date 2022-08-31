@@ -32,6 +32,8 @@ SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
 
 SAMPLE_SUPP_METADATA_FILE = "_samples.csv"
 EXP_SUPP_METADATA_FILE = "_series.csv"
+FILE_RAW_NAME_SAMPLE_PATTERN = "_raw.csv"
+FILE_RAW_NAME_SUBSAMPLE_PATTERN = "_raw_subtable.csv"
 
 # How many times should we retry failing prefetch call?
 NUM_RETRIES = 3
@@ -41,3 +43,6 @@ NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sr
 NCBI_EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id={ID}&rettype=runinfo&retmode=xml"
 
 NEW_GENOME_COL_NAME = "ref_genome"
+
+CONFIG_PROCESSED_TEMPLATE_NAME = "config_processed_template.yaml"
+CONFIG_RAW_TEMPLATE_NAME = "config_template.yaml"

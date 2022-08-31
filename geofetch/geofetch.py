@@ -94,18 +94,18 @@ class Geofetcher:
         if metadata_folder:
             self.metadata_expanded = expandpath(metadata_folder)
             if os.path.isabs(self.metadata_expanded):
-                self.metadata_raw = metadata_folder
+                self.metadata_root_full = metadata_folder
             else:
                 self.metadata_expanded = os.path.abspath(self.metadata_expanded)
-                self.metadata_raw = os.path.abspath(metadata_root)
-            self.metadata_raw = metadata_folder
+                self.metadata_root_full = os.path.abspath(metadata_root)
+            self.metadata_root_full = metadata_folder
         else:
             self.metadata_expanded = expandpath(metadata_root)
             if os.path.isabs(self.metadata_expanded):
-                self.metadata_raw = metadata_root
+                self.metadata_root_full = metadata_root
             else:
                 self.metadata_expanded = os.path.abspath(self.metadata_expanded)
-                self.metadata_raw = os.path.abspath(metadata_root)
+                self.metadata_root_full = os.path.abspath(metadata_root)
 
         self.just_metadata = just_metadata
         self.refresh_metadata = refresh_metadata
@@ -143,7 +143,7 @@ class Geofetcher:
             self.metadata_expanded = os.path.join(
                 self.metadata_expanded, self.project_name
             )
-            self.metadata_raw = os.path.join(self.metadata_raw, self.project_name)
+            self.metadata_root_full = os.path.join(self.metadata_root_full, self.project_name)
 
         if filter_size is not None:
             try:
@@ -229,7 +229,7 @@ class Geofetcher:
                     project_dict[acc_GSE + "_raw"] = project
 
             else:
-                ser_dict = self.fetch_all(input=acc_GSE_list)
+                ser_dict = self.fetch_all(input=input)
                 project_dict["raw_samples"] = ser_dict
 
         return project_dict
@@ -240,7 +240,10 @@ class Geofetcher:
         if name:
             self.project_name = name
         else:
-            self.project_name = os.path.splitext(os.path.basename(input))[0]
+            try:
+                self.project_name = os.path.splitext(os.path.basename(input))[0]
+            except TypeError:
+                self.project_name = input
 
         # check to make sure prefetch is callable
         if not self.just_metadata and not self.processed:
@@ -254,8 +257,8 @@ class Geofetcher:
             input, self.metadata_expanded, self.just_metadata
         )
 
-        metadata_dict = {}
-        subannotation_dict = {}
+        metadata_dict_combined = {}
+        subannotation_dict_combined = {}
 
         processed_metadata_samples = []
         processed_metadata_series = []
@@ -361,37 +364,42 @@ class Geofetcher:
                 )
                 if not srp_list_result:
                     self._LOGGER.info(f"No SRP data, continuing ....")
+                    self._LOGGER.warning(f"No raw pep will be created! ....")
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
-                    continue
+                    pass
                 else:
                     self._LOGGER.info("Parsing SRA file to download SRR records")
-                    gsm_multi_table = self._process_sra_meta(
-                        srp_list_result, gsm_enter_dict, gsm_metadata
-                    )
+                gsm_multi_table = self._process_sra_meta(
+                    srp_list_result, gsm_enter_dict, gsm_metadata
+                )
 
-                    # download raw data:
-                    if not self.just_metadata:
-                        for file_key in gsm_multi_table.keys():
-                            for run in gsm_multi_table[file_key]:
-                                # download raw data
-                                self._LOGGER.info(
-                                    f"Getting SRR: {run[2]}  in ({acc_GSE})"
-                                )
-                                self._download_raw_data(run[2])
-                    else:
-                        self._LOGGER.info(f"Dry run, no data will be downloaded")
+                # download raw data:
+                if not self.just_metadata:
+                    for file_key in gsm_multi_table.keys():
+                        for run in gsm_multi_table[file_key]:
+                            # download raw data
+                            self._LOGGER.info(
+                                f"Getting SRR: {run[2]}  in ({acc_GSE})"
+                            )
+                            self._download_raw_data(run[2])
+                else:
+                    self._LOGGER.info(f"Dry run, no data will be downloaded")
 
-                # accumulate subannotations
-                metadata_dict[acc_GSE] = gsm_metadata
-                subannotation_dict[acc_GSE] = gsm_multi_table
+                # save one project
+                if self.acc_anno and nkeys > 1:
+                    self._write_raw_annotation_new(name=acc_GSE, metadata_dict=gsm_metadata, subannot_dict=gsm_multi_table)
+
+                else:
+                    metadata_dict_combined.update(gsm_metadata)
+                    subannotation_dict_combined.update(gsm_multi_table)
 
         self._LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
 
         # Logging cleaning process:
         if self.discard_soft:
             self._LOGGER.info(f"Cleaning soft files ...")
-            clean_soft_files(self.metadata_raw)
+            clean_soft_files(self.metadata_root_full)
 
         #######################################################################################
 
@@ -408,11 +416,11 @@ class Geofetcher:
 
         # saving PEPs for raw data
         else:
-            return_value = self._write_raw_annotation(metadata_dict, subannotation_dict)
+            return_value = self._write_raw_annotation_new("PEP", metadata_dict_combined, subannotation_dict_combined)
             if self.just_object:
                 return return_value
 
-    def _process_sra_meta(self, srp_list_result, gsm_enter_dict, gsm_metadata):
+    def _process_sra_meta(self, srp_list_result=None, gsm_enter_dict=None, gsm_metadata=None):
         gsm_multi_table = {}
         for line in srp_list_result:
 
@@ -482,6 +490,7 @@ class Geofetcher:
             else:
                 # The first SRR for this SRX is added to GSM metadata
                 gsm_metadata[experiment]["SRR"] = run_name
+
         return gsm_multi_table
 
     def _download_raw_data(self, run_name):
@@ -579,7 +588,7 @@ class Geofetcher:
         if self.supp_by == "all":
             # samples
             pep_acc_path_sample = os.path.join(
-                self.metadata_raw,
+                self.metadata_root_full,
                 f"{name}_samples",
                 name + SAMPLE_SUPP_METADATA_FILE,
             )
@@ -591,7 +600,7 @@ class Geofetcher:
 
             # series
             pep_acc_path_exp = os.path.join(
-                self.metadata_raw,
+                self.metadata_root_full,
                 f"{name}_series",
                 name + EXP_SUPP_METADATA_FILE,
             )
@@ -603,7 +612,7 @@ class Geofetcher:
 
         elif self.supp_by == "samples":
             pep_acc_path_sample = os.path.join(
-                self.metadata_raw,
+                self.metadata_root_full,
                 f"{name}_samples",
                 name + SAMPLE_SUPP_METADATA_FILE,
             )
@@ -614,7 +623,7 @@ class Geofetcher:
             )
         elif self.supp_by == "series":
             return_objects[f"{name}_series"] = pep_acc_path_exp = os.path.join(
-                self.metadata_raw,
+                self.metadata_root_full,
                 f"{name}_series",
                 name + EXP_SUPP_METADATA_FILE,
             )
@@ -688,7 +697,7 @@ class Geofetcher:
         """
         try:
             element_is_list = any(
-                type(list_item[dict_key]) is list for list_item in metadata_list
+                type(list_item.get(dict_key)) is list for list_item in metadata_list
             )
             if element_is_list:
                 for n_elem in range(len(metadata_list)):
@@ -737,7 +746,7 @@ class Geofetcher:
                         else:
                             del metadata_list[n_elem][dict_key]
                     except KeyError as err:
-                        self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}")
+                        self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}, continuing ...")
 
                 return metadata_list
             else:
@@ -824,7 +833,7 @@ class Geofetcher:
         return metadata_list
 
     def _write_gsm_annotation(
-        self, gsm_metadata, file_annotation, use_key_subset=False
+        self, gsm_metadata, file_annotation
     ):
         """
         Write metadata sheet out as an annotation file.
@@ -832,16 +841,9 @@ class Geofetcher:
         :param Mapping gsm_metadata: the data to write, parsed from a file
             with metadata/annotation information
         :param str file_annotation: the path to the file to write
-        :param bool use_key_subset: whether to use the keys present in the
-            metadata object given (False), or instead use a fixed set of keys
-            defined within this module (True)
         :return str: path to file written
         """
-        if use_key_subset:
-            keys = ANNOTATION_SHEET_KEYS
-        else:
-            # keys = gsm_metadata[gsm_metadata.keys().next()].keys()
-            keys = list(list(gsm_metadata.values())[0].keys())
+        keys = list(list(gsm_metadata.values())[0].keys())
 
         self._LOGGER.info(f"Sample annotation sheet: {file_annotation} . Saving....")
         fp = expandpath(file_annotation)
@@ -891,29 +893,8 @@ class Geofetcher:
             self.const_limit_discard,
             self.attr_limit_truncate,
         )
-        meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
-        ]
-        modifiers_str = "\n    ".join(d for d in meta_list_str)
 
-        geofetchdir = os.path.dirname(__file__)
-        config_template = os.path.join(geofetchdir, "config_processed_template.yaml")
-
-        with open(config_template, "r") as template_file:
-            template = template_file.read()
-
-        template_values = {
-            "project_name": self.project_name,
-            "sample_table": os.path.basename(file_annotation_path),
-            "geo_folder": self.geo_folder,
-            "pipeline_samples": self.file_pipeline_samples,
-            "pipeline_project": self.file_pipeline_project,
-            "additional_columns": modifiers_str,
-        }
-
-        for k, v in template_values.items():
-            placeholder = "{" + str(k) + "}"
-            template = template.replace(placeholder, str(v))
+        template = self._create_config_processed(file_annotation_path, proj_meta)
 
         if not just_object:
             with open(file_annotation_path, "w") as m_file:
@@ -944,170 +925,78 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(pd_value, config=conf)
             return proj
 
-    @staticmethod
-    def _sanitize_name(name_str: str):
+    def _write_raw_annotation_new(self, name, metadata_dict: dict, subannot_dict: dict = None) -> Union[None, peppy.Project]:
         """
-        Function that sanitizing strings. (Replace all odd characters)
-        :param str name_str: Any string value that has to be sanitized.
-        :return: sanitized strings
-        """
-        new_str = name_str
-        punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
-        for odd_char in list(punctuation1):
-            new_str = new_str.replace(odd_char, "_")
-        new_str = new_str.replace(" ", "_").replace("__", "_")
-        return new_str
-
-    def _write_raw_annotation(self, metadata_dict, subannotation_dict):
-        """
-        Combining individual accessions into project-level annotations, and writeing
+        Combining individual accessions into project-level annotations, and writing
         individual accession files (if requested)
-        :param dict metadata_dict: dictionary of metadata
-        :param dict sub-annotation_dict: dictionary of sub-annotation metadata
+        :param name:
+        :param metadata_dict:
+        :param subannot_dict:
+        :return: none or peppy object
         """
-
-        if self.discard_soft:
-            clean_soft_files(os.path.join(self.metadata_raw))
-
         try:
             assert len(metadata_dict) > 0
         except AssertionError:
             self._LOGGER.warning(
                 "\033[33mNo PEP created, as no raw data was found!!!\033[0m"
             )
-            return False
+            return None
 
-        # checking sample_name value if it's not empty,
-        # otherwise pulling from title
-        for key, value in metadata_dict.items():
-            fixed_dict = {}
-            for key_sample, value_sample in value.items():
-                fixed_dict[key_sample] = value_sample
-                if (
-                    value_sample["sample_name"] == ""
-                    or value_sample["sample_name"] is None
-                ):
-                    fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
-                # TODO: should be corrected:
-                # # sanitize names
-                # fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
-                #     fixed_dict[key_sample]["sample_name"]
-                # )
-
-            metadata_dict[key] = fixed_dict
-
-        # annotation table
-        metadata_dict_combined = {}
-        for acc_GSE, gsm_metadata in metadata_dict.items():
-            gsm_metadata1 = self._standardize_colnames(gsm_metadata)
-            file_annotation = os.path.join(
-                self.metadata_expanded, acc_GSE + "_annotation.csv"
-            )
-            # for each sample
-            if self.acc_anno:
-                self._write_gsm_annotation(
-                    gsm_metadata1, file_annotation, use_key_subset=self.use_key_subset
-                )
-            metadata_dict_combined.update(gsm_metadata1)
-
-        # subatnotation table
-        subannotation_dict_combined = {}
-        for acc_GSE, gsm_multi_table in subannotation_dict.items():
-            file_subannotation = os.path.join(
-                self.metadata_expanded, acc_GSE + "_subannotation.csv"
-            )
-            # for each sample:
-            if self.acc_anno:
-                self._write_subannotation(gsm_multi_table, file_subannotation)
-            subannotation_dict_combined.update(gsm_multi_table)
-
-        # TODO: were is .yaml file for each acc_anno?
+        if self.discard_soft:
+            clean_soft_files(os.path.join(self.metadata_root_full))
 
         self._LOGGER.info(
             "Creating complete project annotation sheets and config file..."
         )
-        # filtering huge annotation strings that are repeating for each sample
-        metadata_dict_combined, proj_meta = self._separate_common_meta(
-            metadata_dict_combined,
+
+        proj_root = os.path.join(self.metadata_root_full, name)
+        if not os.path.exists(proj_root):
+            os.makedirs(proj_root)
+
+        proj_root_sample = os.path.join(proj_root, f"{name}{FILE_RAW_NAME_SAMPLE_PATTERN}")
+        proj_root_subsample = os.path.join(proj_root, f"{name}{FILE_RAW_NAME_SUBSAMPLE_PATTERN}")
+        yaml_name = f"{name}.yaml"
+        proj_root_yaml = os.path.join(proj_root, yaml_name)
+        dot_yaml_path = os.path.join(proj_root, ".pep.yaml")
+
+        metadata_dict = self._check_sample_name_standard(metadata_dict)
+
+        metadata_dict, proj_meta = self._separate_common_meta(
+            metadata_dict,
             self.const_limit_project,
             self.const_limit_discard,
             self.attr_limit_truncate,
         )
-        meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
-        ]
-        modifiers_str = "\n    ".join(d for d in meta_list_str)
-
-        # If the project included more than one GSE, we can now output combined
-        # annotation tables for the entire project.
-        # Write combined annotation sheet
-        file_annotation = os.path.join(
-            self.metadata_raw, self.project_name + "_annotation.csv"
-        )
 
         # Write combined subannotation table
-        if len(subannotation_dict_combined) > 0:
-            file_subannotation = os.path.join(
-                self.metadata_raw, self.project_name + "_subannotation.csv"
-            )
-            self._write_subannotation(subannotation_dict_combined, file_subannotation)
+        if len(subannot_dict) > 0:
             subanot_path_yaml = (
-                f"subsample_table: {os.path.basename(file_subannotation)}"
+                f"subsample_table: {os.path.basename(proj_root_subsample)}"
             )
         else:
-            file_subannotation = "null"
             subanot_path_yaml = f""
 
-        # Write project config file
-        if not self.config_template:
-            geofetchdir = os.path.dirname(__file__)
-            self.config_template = os.path.join(geofetchdir, "config_template.yaml")
-        with open(self.config_template, "r") as template_file:
-            template = template_file.read()
+        template = self._create_config_raw(proj_meta, proj_root_sample, subanot_path_yaml)
 
-        template_values = {
-            "project_name": self.project_name,
-            "annotation": os.path.basename(file_annotation),
-            "subannotation": subanot_path_yaml,
-            "pipeline_samples": self.file_pipeline_samples,
-            "pipeline_project": self.file_pipeline_project,
-            "additional_columns": modifiers_str,
-        }
-        for k, v in template_values.items():
-            placeholder = "{" + str(k) + "}"
-            template = template.replace(placeholder, str(v))
+        if not self.just_object:
+            self._write_gsm_annotation(metadata_dict, proj_root_sample)
 
-        if not self.just_object and not self.acc_anno:
-            # write annotation
-            self._write_gsm_annotation(
-                metadata_dict_combined,
-                file_annotation,
-                use_key_subset=self.use_key_subset,
-            )
-            # write subannotation
-            if len(subannotation_dict_combined) > 0:
-                self._write_subannotation(
-                    subannotation_dict_combined, file_subannotation
-                )
+            if len(subannot_dict) > 0:
+                self._write_subannotation(subannot_dict, proj_root_subsample)
 
-            # save .yaml file
-            yaml_name = self.project_name + "_config.yaml"
-            config = os.path.join(self.metadata_raw, yaml_name)
-            self._write(config, template, msg_pre="  Config file: ")
+            self._write(proj_root_yaml, template, msg_pre="  Config file: ")
 
-            # save .pep.yaml file
             if self.add_dotfile:
-                dot_yaml_path = os.path.join(self.metadata_raw, ".pep.yaml")
                 self._create_dot_yaml(dot_yaml_path, yaml_name)
 
         else:
-            meta_df = pd.DataFrame.from_dict(metadata_dict_combined, orient="index")
+            meta_df = pd.DataFrame.from_dict(metadata_dict, orient="index")
 
             # open list:
             new_sub_list = []
-            for sub_key in subannotation_dict_combined.keys():
+            for sub_key in subannot_dict.keys():
                 new_sub_list.extend(
-                    [col_item for col_item in subannotation_dict_combined[sub_key]]
+                    [col_item for col_item in subannot_dict[sub_key]]
                 )
 
             sub_meta_df = pd.DataFrame(
@@ -1122,6 +1011,83 @@ class Geofetcher:
 
             proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
             return proj
+
+    def _create_config_processed(self, file_annotation_path, proj_meta):
+        geofetchdir = os.path.dirname(__file__)
+        config_template = os.path.join(geofetchdir, CONFIG_PROCESSED_TEMPLATE_NAME)
+        with open(config_template, "r") as template_file:
+            template = template_file.read()
+        meta_list_str = [
+            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+        ]
+        modifiers_str = "\n    ".join(d for d in meta_list_str)
+        template_values = {
+            "project_name": self.project_name,
+            "sample_table": os.path.basename(file_annotation_path),
+            "geo_folder": self.geo_folder,
+            "pipeline_samples": self.file_pipeline_samples,
+            "pipeline_project": self.file_pipeline_project,
+            "additional_columns": modifiers_str,
+        }
+        for k, v in template_values.items():
+            placeholder = "{" + str(k) + "}"
+            template = template.replace(placeholder, str(v))
+        return template
+
+    def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
+        meta_list_str = [
+            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+        ]
+        modifiers_str = "\n    ".join(d for d in meta_list_str)
+        # Write project config file
+        if not self.config_template:
+            geofetchdir = os.path.dirname(__file__)
+            self.config_template = os.path.join(geofetchdir, CONFIG_RAW_TEMPLATE_NAME)
+        with open(self.config_template, "r") as template_file:
+            template = template_file.read()
+        template_values = {
+            "project_name": self.project_name,
+            "annotation": os.path.basename(proj_root_sample),
+            "subannotation": subanot_path_yaml,
+            "pipeline_samples": self.file_pipeline_samples,
+            "pipeline_project": self.file_pipeline_project,
+            "additional_columns": modifiers_str,
+        }
+        for k, v in template_values.items():
+            placeholder = "{" + str(k) + "}"
+            template = template.replace(placeholder, str(v))
+        return template
+
+    def _check_sample_name_standard(self, metadata_dict):
+        fixed_dict = {}
+        for key_sample, value_sample in metadata_dict.items():
+            fixed_dict[key_sample] = value_sample
+            if (
+                    value_sample["sample_name"] == ""
+                    or value_sample["sample_name"] is None
+            ):
+                fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
+            # sanitize names
+            fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
+                fixed_dict[key_sample]["sample_name"]
+            )
+        metadata_dict = fixed_dict
+        metadata_dict = self._standardize_colnames(metadata_dict)
+        return metadata_dict
+
+    @staticmethod
+    def _sanitize_name(name_str: str):
+        """
+        Function that sanitizing strings. (Replace all odd characters)
+        :param str name_str: Any string value that has to be sanitized.
+        :return: sanitized strings
+        """
+        new_str = name_str
+        punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
+        for odd_char in list(punctuation1):
+            new_str = new_str.replace(odd_char, "_")
+        new_str = new_str.replace(" ", "_").replace("__", "_")
+        return new_str
 
     @staticmethod
     def _create_dot_yaml(file_path: str, yaml_path: str):
@@ -1213,7 +1179,7 @@ class Geofetcher:
             meta_list = self._dict_to_list_convector(proj_list=meta_list)
         return meta_list, new_meta_project
 
-    def _standardize_colnames(self, meta_list):
+    def _standardize_colnames(self, meta_list: Union[list, dict]):
         """
         Standardize column names by lower-casing and underscore
         :param list meta_list: list of dictionaries of samples
@@ -2334,6 +2300,7 @@ def main():
     args_dict = vars(args)
     args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
+
 
 
 if __name__ == "__main__":

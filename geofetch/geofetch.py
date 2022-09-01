@@ -845,13 +845,14 @@ class Geofetcher:
         """
         keys = list(list(gsm_metadata.values())[0].keys())
 
-        self._LOGGER.info(f"Sample annotation sheet: {file_annotation} . Saving....")
+        self._LOGGER.info(f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m")
         fp = expandpath(file_annotation)
         with open(fp, "w") as of:
             w = csv.DictWriter(of, keys, extrasaction="ignore")
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
+        self._LOGGER.info(f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m")
         self._LOGGER.info("\033[92mFile has been saved successfully\033[0m")
         return fp
 
@@ -1830,7 +1831,7 @@ class Geofetcher:
                     )
                 except TypeError:
                     self._LOGGER.warning("Error in gsm_metadata")
-                    return False
+                    return []
 
             # else:
             #     # More than one sample? not sure what to do here. Does this even happen?
@@ -1857,7 +1858,7 @@ class Geofetcher:
                         f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
                         f"Error: {err}  \033[0m"
                     )
-                    return False
+                    return []
             else:
                 # open existing annotation
                 self._LOGGER.info(f"Found SRA metadata, opening..")

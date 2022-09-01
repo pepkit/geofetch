@@ -6,8 +6,10 @@ import argparse
 import copy
 import csv
 import os
+
 # import re
 import sys
+
 # from string import punctuation
 import requests
 import xmltodict
@@ -427,8 +429,18 @@ class Geofetcher:
                 return return_value
 
     def _process_sra_meta(
-        self, srp_list_result=None, gsm_enter_dict=None, gsm_metadata=None
+        self,
+        srp_list_result: list = None,
+        gsm_enter_dict: dict = None,
+        gsm_metadata: dict = None,
     ):
+        """
+        Creating srp multitable and updating gsm_metadata based on srp
+        :param srp_list_result: list of srp got from sra file
+        :param gsm_enter_dict: gsm enter content
+        :param gsm_metadata: dict of samples of gsm
+        :return: srp multitable
+        """
         gsm_multi_table = {}
         for line in srp_list_result:
 
@@ -646,6 +658,13 @@ class Geofetcher:
     def _download_processed_data(
         self, acc_gse: str, meta_processed_samples: list, meta_processed_series: list
     ) -> NoReturn:
+        """
+        Function that downloads processed data
+        :param acc_gse: accession number of the project
+        :param meta_processed_samples: list of annotation of samples
+        :param meta_processed_series: list of annotation of series
+        :return: Noreturn
+        """
         data_geo_folder = os.path.join(self.geo_folder, acc_gse)
         self._LOGGER.debug("Data folder: " + data_geo_folder)
 
@@ -677,6 +696,12 @@ class Geofetcher:
                 self._download_processed_file(file_url, data_geo_folder)
 
     def _expand_metadata_list_in_dict(self, metadata_dict: dict) -> dict:
+        """
+        Expanding all lists of all items in the dict by creating new items or joining them
+
+        :param metadata_dict: metadata dict
+        :return: expanded metadata dict
+        """
         prj_list = self._dict_to_list_convector(proj_dict=metadata_dict)
         prj_list = self._expand_metadata_list(prj_list)
         return self._dict_to_list_convector(proj_list=prj_list)
@@ -796,7 +821,7 @@ class Geofetcher:
         return meta_processed_samples
 
     @staticmethod
-    def _get_list_of_keys(list_of_dict):
+    def _get_list_of_keys(list_of_dict: list):
         """
         Getting list of all keys that are in the dictionaries in the list
 
@@ -809,13 +834,13 @@ class Geofetcher:
             list_of_keys.extend(list(element.keys()))
         return list(set(list_of_keys))
 
-    def _unify_list_keys(self, processed_meta_list):
+    def _unify_list_keys(self, processed_meta_list: list) -> list:
         """
         Unifying list of dicts with metadata, so every dict will have
             same keys
 
         :param list processed_meta_list: list of dicts with metadata
-        :return str: list of unified dicts with metadata
+        :return list: list of unified dicts with metadata
         """
         list_of_keys = self._get_list_of_keys(processed_meta_list)
         for k in list_of_keys:
@@ -826,7 +851,7 @@ class Geofetcher:
 
     def _find_genome(self, metadata_list):
         """
-        Create new genome table by joining few columns
+        Create new genome column by searching joining few columns
         """
         list_keys = self._get_list_of_keys(metadata_list)
         genome_keys = [
@@ -842,14 +867,14 @@ class Geofetcher:
             metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
         return metadata_list
 
-    def _write_gsm_annotation(self, gsm_metadata, file_annotation):
+    def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
         """
         Write metadata sheet out as an annotation file.
 
         :param Mapping gsm_metadata: the data to write, parsed from a file
             with metadata/annotation information
         :param str file_annotation: the path to the file to write
-        :return str: path to file written
+        :return str: path to the file
         """
         keys = list(list(gsm_metadata.values())[0].keys())
 
@@ -879,7 +904,7 @@ class Geofetcher:
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
         :type just_object: True, if you want to get peppy object without saving file
-        :return:
+        :return: none, or peppy project
         """
         if len(processed_metadata) == 0:
             self._LOGGER.info(
@@ -944,9 +969,9 @@ class Geofetcher:
         """
         Combining individual accessions into project-level annotations, and writing
         individual accession files (if requested)
-        :param name:
-        :param metadata_dict:
-        :param subannot_dict:
+        :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
+        :param metadata_dict: dictionary of sample annotations
+        :param subannot_dict: dictionary of subsample annotations
         :return: none or peppy object
         """
         try:
@@ -1031,7 +1056,15 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
             return proj
 
-    def _create_config_processed(self, file_annotation_path, proj_meta):
+    def _create_config_processed(
+        self, file_annotation_path: str, proj_meta: list
+    ) -> str:
+        """
+        completing and generating config file content
+        :param file_annotation_path: root to the annotation file
+        :param proj_meta: common metadata that has to added to config file
+        :return: generated, complete config file content
+        """
         geofetchdir = os.path.dirname(__file__)
         config_template = os.path.join(geofetchdir, CONFIG_PROCESSED_TEMPLATE_NAME)
         with open(config_template, "r") as template_file:
@@ -1054,6 +1087,13 @@ class Geofetcher:
         return template
 
     def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
+        """
+        completing and generating config file content for raw data
+        :param proj_meta: root to the annotation file
+        :param proj_root_sample: path to sampletable file
+        :param subanot_path_yaml: path to subannotation file
+        :return: generated, complete config file content
+        """
         meta_list_str = [
             f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
         ]
@@ -1077,7 +1117,13 @@ class Geofetcher:
             template = template.replace(placeholder, str(v))
         return template
 
-    def _check_sample_name_standard(self, metadata_dict):
+    def _check_sample_name_standard(self, metadata_dict: dict) -> dict:
+        """
+        Standardizing sample name and checking if it exists
+            (This function is used for raw data)
+        :param metadata_dict: metadata dict
+        :return: metadata dict with standardize sample names
+        """
         fixed_dict = {}
         for key_sample, value_sample in metadata_dict.items():
             fixed_dict[key_sample] = value_sample
@@ -1092,7 +1138,7 @@ class Geofetcher:
         return metadata_dict
 
     @staticmethod
-    def _sanitize_name(name_str: str):
+    def _sanitize_name(name_str: str) -> str:
         """
         Function that sanitizing strings. (Replace all odd characters)
         :param str name_str: Any string value that has to be sanitized.
@@ -1106,7 +1152,7 @@ class Geofetcher:
         return new_str
 
     @staticmethod
-    def _create_dot_yaml(file_path: str, yaml_path: str):
+    def _create_dot_yaml(file_path: str, yaml_path: str) -> NoReturn:
         """
         Function that creates .pep.yaml file that points to actual yaml file
         :param str file_path: Path to the .pep.yaml file that we want to create
@@ -1121,7 +1167,7 @@ class Geofetcher:
         max_len: int = 50,
         del_limit: int = 250,
         attr_limit_truncate: int = 500,
-    ):
+    ) -> tuple:
         """
         This function is separating information for the experiment from a sample
         :param list or dict meta_list: list of dictionaries of samples
@@ -1195,7 +1241,7 @@ class Geofetcher:
             meta_list = self._dict_to_list_convector(proj_list=meta_list)
         return meta_list, new_meta_project
 
-    def _standardize_colnames(self, meta_list: Union[list, dict]):
+    def _standardize_colnames(self, meta_list: Union[list, dict]) -> Union[list, dict]:
         """
         Standardize column names by lower-casing and underscore
         :param list meta_list: list of dictionaries of samples
@@ -1256,7 +1302,7 @@ class Geofetcher:
 
         return meta_list
 
-    def _download_SRA_file(self, run_name):
+    def _download_SRA_file(self, run_name: str):
         """
         Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
         more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
@@ -1285,7 +1331,7 @@ class Geofetcher:
             time.sleep(t * 2)
 
     @staticmethod
-    def _which(program):
+    def _which(program: str):
         """
         return str:  the path to a program to make sure it exists
         """
@@ -1305,7 +1351,7 @@ class Geofetcher:
                 if is_exe(exe_file):
                     return exe_file
 
-    def _sra_bam_conversion(self, bam_file, run_name):
+    def _sra_bam_conversion(self, bam_file: str, run_name: str) -> NoReturn:
         """
         Converting of SRA file to BAM file by using samtools function "sam-dump"
         :param str bam_file: path to BAM file that has to be created
@@ -1330,7 +1376,9 @@ class Geofetcher:
         run_subprocess(cmd, shell=True)
 
     @staticmethod
-    def _update_columns(metadata, experiment_name, sample_name, read_type):
+    def _update_columns(
+        metadata: dict, experiment_name: str, sample_name: str, read_type: str
+    ) -> dict:
         """
         Update the metadata associated with a particular experiment.
 
@@ -1346,7 +1394,7 @@ class Geofetcher:
             associated
         :param str read_type: usually "single" or "paired," an indication of the
             type of sequencing reads for this experiment
-        :return Mapping:
+        :return: updated metadata
         """
 
         exp = metadata[experiment_name]
@@ -1374,7 +1422,9 @@ class Geofetcher:
 
         return exp
 
-    def _sra_bam_conversion2(self, bam_file, run_name, picard_path=None):
+    def _sra_bam_conversion2(
+        self, bam_file: str, run_name: str, picard_path: str = None
+    ) -> NoReturn:
         """
         Converting of SRA file to BAM file by using fastq-dump
         (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
@@ -1413,7 +1463,9 @@ class Geofetcher:
             self._LOGGER.info(f"Conversion command: {cmd}")
             run_subprocess(cmd, shell=True)
 
-    def _write_subannotation(self, tabular_data, filepath, column_names=None):
+    def _write_subannotation(
+        self, tabular_data: dict, filepath: str, column_names: list = None
+    ):
         """
         Writes one or more tables to a given CSV filepath.
 
@@ -1440,7 +1492,9 @@ class Geofetcher:
                     writer.writerows(values)
         return fp
 
-    def _download_file(self, file_url, data_folder, new_name=None, sleep_after=0.5):
+    def _download_file(
+        self, file_url: str, data_folder: str, new_name: str = None, sleep_after=0.5
+    ) -> NoReturn:
         """
         Given an url for a file, downloading to specified folder
         :param str file_url: the URL of the file to download
@@ -1470,12 +1524,12 @@ class Geofetcher:
 
     def _get_list_of_processed_files(
         self, file_gse_content: list, file_gsm_content: list
-    ):
+    ) -> tuple:
         """
         Given a paths to GSE and GSM metafile create a list of dicts of metadata of processed files
         :param list file_gse_content: list of lines of gse metafile
         :param list file_gsm_content: list of lines of gse metafile
-        :return list: list of metadata of processed files
+        :return: tuple[list of metadata of processed sample files and series files]
         """
         tar_re = re.compile(r".*\.tar$")
         gse_numb = None
@@ -1640,7 +1694,7 @@ class Geofetcher:
         return meta_processed_samples, meta_processed_series
 
     @staticmethod
-    def _check_file_existance(meta_processed_sample):
+    def _check_file_existance(meta_processed_sample: list):
         """
         Checking if last element of the list has files. If list of files is empty deleting it
         """
@@ -1769,18 +1823,13 @@ class Geofetcher:
         line_value = all_line.split("= ")[-1]
         return line_value.split(": ")[-1].rstrip("\n")
 
-    def _download_processed_file(self, file_url, data_folder):
+    def _download_processed_file(self, file_url: str, data_folder: str) -> bool:
         """
         Given a url for a file, download it, and extract anything passing the filter.
         :param str file_url: the URL of the file to download
         :param str data_folder: the local folder where the file should be saved
         :return bool: True if the file is downloaded successfully; false if it does
         not pass filters and is not downloaded.
-
-        # :param re.Pattern tar_re: a regulator expression (produced from re.compile)
-        #    that pulls out filenames with .tar in them --- deleted
-        # :param re.Pattern filter_re: a regular expression (produced from
-        #    re.compile) to filter filenames of interest.
         """
 
         if not self.geo_folder:
@@ -2027,7 +2076,20 @@ class Geofetcher:
         gsm_metadata = self._expand_metadata_list_in_dict(gsm_metadata)
         return gsm_metadata
 
-    def _write(self, f_var_value, content, msg_pre=None, omit_newline=False):
+    def _write(
+        self,
+        f_var_value: str,
+        content: str,
+        msg_pre: str = None,
+        omit_newline: bool = False,
+    ):
+        """
+        Save new file (used for config file)
+        :param f_var_value: path to the file
+        :param content: content of the file
+        :param msg_pre: msg that have to be printed
+        :param omit_newline: omit new line
+        """
         fp = expandpath(f_var_value)
         self._LOGGER.info((msg_pre or "") + fp)
         with open(fp, "w") as f:
@@ -2037,6 +2099,9 @@ class Geofetcher:
 
 
 def _parse_cmdl(cmdl):
+    """
+    parser
+    """
     parser = argparse.ArgumentParser(
         description="Automatic GEO and SRA data downloader"
     )

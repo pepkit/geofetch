@@ -1881,7 +1881,7 @@ class Geofetcher:
                     f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
                     f"Error: {err}  \033[0m"
                 )
-                return False
+                return []
 
     def _get_SRP_list(self, srp_number: str) -> list:
         """

@@ -215,7 +215,7 @@ class Geofetcher:
                     )
                     project_dict.update(self.fetch_all(input=acc_GSE, name=acc_GSE))
             else:
-                project_dict.update(self.fetch_all(input=input, name="project"))
+                project_dict.update(self.fetch_all(input=input, name=""))
 
         # raw data:
         else:
@@ -234,15 +234,17 @@ class Geofetcher:
 
             else:
                 ser_dict = self.fetch_all(input=input)
-                project_dict["raw_samples"] = ser_dict
+                project_dict["raw"] = ser_dict
 
         return project_dict
 
     def fetch_all(self, input: str, name: str = None):
         """Main script driver/workflow"""
 
-        if name:
+        if name is not None:
             self.project_name = name
+            print("------------------------")
+            print(self.project_name)
         else:
             try:
                 self.project_name = os.path.splitext(os.path.basename(input))[0]
@@ -413,7 +415,7 @@ class Geofetcher:
         if self.processed:
             if not self.acc_anno:
                 return_value = self._generate_processed_meta(
-                    name="PEP_processed",
+                    name=self.project_name,
                     meta_processed_samples=processed_metadata_samples,
                     meta_processed_series=processed_metadata_series,
                 )

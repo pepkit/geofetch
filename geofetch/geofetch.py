@@ -6,9 +6,9 @@ import argparse
 import copy
 import csv
 import os
-import re
+# import re
 import sys
-from string import punctuation
+# from string import punctuation
 import requests
 import xmltodict
 from rich.progress import track
@@ -143,7 +143,9 @@ class Geofetcher:
             self.metadata_expanded = os.path.join(
                 self.metadata_expanded, self.project_name
             )
-            self.metadata_root_full = os.path.join(self.metadata_root_full, self.project_name)
+            self.metadata_root_full = os.path.join(
+                self.metadata_root_full, self.project_name
+            )
 
         if filter_size is not None:
             try:
@@ -379,16 +381,18 @@ class Geofetcher:
                     for file_key in gsm_multi_table.keys():
                         for run in gsm_multi_table[file_key]:
                             # download raw data
-                            self._LOGGER.info(
-                                f"Getting SRR: {run[2]}  in ({acc_GSE})"
-                            )
+                            self._LOGGER.info(f"Getting SRR: {run[2]}  in ({acc_GSE})")
                             self._download_raw_data(run[2])
                 else:
                     self._LOGGER.info(f"Dry run, no data will be downloaded")
 
                 # save one project
                 if self.acc_anno and nkeys > 1:
-                    self._write_raw_annotation_new(name=acc_GSE, metadata_dict=gsm_metadata, subannot_dict=gsm_multi_table)
+                    self._write_raw_annotation_new(
+                        name=acc_GSE,
+                        metadata_dict=gsm_metadata,
+                        subannot_dict=gsm_multi_table,
+                    )
 
                 else:
                     metadata_dict_combined.update(gsm_metadata)
@@ -416,11 +420,15 @@ class Geofetcher:
 
         # saving PEPs for raw data
         else:
-            return_value = self._write_raw_annotation_new("PEP", metadata_dict_combined, subannotation_dict_combined)
+            return_value = self._write_raw_annotation_new(
+                "PEP", metadata_dict_combined, subannotation_dict_combined
+            )
             if self.just_object:
                 return return_value
 
-    def _process_sra_meta(self, srp_list_result=None, gsm_enter_dict=None, gsm_metadata=None):
+    def _process_sra_meta(
+        self, srp_list_result=None, gsm_enter_dict=None, gsm_metadata=None
+    ):
         gsm_multi_table = {}
         for line in srp_list_result:
 
@@ -746,7 +754,9 @@ class Geofetcher:
                         else:
                             del metadata_list[n_elem][dict_key]
                     except KeyError as err:
-                        self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}, continuing ...")
+                        self._LOGGER.warning(
+                            f"expand_metadata_list: Key Error: {err}, continuing ..."
+                        )
 
                 return metadata_list
             else:
@@ -832,9 +842,7 @@ class Geofetcher:
             metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
         return metadata_list
 
-    def _write_gsm_annotation(
-        self, gsm_metadata, file_annotation
-    ):
+    def _write_gsm_annotation(self, gsm_metadata, file_annotation):
         """
         Write metadata sheet out as an annotation file.
 
@@ -845,14 +853,18 @@ class Geofetcher:
         """
         keys = list(list(gsm_metadata.values())[0].keys())
 
-        self._LOGGER.info(f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m")
+        self._LOGGER.info(
+            f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m"
+        )
         fp = expandpath(file_annotation)
         with open(fp, "w") as of:
             w = csv.DictWriter(of, keys, extrasaction="ignore")
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
-        self._LOGGER.info(f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m")
+        self._LOGGER.info(
+            f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m"
+        )
         self._LOGGER.info("\033[92mFile has been saved successfully\033[0m")
         return fp
 
@@ -926,7 +938,9 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(pd_value, config=conf)
             return proj
 
-    def _write_raw_annotation_new(self, name, metadata_dict: dict, subannot_dict: dict = None) -> Union[None, peppy.Project]:
+    def _write_raw_annotation_new(
+        self, name, metadata_dict: dict, subannot_dict: dict = None
+    ) -> Union[None, peppy.Project]:
         """
         Combining individual accessions into project-level annotations, and writing
         individual accession files (if requested)
@@ -954,8 +968,12 @@ class Geofetcher:
         if not os.path.exists(proj_root):
             os.makedirs(proj_root)
 
-        proj_root_sample = os.path.join(proj_root, f"{name}{FILE_RAW_NAME_SAMPLE_PATTERN}")
-        proj_root_subsample = os.path.join(proj_root, f"{name}{FILE_RAW_NAME_SUBSAMPLE_PATTERN}")
+        proj_root_sample = os.path.join(
+            proj_root, f"{name}{FILE_RAW_NAME_SAMPLE_PATTERN}"
+        )
+        proj_root_subsample = os.path.join(
+            proj_root, f"{name}{FILE_RAW_NAME_SUBSAMPLE_PATTERN}"
+        )
         yaml_name = f"{name}.yaml"
         proj_root_yaml = os.path.join(proj_root, yaml_name)
         dot_yaml_path = os.path.join(proj_root, ".pep.yaml")
@@ -977,7 +995,9 @@ class Geofetcher:
         else:
             subanot_path_yaml = f""
 
-        template = self._create_config_raw(proj_meta, proj_root_sample, subanot_path_yaml)
+        template = self._create_config_raw(
+            proj_meta, proj_root_sample, subanot_path_yaml
+        )
 
         if not self.just_object:
             self._write_gsm_annotation(metadata_dict, proj_root_sample)
@@ -996,9 +1016,7 @@ class Geofetcher:
             # open list:
             new_sub_list = []
             for sub_key in subannot_dict.keys():
-                new_sub_list.extend(
-                    [col_item for col_item in subannot_dict[sub_key]]
-                )
+                new_sub_list.extend([col_item for col_item in subannot_dict[sub_key]])
 
             sub_meta_df = pd.DataFrame(
                 new_sub_list, columns=["sample_name", "SRX", "SRR"]
@@ -1063,10 +1081,7 @@ class Geofetcher:
         fixed_dict = {}
         for key_sample, value_sample in metadata_dict.items():
             fixed_dict[key_sample] = value_sample
-            if (
-                    value_sample["sample_name"] == ""
-                    or value_sample["sample_name"] is None
-            ):
+            if value_sample["sample_name"] == "" or value_sample["sample_name"] is None:
                 fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
             # sanitize names
             fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
@@ -1824,7 +1839,7 @@ class Geofetcher:
             # could still be an SRX linked to the (each) GSM.
             if len(gsm_metadata) == 1:
                 try:
-                    acc_SRP = gsm_metadata.keys()[0]
+                    acc_SRP = list(gsm_metadata.keys())[0]
                     self._LOGGER.warning(
                         "But the GSM has an SRX number; instead of an "
                         "SRP, using SRX identifier for this sample: " + acc_SRP
@@ -2301,7 +2316,6 @@ def main():
     args_dict = vars(args)
     args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
-
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+import peppy
+
 import geofetch
 from geofetch import parse_accessions, Geofetcher, utils
 import os
@@ -62,7 +64,7 @@ class TestAccParser:
 
 class TestListProcessedMetaFiles:
     """
-    Testing
+    Testing downloading and saving process soft files
     """
 
     @pytest.fixture(scope="function")
@@ -107,22 +109,50 @@ class TestListProcessedMetaFiles:
         assert "GSE138657_GSE.soft" in downloaded_meta_files
 
     def test_creating_sample_pep_files(self, initiate_geofetcher):
-        initiate_geofetcher.fetch_all("GSE138657")
+        gse_numb = "GSE138657"
+        initiate_geofetcher.fetch_all(gse_numb)
         downloaded_meta_files = list(
-            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_processed_samples")
+            os.walk(initiate_geofetcher.metadata_expanded + f"/{gse_numb}_samples")
         )[0][2]
 
-        assert "PEP_processed_samples.csv" in downloaded_meta_files
-        assert "PEP_processed_samples.yaml" in downloaded_meta_files
+        assert f"{gse_numb}_samples.csv" in downloaded_meta_files
+        assert f"{gse_numb}_samples.yaml" in downloaded_meta_files
 
     def test_creating_series_pep_files(self, initiate_geofetcher):
-        initiate_geofetcher.fetch_all("GSE199313")
+        gse_numb = "GSE199313"
+        initiate_geofetcher.fetch_all(gse_numb)
         downloaded_meta_files = list(
-            os.walk(initiate_geofetcher.metadata_expanded + "/PEP_processed_series")
+            os.walk(initiate_geofetcher.metadata_expanded + f"/{gse_numb}_series")
         )[0][2]
 
-        assert "PEP_processed_series.csv" in downloaded_meta_files
-        assert "PEP_processed_series.yaml" in downloaded_meta_files
+        assert f"{gse_numb}_series.csv" in downloaded_meta_files
+        assert f"{gse_numb}_series.yaml" in downloaded_meta_files
+
+
+class TestListRawMetaFiles:
+    """
+    Testing downloading and saving raw files and metadata
+    """
+    @pytest.fixture(scope="function")
+    def initiate_geofetcher(self, tmpdir):
+        instance = Geofetcher(
+            just_metadata=True,
+            processed=False,
+            name="test",
+            metadata_folder=tmpdir,
+            discard_soft=True,
+        )
+        yield instance
+
+    def test_creating_series_pep_files(self, initiate_geofetcher):
+        initiate_geofetcher.fetch_all("GSE138656")
+        downloaded_meta_files = list(
+            os.walk(initiate_geofetcher.metadata_expanded + f"/PEP")
+        )[0][2]
+
+        assert "PEP_raw.csv" in downloaded_meta_files
+        assert "PEP.yaml" in downloaded_meta_files
+        assert "PEP_raw_subtable.csv" in downloaded_meta_files
 
 
 class TestDownloadingProcFiles:
@@ -165,7 +195,7 @@ class TestFilters:
             processed=True,
             name="test",
             metadata_folder=tmpdir,
-            filter="\.Bed.gz$",
+            filter=r"\.Bed.gz$",
             filter_size="2MB",
         )
         yield instance
@@ -263,6 +293,57 @@ class TestFilters:
         )
         assert samp == result_sample
         assert proj == result_proj
+
+class TestPeppyInitProcessed:
+    """
+    Testing downloading and saving raw files and metadata
+    """
+    @pytest.fixture(scope="function")
+    def initiate_geofetcher(self, tmpdir):
+        instance = Geofetcher(
+            just_metadata=True,
+            processed=True,
+            name="test",
+            metadata_folder=tmpdir,
+            discard_soft=True,
+            data_source="all"
+        )
+        yield instance
+
+    def test_creating_processed_peppy(self, initiate_geofetcher):
+        p_prop = initiate_geofetcher.get_project("GSE190287")
+        assert isinstance(p_prop['_samples'], peppy.Project)
+        assert isinstance(p_prop['_series'], peppy.Project)
+
+    def test_number_of_samples(self, initiate_geofetcher):
+        p_prop = initiate_geofetcher.get_project("GSE190287")
+        assert len(p_prop['_samples'].samples) == 8 #it has 11 files but 8 samples
+        assert len(p_prop['_series'].samples) == 2
+
+class TestPeppyInitRaw:
+    """
+    Testing downloading and saving raw files and metadata
+    """
+
+    @pytest.fixture(scope="function")
+    def initiate_geofetcher(self, tmpdir):
+        instance = Geofetcher(
+            just_metadata=True,
+            processed=False,
+            name="test",
+            metadata_folder=tmpdir,
+            discard_soft=True,
+        )
+        yield instance
+
+    def test_creating_processed_peppy(self, initiate_geofetcher):
+        p_prop = initiate_geofetcher.get_project("GSE189141")
+        assert isinstance(p_prop['raw'], peppy.Project)
+
+    def test_number_of_samples(self, initiate_geofetcher):
+        p_prop = initiate_geofetcher.get_project("GSE189141")
+        a = ([d['sample_name'] for d in p_prop['raw'].samples])
+        assert len(p_prop['raw'].samples) == 16 #it has 16 samples
 
 
 def test_clean_func(tmpdir):

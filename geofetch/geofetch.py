@@ -2418,11 +2418,6 @@ def _parse_cmdl(cmdl):
         action="store_true",
         help="Use just the keys defined in this module when writing out metadata.",
     )
-    raw_group.add_argument(
-        "--bam-conversion",
-        action="store_true",
-        help="specify this argument to convert bam files",
-    )
 
     logmuse.add_logging_options(parser)
     return parser.parse_args(cmdl)

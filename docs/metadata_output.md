@@ -1,12 +1,17 @@
 # Metadata output
 
-For each GSE input accession (ACC), `geofetch` produces:
+Geofetch produces [PEPs](http://pep.databio.org/) for either processed or raw data (including metadata from SRA).
+
+# Outdated: 
+
+For each GSE input accession (ACC), `geofetch` produces (if discard-soft is not set):
 
 - GSE_ACC####.soft a SOFT file (annotating the experiment itself)
 - GSM_ACC####.soft a SOFT file (annotating the samples within the experiment)
 - SRA_ACC####.soft a CSV file (annotating each SRA Run, retrieved from GSE->GSM->SRA)
 
-In addition, a single combined metadata file (.csv) for the whole input,
+For raw data:
+a single combined metadata file (.csv) will be created for the whole input,
 including SRA and GSM annotations for each sample. Here, "combined" means that it will have
 rows for every sample in every GSE included in your input. So if you just gave a single GSE,
 then the combined file is the same as the GSE file. If any "merged" samples exist

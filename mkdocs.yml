@@ -16,6 +16,7 @@ nav:
   - How-to Guides:
     - Specifying samples to download: file-specification.md
     - Set SRA data download location: howto-location.md
+    - Download list of GSEs: how_to_get_gse.md
   - Reference:
     - Metadata output: metadata_output.md
     - Usage: usage.md

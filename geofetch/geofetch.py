@@ -41,6 +41,64 @@ import pandas as pd
 class Geofetcher:
     """
     Class to download or get projects, metadata, data from GEO and SRA
+
+    :param input:
+    :param name: Specify a project name. Defaults to GSE number or name of accessions file name
+    :param metadata_root:  Specify a parent folder location to store metadata.
+            The project name will be added as a subfolder [Default: $SRAMETA:]
+    :param metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
+            Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)]
+    :param just_metadata: If set, don't actually run downloads, just create metadata
+    :param refresh_metadata: If set, re-download metadata even if it exists.
+    :param config_template: Project config yaml file template.
+    :param pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
+            These will be added to the project config file to make it immediately compatible with looper.
+            [Default: null]
+    :param pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
+            These will be added to the project config file to make it immediately compatible with looper.
+            [Default: null]
+    :param acc_anno:  Produce annotation sheets for each accession.
+            Project combined PEP for the whole project won't be produced.
+    :param discard_soft: Create project without downloading soft files on the disc
+    :param add_dotfile: Add .pep.yaml file that points .yaml PEP file
+    :param disable_progressbar: Set true to disable progressbar
+
+    :param const_limit_project: Optional: Limit of the number of the constant sample characters
+            that should not be in project yaml. [Default: 50]
+    :param const_limit_discard: Optional: Limit of the number of the constant sample characters
+            that should not be discarded [Default: 250]
+    :param attr_limit_truncate: Optional: Limit of the number of sample characters.
+            Any attribute with more than X characters will truncate to the first X, where X is a number of characters
+            [Default: 500]
+
+    :param processed: Download processed data [Default: download raw data].
+    :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
+            which may be attached to the collective series entity, or to individual samples. Allowable values are:
+            samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
+    :param filter: Filter regex for processed filenames [Default: None].Ignored unless 'processed' flag is set.
+    :param filter_size: Filter size for processed files that are stored as sample repository [Default: None].
+            Works only for sample data. Supported input formats : 12B, 12KB, 12MB, 12GB.
+            Ignored unless 'processed' flag is set.
+    :param geo_folder: Specify a location to store processed GEO files.
+            Ignored unless 'processed' flag is set.[Default: $GEODATA:]
+
+    :param split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
+            Runs will have a single entry in the annotation table, with each run as a separate row in the
+            subannotation table. This setting instead treats each run as a separate sample [Works with raw data]
+    :param bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
+            corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data]
+    :param fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
+            fastq files already exist. [Default: $SRAFQ:] [Works with raw data]
+    :param use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data]
+    :param sra_folder: [Doesn't work ]Optional: Specify a location to store sra files
+            [Default: $SRARAW:" + safe_echo("SRARAW") + ]
+    :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
+    :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
+            [Default: $PICARD:" + safe_echo("PICARD") + "]  [Works with raw data]
+
+    :param skip: Skip some accessions. [Default: no skip].
+    :param opts: opts object [Optional]
+    :param kwargs: other values
     """
 
     def __init__(
@@ -194,7 +252,6 @@ class Geofetcher:
         """
         self.just_metadata = just_metadata
         self.just_object = True
-        self.disable_progressbar = True
         self.discard_soft = discard_soft
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
@@ -205,6 +262,7 @@ class Geofetcher:
         # processed data:
         if self.processed:
             if self.acc_anno:
+                self.disable_progressbar = True
                 nkeys = len(acc_GSE_list.keys())
                 ncount = 0
                 self.acc_anno = False
@@ -221,6 +279,7 @@ class Geofetcher:
         else:
             # Not sure about below code...
             if self.acc_anno:
+                self.disable_progressbar = True
                 self.acc_anno = False
                 nkeys = len(acc_GSE_list.keys())
                 ncount = 0
@@ -236,14 +295,18 @@ class Geofetcher:
                 ser_dict = self.fetch_all(input=input)
                 project_dict["raw"] = ser_dict
 
-        return project_dict
+        new_pr_dict = {}
+        for pr_key in project_dict.keys():
+            if project_dict[pr_key]:
+                new_pr_dict[pr_key] = project_dict[pr_key]
+
+        return new_pr_dict
 
     def fetch_all(self, input: str, name: str = None):
         """Main script driver/workflow"""
 
         if name is not None:
             self.project_name = name
-            print("------------------------")
             print(self.project_name)
         else:
             try:
@@ -284,7 +347,7 @@ class Geofetcher:
             elif ncount == self.skip + 1:
                 self._LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
 
-            if not self.just_object:
+            if not self.just_object or not self.acc_anno:
                 self._LOGGER.info(
                     f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                 )
@@ -2354,6 +2417,11 @@ def _parse_cmdl(cmdl):
         "--use-key-subset",
         action="store_true",
         help="Use just the keys defined in this module when writing out metadata.",
+    )
+    raw_group.add_argument(
+        "--bam-conversion",
+        action="store_true",
+        help="specify this argument to convert bam files",
     )
 
     logmuse.add_logging_options(parser)

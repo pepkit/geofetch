@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.11.0] -- 2022-09-06
-- Added initialization of peppy Project without saving any files functionality
+- Added initialization of peppy Project without saving any files
 - Added progress bar
 - Fixed None issue in config file
 - Switched way of saving soft files to request library

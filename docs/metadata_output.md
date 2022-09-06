@@ -1,29 +1,46 @@
 # Metadata output
 
 Geofetch produces [PEPs](http://pep.databio.org/) for either processed or raw data (including metadata from SRA).
+A project can be created either for a single combined (whole) input or for each project separately. 
+(if `--acc-anno` is set). "combined" means that it will have rows for every sample in every GSE included 
+in your input. So if you just gave a single GSE, then the combined file is the same as the GSE file.
 
-# Outdated: 
+**For raw data**: a metadata file will be created including SRA and GSM annotation.
 
-For each GSE input accession (ACC), `geofetch` produces (if discard-soft is not set):
+**For processed data**: a metadata file will be created just for GSE and GSM annotation. User
+can choose which data should he download. There are 3 downloading options for processed: samples, series and both.
+
+### Single PEP will contain:
+- project_name.csv - all metadata for sample processed data
+- project_name_subannotation.csv (*just for raw data*) - for *merged* samples
+(samples for which there are multiple SRR Runs for a single SRX `Experiment`)
+- project_name.yaml - project config file that stores all project information + common samples metadata
+
+Storing common metadata in project file is an efficient way to reduce project size and complexity of csv files. 
+To specify and manage common metadata (where and how it should be stored) you can use next arguments: 
+`--const-limit-project`, `--const-limit-discard`, `--attr-limit-truncate`
+
+### Saving actual data:
+Actual data will be saved if `--just-metadata` argument is not set. User should specify path to the folder where this
+data should be downloaded.
+
+----
+Additionally, for each GSE input accession (ACC), `geofetch` produces (if discard-soft is not set):
 
 - GSE_ACC####.soft a SOFT file (annotating the experiment itself)
 - GSM_ACC####.soft a SOFT file (annotating the samples within the experiment)
 - SRA_ACC####.soft a CSV file (annotating each SRA Run, retrieved from GSE->GSM->SRA)
 
-For raw data:
-a single combined metadata file (.csv) will be created for the whole input,
-including SRA and GSM annotations for each sample. Here, "combined" means that it will have
-rows for every sample in every GSE included in your input. So if you just gave a single GSE,
-then the combined file is the same as the GSE file. If any "merged" samples exist
-(samples for which there are multiple SRR Runs for a single SRX `Experiment`), the
-script will also produce a merge table CSV file with the relationships between
-SRX and SRR.
+____
+# geofetch - Geofetcher using Python
 
-The way this works: Starting from a GSE, select a subset of samples (GSM Accessions) provided, 
-and then obtain the SRX identifier for each of these from GEO. Now, query SRA for these SRX 
-accessions and get any associated SRR accessions. Finally, download all of these SRR data files.
+user can use geofetch in Python without saving any files. All the geofetch projects will be automatically downloaded
+as peppy Project. It helps save time and processing work.
 
-### The most important metadata in pep format will be stored in
-- NAME_annotation_sample_processed.csv - all metadata for sample processed data
-- NAME_annotation.csv - all metadata for series processed data
-- NAME_annotation_series_processed.csv file - all metadata for raw data
+THe output in this case will be dictionary of projects:
+```python
+{'key1': (some_project),
+ 'key2': (second_project)}
+```
+
+More information you can find in tutorial files.

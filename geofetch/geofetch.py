@@ -240,7 +240,7 @@ class Geofetcher:
 
         self.just_object = False
 
-    def get_project(
+    def get_projects(
         self, input: str, just_metadata: bool = True, discard_soft: bool = True
     ) -> dict:
         """
@@ -273,7 +273,11 @@ class Geofetcher:
                     )
                     project_dict.update(self.fetch_all(input=acc_GSE, name=acc_GSE))
             else:
-                project_dict.update(self.fetch_all(input=input, name=""))
+                try:
+                    project_n = os.path.splitext(os.path.basename(input))[0]
+                except TypeError:
+                    project_n = input
+                project_dict.update(self.fetch_all(input=input, name=project_n))
 
         # raw data:
         else:
@@ -292,8 +296,12 @@ class Geofetcher:
                     project_dict[acc_GSE + "_raw"] = project
 
             else:
+                try:
+                    project_n = os.path.splitext(os.path.basename(input))[0]
+                except TypeError:
+                    project_n = input
                 ser_dict = self.fetch_all(input=input)
-                project_dict["raw"] = ser_dict
+                project_dict[project_n + "_raw"] = ser_dict
 
         new_pr_dict = {}
         for pr_key in project_dict.keys():
@@ -307,7 +315,6 @@ class Geofetcher:
 
         if name is not None:
             self.project_name = name
-            print(self.project_name)
         else:
             try:
                 self.project_name = os.path.splitext(os.path.basename(input))[0]

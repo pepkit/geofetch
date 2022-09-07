@@ -314,12 +314,12 @@ class TestPeppyInitProcessed:
         yield instance
 
     def test_creating_processed_peppy(self, initiate_geofetcher):
-        p_prop = initiate_geofetcher.get_project("GSE190287")
+        p_prop = initiate_geofetcher.get_projects("GSE190287")
         assert isinstance(p_prop["_samples"], peppy.Project)
         assert isinstance(p_prop["_series"], peppy.Project)
 
     def test_number_of_samples(self, initiate_geofetcher):
-        p_prop = initiate_geofetcher.get_project("GSE190287")
+        p_prop = initiate_geofetcher.get_projects("GSE190287")
         assert len(p_prop["_samples"].samples) == 8  # it has 11 files but 8 samples
         assert len(p_prop["_series"].samples) == 2
 
@@ -341,11 +341,11 @@ class TestPeppyInitRaw:
         yield instance
 
     def test_creating_processed_peppy(self, initiate_geofetcher):
-        p_prop = initiate_geofetcher.get_project("GSE189141")
+        p_prop = initiate_geofetcher.get_projects("GSE189141")
         assert isinstance(p_prop["raw"], peppy.Project)
 
     def test_number_of_samples(self, initiate_geofetcher):
-        p_prop = initiate_geofetcher.get_project("GSE189141")
+        p_prop = initiate_geofetcher.get_projects("GSE189141")
         a = [d["sample_name"] for d in p_prop["raw"].samples]
         assert len(p_prop["raw"].samples) == 16  # it has 16 samples
 

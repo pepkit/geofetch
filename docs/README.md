@@ -46,6 +46,7 @@ geofetch -i GSE95654 --processed --just-metadata
 
 ### New geofetch 0.11.0 feature:
 - Now geofetch is available as Python package to straight initiate [peppy](http://peppy.databio.org/) projects without downloading any soft files.
+
 ```python
 from geofetch import Geofetcher
 
@@ -53,7 +54,7 @@ from geofetch import Geofetcher
 geof = Geofetcher(processed=True, acc_anno=True, discard_soft=True)
 
 # get projects by providing as input GSE or file with GSEs
-geof.get_project("GSE160204")
+geof.get_projects("GSE160204")
 ```
 
 For more details, check out the [usage](usage.md) reference, [installation instructions](install.md), or head on over to the [tutorial for raw data](raw-data-downloading.md) and [tutorial for processed data](processed-data-downloading.md) for a detailed walkthrough.

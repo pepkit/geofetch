@@ -13,10 +13,10 @@ nav:
     - Tutorial for processed data: processed-data-downloading.md
     - Tutorial for raw data: raw-data-downloading.md
     - Python geofetch tutorial: python-usage.md
+    - Use GSE Finder: gse_finder.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md
     - Set SRA data download location: howto-location.md
-    - Download list of GSEs: how_to_get_gse.md
   - Reference:
     - Metadata output: metadata_output.md
     - Usage: usage.md

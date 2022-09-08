@@ -18,5 +18,5 @@ Key geofetch features:
 - Filters type and size of processed files (from GEO) before downloading them
 - Easy to use
 - Fast execution time
-- Available GSE search tool
+- Provides GSE search tool
 - Available both as command-line tool and Python execution Package

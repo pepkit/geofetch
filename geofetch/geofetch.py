@@ -446,17 +446,16 @@ class Geofetcher:
                     pass
                 else:
                     self._LOGGER.info("Parsing SRA file to download SRR records")
-                gsm_multi_table = self._process_sra_meta(
+                gsm_multi_table, gsm_metadata, runs = self._process_sra_meta(
                     srp_list_result, gsm_enter_dict, gsm_metadata
                 )
 
                 # download raw data:
                 if not self.just_metadata:
-                    for file_key in gsm_multi_table.keys():
-                        for run in gsm_multi_table[file_key]:
-                            # download raw data
-                            self._LOGGER.info(f"Getting SRR: {run[2]}  in ({acc_GSE})")
-                            self._download_raw_data(run[2])
+                    for run in runs:
+                        # download raw data
+                        self._LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
+                        self._download_raw_data(run)
                 else:
                     self._LOGGER.info(f"Dry run, no data will be downloaded")
 
@@ -514,6 +513,7 @@ class Geofetcher:
         :return: srp multitable
         """
         gsm_multi_table = {}
+        runs = []
         for line in srp_list_result:
 
             # Only download if it's in the include list:
@@ -582,8 +582,9 @@ class Geofetcher:
             else:
                 # The first SRR for this SRX is added to GSM metadata
                 gsm_metadata[experiment]["SRR"] = run_name
+            runs.append(run_name)
 
-        return gsm_multi_table
+        return gsm_multi_table, gsm_metadata, runs
 
     def _download_raw_data(self, run_name):
         bam_file = (

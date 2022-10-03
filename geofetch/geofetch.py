@@ -2176,7 +2176,18 @@ def _parse_cmdl(cmdl):
     parser
     """
     parser = argparse.ArgumentParser(
-        description="Automatic GEO and SRA data downloader"
+        description="Automatic GEO and SRA data downloader",
+        usage="""geofetch [<args>]
+        
+The example how to use geofetch (to download GSE573030 just metadata):
+    geofetch -i GSE67303 -m `pwd` --just-metadata
+    
+To download all processed data of GSE57303:
+    geofetch -i GSE67303 --processed --geo-folder `pwd` -m `pwd`
+    
+* where `pwd` is a current directory
+
+"""
     )
 
     processed_group = parser.add_argument_group("processed")

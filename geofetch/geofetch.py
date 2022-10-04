@@ -2187,7 +2187,7 @@ To download all processed data of GSE57303:
     
 * where `pwd` is a current directory
 
-"""
+""",
     )
 
     processed_group = parser.add_argument_group("processed")

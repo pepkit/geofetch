@@ -311,16 +311,19 @@ def clean_soft_files(meta_dir: str):
     and creating PEPs
     :param str meta_dir: Path to the metadata files
     """
-    dir_files = os.listdir(meta_dir)
+    try:
+        dir_files = os.listdir(meta_dir)
 
-    for item in dir_files:
-        if (
-            item.endswith(".soft")
-            or item.endswith("_file_list.txt")
-            or item.endswith("SRA.csv")
-            or item.endswith("SRA_filt.csv")
-        ):
-            os.remove(os.path.join(meta_dir, item))
+        for item in dir_files:
+            if (
+                item.endswith(".soft")
+                or item.endswith("_file_list.txt")
+                or item.endswith("SRA.csv")
+                or item.endswith("SRA_filt.csv")
+            ):
+                os.remove(os.path.join(meta_dir, item))
+    except FileNotFoundError:
+        _LOGGER.debug("Can't clean soft files...folder doesn't exist")
 
 
 def run_subprocess(*args, **kwargs):

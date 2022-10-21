@@ -1,11 +1,15 @@
 # Changelog
 
-## [0.11.0] -- 2022-XX-XX
-- Added initialization of peppy Project without saving any files functionality
+## [0.11.0] -- 2022-09-06
+- Added initialization of peppy Project without saving any files
+- Added Finder (searching GSE tool)
 - Added progress bar
 - Fixed None issue in config file
-- Changed way of saving soft files to request library
-- 
+- Switched way of saving soft files to request library
+- Fixed saving raw peps bug
+- Fixed config errors
+- Improved documentation
+- Refactored code
 
 ## [0.10.1] -- 2022-08-04
 - Updated metadata fetching requests from SRA database

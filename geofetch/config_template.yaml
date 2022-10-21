@@ -5,13 +5,11 @@ pep_version: 2.1.0
 sample_table: {annotation}
 {subannotation}
 
-looper:
-  output_dir: {project_name}
-  pipeline_interfaces: {pipeline_interfaces}
-
 sample_modifiers:
   append:
+    # Project metadata:
     {additional_columns}
+    # End of project metadata
     SRR_files: SRA
     {pipeline_samples}
   derive:

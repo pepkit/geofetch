@@ -7,7 +7,9 @@ sample_table: {sample_table}
 sample_modifiers:
   append:
     output_file_path: FILES
+    # Project metadata:
     {additional_columns}
+    # End of project metadata
     {pipeline_samples}
   derive:
     attributes: [output_file_path]

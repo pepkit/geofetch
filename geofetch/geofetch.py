@@ -403,8 +403,11 @@ class Geofetcher:
                 (
                     meta_processed_samples,
                     meta_processed_series,
-                ) = self.fetchone_processed(gse_file_content=file_gse_content, gsm_file_content=file_gsm_content,
-                                            gsm_filter_list=gsm_enter_dict)
+                ) = self.fetchone_processed(
+                    gse_file_content=file_gse_content,
+                    gsm_file_content=file_gsm_content,
+                    gsm_filter_list=gsm_enter_dict,
+                )
 
                 # download processed files:
                 if not self.just_metadata:

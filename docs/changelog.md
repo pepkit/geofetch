@@ -7,6 +7,8 @@
 - Fixed None issue in config file
 - Switched way of saving soft files to request library
 - Fixed saving raw peps bug
+- Fixed config errors
+- Improved documentation
 - Refactored code
 
 ## [0.10.1] -- 2022-08-04

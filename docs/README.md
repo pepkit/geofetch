@@ -55,7 +55,7 @@ geofetch -i GSE95654 --processed --just-metadata
 
 ---
 ### New features available in geofetch 0.11.0 :
-1) Now geofetch is available as Python package. Geofetch can initialize [peppy](http://peppy.databio.org/) projects without downloading any soft files. Example:
+1) Now geofetch is available as Python API package. Geofetch can initialize [peppy](http://peppy.databio.org/) projects without downloading any soft files. Example:
 
 ```python
 from geofetch import Geofetcher

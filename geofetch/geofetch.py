@@ -90,7 +90,7 @@ class Geofetcher:
     :param fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
             fastq files already exist. [Default: $SRAFQ:] [Works with raw data]
     :param use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data]
-    :param sra_folder: [Doesn't work ]Optional: Specify a location to store sra files
+    :param sra_folder: Optional: Specify a location to store sra files
             [Default: $SRARAW:" + safe_echo("SRARAW") + ]
     :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
     :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
@@ -403,11 +403,8 @@ class Geofetcher:
                 (
                     meta_processed_samples,
                     meta_processed_series,
-                ) = self.fetch_processed_one(
-                    gse_file_content=file_gse_content,
-                    gsm_file_content=file_gsm_content,
-                    gsm_filter_list=gsm_enter_dict,
-                )
+                ) = self.fetchone_processed(gse_file_content=file_gse_content, gsm_file_content=file_gsm_content,
+                                            gsm_filter_list=gsm_enter_dict)
 
                 # download processed files:
                 if not self.just_metadata:
@@ -630,7 +627,7 @@ class Geofetcher:
                         f"SRA file doesn't exist, please download it first: {err}"
                     )
 
-    def fetch_processed_one(
+    def fetchone_processed(
         self,
         gse_file_content: list,
         gsm_file_content: list,
@@ -670,7 +667,7 @@ class Geofetcher:
     ) -> dict:
         """
         Generate and save PEPs for processed accessions. GEO has data in GSE and GSM,
-            conditions are used to decide which PEPs have to be saved.
+            conditions are used to decide which PEPs will be saved.
         :param name: name of the folder/file where PEP will be saved
         :param meta_processed_samples:
         :param meta_processed_series:

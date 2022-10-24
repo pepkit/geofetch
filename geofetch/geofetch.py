@@ -1305,7 +1305,7 @@ class Geofetcher:
                                 new_str = nb_sample[1][this_key]
                                 if isinstance(nb_sample[1][this_key], str):
                                     new_str = nb_sample[1][this_key].replace('"', "")
-                                    new_str = re.sub("[^A-Za-z0-9]+", " ", new_str)
+                                    # new_str = re.sub("[^A-Za-z0-9]+", " ", new_str)
                                 new_meta_project.append({this_key: new_str})
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]

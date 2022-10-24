@@ -1143,7 +1143,8 @@ class Geofetcher:
         with open(config_template, "r") as template_file:
             template = template_file.read()
         meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
+            for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         template_values = {
@@ -1168,7 +1169,8 @@ class Geofetcher:
         :return: generated, complete config file content
         """
         meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+            f"{list(i.keys())[0]}: {self._sanitize_name((i.values())[0])}"
+            for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         # Write project config file
@@ -1211,9 +1213,22 @@ class Geofetcher:
         return metadata_dict
 
     @staticmethod
+    def _sanitize_config_string(text: str) -> str:
+        """
+        Function that sanitizes text in config file.
+        :param text: Any string that have to be sanitized
+        :return: sanitized strings
+        """
+        new_str = text
+        punctuation1 = r""""'`"""
+        for odd_char in list(punctuation1):
+            new_str = new_str.replace(odd_char, "_")
+        return new_str
+
+    @staticmethod
     def _sanitize_name(name_str: str) -> str:
         """
-        Function that sanitizing strings. (Replace all odd characters)
+        Function that sanitizes strings. (Replace all odd characters)
         :param str name_str: Any string value that has to be sanitized.
         :return: sanitized strings
         """

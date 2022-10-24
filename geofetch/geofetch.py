@@ -1220,9 +1220,8 @@ class Geofetcher:
         :return: sanitized strings
         """
         new_str = text
-        punctuation1 = r""""'`"""
-        for odd_char in list(punctuation1):
-            new_str = new_str.replace(odd_char, "_")
+        new_str = new_str.replace('"', f'\\"')
+        new_str = new_str.replace("'", f"''")
         return new_str
 
     @staticmethod

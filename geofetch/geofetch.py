@@ -1169,7 +1169,7 @@ class Geofetcher:
         :return: generated, complete config file content
         """
         meta_list_str = [
-            f"{list(i.keys())[0]}: {self._sanitize_name((i.values())[0])}"
+            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
             for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)

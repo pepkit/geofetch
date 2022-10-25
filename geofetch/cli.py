@@ -55,16 +55,16 @@ To download all processed data of GSE57303:
         dest="metadata_root",
         default=_safe_echo("SRAMETA"),
         help="Specify a parent folder location to store metadata. "
-             "The project name will be added as a subfolder "
-             "[Default: $SRAMETA:" + _safe_echo("SRAMETA") + "]",
+        "The project name will be added as a subfolder "
+        "[Default: $SRAMETA:" + _safe_echo("SRAMETA") + "]",
     )
 
     parser.add_argument(
         "-u",
         "--metadata-folder",
         help="Specify an absolute folder location to store metadata. "
-             "No subfolder will be added. Overrides value of --metadata-root "
-             "[Default: Not used (--metadata-root is used by default)]",
+        "No subfolder will be added. Overrides value of --metadata-root "
+        "[Default: Not used (--metadata-root is used by default)]",
     )
 
     parser.add_argument(
@@ -89,8 +89,8 @@ To download all processed data of GSE57303:
         "--pipeline-samples",
         default=None,
         help="Optional: Specify one or more filepaths to SAMPLES pipeline interface yaml files. "
-             "These will be added to the project config file to make it immediately "
-             "compatible with looper. [Default: null]",
+        "These will be added to the project config file to make it immediately "
+        "compatible with looper. [Default: null]",
     )
 
     # Optional
@@ -98,8 +98,8 @@ To download all processed data of GSE57303:
         "--pipeline-project",
         default=None,
         help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
-             "These will be added to the project config file to make it immediately "
-             "compatible with looper. [Default: null]",
+        "These will be added to the project config file to make it immediately "
+        "compatible with looper. [Default: null]",
     )
     # Optional
     parser.add_argument(
@@ -121,7 +121,7 @@ To download all processed data of GSE57303:
         "--acc-anno",
         action="store_true",
         help="Optional: Produce annotation sheets for each accession."
-             " Project combined PEP for the whole project won't be produced.",
+        " Project combined PEP for the whole project won't be produced.",
     )
 
     parser.add_argument(
@@ -135,7 +135,7 @@ To download all processed data of GSE57303:
         type=int,
         default=50,
         help="Optional: Limit of the number of the constant sample characters "
-             "that should not be in project yaml. [Default: 50]",
+        "that should not be in project yaml. [Default: 50]",
     )
 
     parser.add_argument(
@@ -143,7 +143,7 @@ To download all processed data of GSE57303:
         type=int,
         default=250,
         help="Optional: Limit of the number of the constant sample characters "
-             "that should not be discarded [Default: 250]",
+        "that should not be discarded [Default: 250]",
     )
 
     parser.add_argument(
@@ -151,8 +151,8 @@ To download all processed data of GSE57303:
         type=int,
         default=500,
         help="Optional: Limit of the number of sample characters."
-             "Any attribute with more than X characters will truncate to the first X,"
-             " where X is a number of characters [Default: 500]",
+        "Any attribute with more than X characters will truncate to the first X,"
+        " where X is a number of characters [Default: 500]",
     )
 
     parser.add_argument(
@@ -175,17 +175,17 @@ To download all processed data of GSE57303:
         choices=["all", "samples", "series"],
         default="samples",
         help="Optional: Specifies the source of data on the GEO record"
-             " to retrieve processed data, which may be attached to the"
-             " collective series entity, or to individual samples. "
-             "Allowable values are: samples, series or both (all). "
-             "Ignored unless 'processed' flag is set. [Default: samples]",
+        " to retrieve processed data, which may be attached to the"
+        " collective series entity, or to individual samples. "
+        "Allowable values are: samples, series or both (all). "
+        "Ignored unless 'processed' flag is set. [Default: samples]",
     )
 
     processed_group.add_argument(
         "--filter",
         default=None,
         help="Optional: Filter regex for processed filenames [Default: None]."
-             "Ignored unless 'processed' flag is set.",
+        "Ignored unless 'processed' flag is set.",
     )
 
     processed_group.add_argument(
@@ -204,8 +204,8 @@ To download all processed data of GSE57303:
         "--geo-folder",
         default=_safe_echo("GEODATA"),
         help="Optional: Specify a location to store processed GEO files."
-             " Ignored unless 'processed' flag is set."
-             "[Default: $GEODATA:" + _safe_echo("GEODATA") + "]",
+        " Ignored unless 'processed' flag is set."
+        "[Default: $GEODATA:" + _safe_echo("GEODATA") + "]",
     )
 
     raw_group.add_argument(
@@ -227,8 +227,8 @@ To download all processed data of GSE57303:
         help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
             [Default: $SRABAM:"""
-             + _safe_echo("SRABAM")
-             + "]",
+        + _safe_echo("SRABAM")
+        + "]",
     )
 
     raw_group.add_argument(
@@ -239,8 +239,8 @@ To download all processed data of GSE57303:
         help="""Optional: Specify folder of fastq files. Geofetch will not
             download sra files when corresponding fastq files already exist.
             [Default: $SRAFQ:"""
-             + _safe_echo("SRAFQ")
-             + "]",
+        + _safe_echo("SRAFQ")
+        + "]",
     )
 
     # Deprecated; these are for bam conversion which now happens in sra_convert

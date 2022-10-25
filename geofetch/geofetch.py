@@ -1143,7 +1143,8 @@ class Geofetcher:
         with open(config_template, "r") as template_file:
             template = template_file.read()
         meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
+            for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         template_values = {
@@ -1168,7 +1169,8 @@ class Geofetcher:
         :return: generated, complete config file content
         """
         meta_list_str = [
-            f"{list(i.keys())[0]}: {list(i.values())[0]}" for i in proj_meta
+            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
+            for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         # Write project config file
@@ -1211,9 +1213,21 @@ class Geofetcher:
         return metadata_dict
 
     @staticmethod
+    def _sanitize_config_string(text: str) -> str:
+        """
+        Function that sanitizes text in config file.
+        :param text: Any string that have to be sanitized
+        :return: sanitized strings
+        """
+        new_str = text
+        new_str = new_str.replace('"', f'\\"')
+        new_str = new_str.replace("'", f"''")
+        return new_str
+
+    @staticmethod
     def _sanitize_name(name_str: str) -> str:
         """
-        Function that sanitizing strings. (Replace all odd characters)
+        Function that sanitizes strings. (Replace all odd characters)
         :param str name_str: Any string value that has to be sanitized.
         :return: sanitized strings
         """
@@ -1290,7 +1304,7 @@ class Geofetcher:
                                 new_str = nb_sample[1][this_key]
                                 if isinstance(nb_sample[1][this_key], str):
                                     new_str = nb_sample[1][this_key].replace('"', "")
-                                    new_str = re.sub("[^A-Za-z0-9]+", " ", new_str)
+                                    # new_str = re.sub("[^A-Za-z0-9]+", " ", new_str)
                                 new_meta_project.append({this_key: new_str})
                             first_key = False
                         del meta_list[nb_sample[0]][this_key]

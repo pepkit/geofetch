@@ -46,6 +46,7 @@ NEW_GENOME_COL_NAME = "ref_genome"
 
 CONFIG_PROCESSED_TEMPLATE_NAME = "config_processed_template.yaml"
 CONFIG_RAW_TEMPLATE_NAME = "config_template.yaml"
+CONFIG_SRA_TEMPLATE = "looper_sra_convert.yaml"
 
 # const for Finder:
 RETMAX = 10000000  # once it should be increased

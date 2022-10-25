@@ -276,5 +276,11 @@ To download all processed data of GSE57303:
         help="Use just the keys defined in this module when writing out metadata.",
     )
 
+    raw_group.add_argument(
+        "--add-convert-modifier",
+        action="store_true",
+        help="Add looper SRA convert modifier to config file.",
+    )
+
     logmuse.add_logging_options(parser)
     return parser.parse_args(cmdl)

@@ -85,6 +85,7 @@ class Geofetcher:
         discard_soft: bool = False,
         add_dotfile: bool = False,
         disable_progressbar: bool = False,
+        add_convert_modifier: bool = False,
         opts=None,
         **kwargs,
     ):
@@ -143,6 +144,7 @@ class Geofetcher:
         :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
         :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
                 [Default: $PICARD:" + safe_echo("PICARD") + "]  [Works with raw data]
+        :param add_convert_modifier: Add looper SRA convert modifier to config file.
 
         :param skip: Skip some accessions. [Default: no skip].
         :param opts: opts object [Optional]
@@ -244,7 +246,7 @@ class Geofetcher:
         self.discard_soft = discard_soft
         self.add_dotfile = add_dotfile
         self.disable_progressbar = disable_progressbar
-
+        self.add_convert_modifier = add_convert_modifier
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
         # Some sanity checks before proceeding
@@ -638,7 +640,7 @@ class Geofetcher:
                     # converting sra to bam using
                     # TODO: sam-dump has a built-in prefetch. I don't have to do
                     # any of this stuff... This also solves the bad sam-dump issues.
-                    self._sra_bam_conversion1(bam_file, run_name)
+                    self._sra_to_bam_conversion_sam_dump(bam_file, run_name)
 
                     # checking if bam_file converted correctly, if not --> use fastq-dump
                     st = os.stat(bam_file)
@@ -646,7 +648,7 @@ class Geofetcher:
                         self._LOGGER.warning(
                             "Bam conversion failed with sam-dump. Trying fastq-dump..."
                         )
-                        self._sra_bam_conversion2(bam_file, run_name, self.picard_path)
+                        self._sra_to_bam_conversion_fastq_damp(bam_file, run_name, self.picard_path)
 
                 except FileNotFoundError as err:
                     self._LOGGER.info(
@@ -1145,9 +1147,15 @@ class Geofetcher:
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         # Write project config file
+        geofetchdir = os.path.dirname(__file__)
         if not self.config_template:
-            geofetchdir = os.path.dirname(__file__)
             self.config_template = os.path.join(geofetchdir, CONFIG_RAW_TEMPLATE_NAME)
+        if self.add_convert_modifier:
+            sra_convert_path = os.path.join(geofetchdir, CONFIG_SRA_TEMPLATE)
+            with open(sra_convert_path, "r") as template_file:
+                sra_convert_template = template_file.read()
+        else:
+            sra_convert_template = ""
         with open(self.config_template, "r") as template_file:
             template = template_file.read()
         template_values = {
@@ -1157,13 +1165,15 @@ class Geofetcher:
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
+            "sra_convert": sra_convert_template,
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
         return template
 
-    def _check_sample_name_standard(self, metadata_dict: dict) -> dict:
+    @staticmethod
+    def _check_sample_name_standard(metadata_dict: dict) -> dict:
         """
         Standardizing sample name and checking if it exists
             (This function is used for raw data)
@@ -1291,7 +1301,7 @@ class Geofetcher:
             )
             time.sleep(t * 2)
 
-    def _sra_bam_conversion1(self, bam_file: str, run_name: str) -> NoReturn:
+    def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
         """
         Converting of SRA file to BAM file by using samtools function "sam-dump"
         :param str bam_file: path to BAM file that has to be created
@@ -1315,7 +1325,7 @@ class Geofetcher:
         self._LOGGER.info(f"Conversion command: {cmd}")
         run_subprocess(cmd, shell=True)
 
-    def _sra_bam_conversion2(
+    def _sra_to_bam_conversion_fastq_damp(
         self, bam_file: str, run_name: str, picard_path: str = None
     ) -> NoReturn:
         """

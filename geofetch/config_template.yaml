@@ -12,6 +12,8 @@ sample_modifiers:
     # End of project metadata
     SRR_files: SRA
     {pipeline_samples}
+
+  # Adding additional infromation to the project
   derive:
     attributes: [read1, read2, SRR_files]
     sources:

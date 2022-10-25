@@ -11,6 +11,8 @@ sample_modifiers:
     {additional_columns}
     # End of project metadata
     {pipeline_samples}
+
+  # adding file paths to the project
   derive:
     attributes: [output_file_path]
     sources:

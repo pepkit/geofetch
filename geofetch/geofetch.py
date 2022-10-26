@@ -1151,6 +1151,11 @@ class Geofetcher:
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         # Write project config file
         geofetchdir = os.path.dirname(__file__)
+
+        if self.file_pipeline_samples or modifiers_str != "":
+            sample_modifier_str = "sample_modifiers:\n  append:"
+        else:
+            sample_modifier_str = ""
         if not self.config_template:
             self.config_template = os.path.join(geofetchdir, CONFIG_RAW_TEMPLATE_NAME)
         if self.add_convert_modifier:
@@ -1165,6 +1170,7 @@ class Geofetcher:
             "project_name": self.project_name,
             "annotation": os.path.basename(proj_root_sample),
             "subannotation": subanot_path_yaml,
+            "sample_modifier_str": sample_modifier_str,
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,

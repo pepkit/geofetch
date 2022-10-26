@@ -5,8 +5,7 @@ pep_version: 2.1.0
 sample_table: {annotation}
 {subannotation}
 
-sample_modifiers:
-  append:
+{sample_modifier_str}
     # Project metadata:
     {additional_columns}
     # End of project metadata

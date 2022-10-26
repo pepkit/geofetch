@@ -12,7 +12,7 @@ nav:
   - Tutorials:
     - Tutorial for processed data: processed-data-downloading.md
     - Tutorial for raw data: raw-data-downloading.md
-    - geofetch API tutorial: python-usage.md
+    - geofetch from within Python: python-usage.md
     - GSE Finder: gse_finder.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md

@@ -52,7 +52,7 @@ setup(
     ],
     keywords="project, bioinformatics, sequencing, ngs, workflow, GUI",
     url="https://github.com/pepkit/{}/".format(PACKAGE),
-    author="Nathan Sheffield, Vince Reuter, Oleksandr Khoroshevskyi",
+    author="Oleksandr Khoroshevskyi, Nathan Sheffield, Vince Reuter, Nathan LeRoy",
     license="BSD2",
     entry_points={
         "console_scripts": [

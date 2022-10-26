@@ -3,58 +3,14 @@
 name: {project_name}
 pep_version: 2.1.0
 sample_table: {annotation}
-subsample_table: {subannotation}
+{subannotation}
 
-looper:
-  output_dir: {project_name}
-  pipeline_interfaces: {pipeline_interfaces}
-
-sample_modifiers:
-  append:
+{sample_modifier_str}
+    # Project metadata:
     {additional_columns}
-    SRR_files: SRA
+    # End of project metadata
     {pipeline_samples}
-  derive:
-    attributes: [read1, read2, SRR_files]
-    sources:
-      SRA: "${SRABAM}/{SRR}.bam"
-      FQ: "${SRAFQ}/{SRR}.fastq.gz"
-      FQ1: "${SRAFQ}/{SRR}_1.fastq.gz"
-      FQ2: "${SRAFQ}/{SRR}_2.fastq.gz"      
-  imply:
-    - if: 
-        organism: "Mus musculus"
-      then:
-        genome: mm10
-    - if: 
-        organism: "Homo sapiens"
-      then:
-        genome: hg38          
-    - if: 
-        read_type: "PAIRED"
-      then:
-        read1: FQ1
-        read2: FQ2          
-    - if: 
-        read_type: "SINGLE"
-      then:
-        read1: FQ1
 
-project_modifiers:
-  amend:
-    sra_convert:
-      looper:
-        results_subdir: sra_convert_results
-      sample_modifiers:
-        append:
-          SRR_files: SRA
-          pipeline_interfaces: ${CODE}/geofetch/pipeline_interface_convert.yaml
-        derive:
-          attributes: [read1, read2, SRR_files]
-          sources:
-            SRA: "${SRARAW}/{SRR}.sra"
-            FQ: "${SRAFQ}/{SRR}.fastq.gz"
-            FQ1: "${SRAFQ}/{SRR}_1.fastq.gz"
-            FQ2: "${SRAFQ}/{SRR}_2.fastq.gz"
+{sra_convert}
 
 {pipeline_project}

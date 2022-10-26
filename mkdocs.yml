@@ -9,8 +9,11 @@ nav:
     - Introduction: README.md
     - Install and configure: install.md
     - SRA convert: sra_convert.md
+  - Tutorials:
     - Tutorial for processed data: processed-data-downloading.md
     - Tutorial for raw data: raw-data-downloading.md
+    - geofetch from within Python: python-usage.md
+    - GSE Finder: gse_finder.md
   - How-to Guides:
     - Specifying samples to download: file-specification.md
     - Set SRA data download location: howto-location.md

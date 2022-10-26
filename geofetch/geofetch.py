@@ -2,24 +2,19 @@
 
 __author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
 
-import argparse
 import copy
 import csv
 import os
-
-# import re
 import sys
 
 # from string import punctuation
+# import tarfile
 import requests
 import xmltodict
-from rich.progress import track
 import yaml
-
-# import tarfile
 import time
 
-from ._version import __version__
+from .cli import _parse_cmdl
 from .const import *
 from .utils import (
     Accession,
@@ -28,11 +23,27 @@ from .utils import (
     convert_size,
     clean_soft_files,
     run_subprocess,
+    _get_list_of_keys,
+    _get_value,
+    _read_tar_filelist,
+    _check_file_existance,
+    _separate_list_of_files,
+    _update_columns,
+    _sanitize_name,
+    _sanitize_config_string,
+    _create_dot_yaml,
+    _which,
+    _dict_to_list_converter,
+    _standardize_colnames,
+    _separate_file_url,
+    _filter_gsm,
+    _unify_list_keys,
 )
 
+from rich.progress import track
+import re
 import logmuse
 from ubiquerg import expandpath, is_command_callable
-from io import StringIO
 from typing import List, Union, Dict, Tuple, NoReturn
 import peppy
 import pandas as pd
@@ -41,64 +52,6 @@ import pandas as pd
 class Geofetcher:
     """
     Class to download or get projects, metadata, data from GEO and SRA
-
-    :param input:
-    :param name: Specify a project name. Defaults to GSE number or name of accessions file name
-    :param metadata_root:  Specify a parent folder location to store metadata.
-            The project name will be added as a subfolder [Default: $SRAMETA:]
-    :param metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
-            Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)]
-    :param just_metadata: If set, don't actually run downloads, just create metadata
-    :param refresh_metadata: If set, re-download metadata even if it exists.
-    :param config_template: Project config yaml file template.
-    :param pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
-            These will be added to the project config file to make it immediately compatible with looper.
-            [Default: null]
-    :param pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
-            These will be added to the project config file to make it immediately compatible with looper.
-            [Default: null]
-    :param acc_anno:  Produce annotation sheets for each accession.
-            Project combined PEP for the whole project won't be produced.
-    :param discard_soft: Create project without downloading soft files on the disc
-    :param add_dotfile: Add .pep.yaml file that points .yaml PEP file
-    :param disable_progressbar: Set true to disable progressbar
-
-    :param const_limit_project: Optional: Limit of the number of the constant sample characters
-            that should not be in project yaml. [Default: 50]
-    :param const_limit_discard: Optional: Limit of the number of the constant sample characters
-            that should not be discarded [Default: 250]
-    :param attr_limit_truncate: Optional: Limit of the number of sample characters.
-            Any attribute with more than X characters will truncate to the first X, where X is a number of characters
-            [Default: 500]
-
-    :param processed: Download processed data [Default: download raw data].
-    :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
-            which may be attached to the collective series entity, or to individual samples. Allowable values are:
-            samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
-    :param filter: Filter regex for processed filenames [Default: None].Ignored unless 'processed' flag is set.
-    :param filter_size: Filter size for processed files that are stored as sample repository [Default: None].
-            Works only for sample data. Supported input formats : 12B, 12KB, 12MB, 12GB.
-            Ignored unless 'processed' flag is set.
-    :param geo_folder: Specify a location to store processed GEO files.
-            Ignored unless 'processed' flag is set.[Default: $GEODATA:]
-
-    :param split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
-            Runs will have a single entry in the annotation table, with each run as a separate row in the
-            subannotation table. This setting instead treats each run as a separate sample [Works with raw data]
-    :param bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
-            corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data]
-    :param fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
-            fastq files already exist. [Default: $SRAFQ:] [Works with raw data]
-    :param use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data]
-    :param sra_folder: Optional: Specify a location to store sra files
-            [Default: $SRARAW:" + safe_echo("SRARAW") + ]
-    :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
-    :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
-            [Default: $PICARD:" + safe_echo("PICARD") + "]  [Works with raw data]
-
-    :param skip: Skip some accessions. [Default: no skip].
-    :param opts: opts object [Optional]
-    :param kwargs: other values
     """
 
     def __init__(
@@ -132,9 +85,71 @@ class Geofetcher:
         discard_soft: bool = False,
         add_dotfile: bool = False,
         disable_progressbar: bool = False,
+        add_convert_modifier: bool = False,
         opts=None,
         **kwargs,
     ):
+        """
+        init function
+        :param input: GSEnumber or path to the input file
+        :param name: Specify a project name. Defaults to GSE number or name of accessions file name
+        :param metadata_root:  Specify a parent folder location to store metadata.
+                The project name will be added as a subfolder [Default: $SRAMETA:]
+        :param metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
+                Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)]
+        :param just_metadata: If set, don't actually run downloads, just create metadata
+        :param refresh_metadata: If set, re-download metadata even if it exists.
+        :param config_template: Project config yaml file template.
+        :param pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
+                These will be added to the project config file to make it immediately compatible with looper.
+                [Default: null]
+        :param pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
+                These will be added to the project config file to make it immediately compatible with looper.
+                [Default: null]
+        :param acc_anno:  Produce annotation sheets for each accession.
+                Project combined PEP for the whole project won't be produced.
+        :param discard_soft: Create project without downloading soft files on the disc
+        :param add_dotfile: Add .pep.yaml file that points .yaml PEP file
+        :param disable_progressbar: Set true to disable progressbar
+
+        :param const_limit_project: Optional: Limit of the number of the constant sample characters
+                that should not be in project yaml. [Default: 50]
+        :param const_limit_discard: Optional: Limit of the number of the constant sample characters
+                that should not be discarded [Default: 250]
+        :param attr_limit_truncate: Optional: Limit of the number of sample characters.
+                Any attribute with more than X characters will truncate to the first X, where X is a number of characters
+                [Default: 500]
+
+        :param processed: Download processed data [Default: download raw data].
+        :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
+                which may be attached to the collective series entity, or to individual samples. Allowable values are:
+                samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
+        :param filter: Filter regex for processed filenames [Default: None].Ignored unless 'processed' flag is set.
+        :param filter_size: Filter size for processed files that are stored as sample repository [Default: None].
+                Works only for sample data. Supported input formats : 12B, 12KB, 12MB, 12GB.
+                Ignored unless 'processed' flag is set.
+        :param geo_folder: Specify a location to store processed GEO files.
+                Ignored unless 'processed' flag is set.[Default: $GEODATA:]
+
+        :param split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
+                Runs will have a single entry in the annotation table, with each run as a separate row in the
+                subannotation table. This setting instead treats each run as a separate sample [Works with raw data]
+        :param bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
+                corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data]
+        :param fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
+                fastq files already exist. [Default: $SRAFQ:] [Works with raw data]
+        :param use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data]
+        :param sra_folder: Optional: Specify a location to store sra files
+                [Default: $SRARAW:" + safe_echo("SRARAW") + ]
+        :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
+        :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
+                [Default: $PICARD:" + safe_echo("PICARD") + "]  [Works with raw data]
+        :param add_convert_modifier: Add looper SRA convert modifier to config file.
+
+        :param skip: Skip some accessions. [Default: no skip].
+        :param opts: opts object [Optional]
+        :param kwargs: other values
+        """
 
         if opts is not None:
             _LOGGER = logmuse.logger_via_cli(opts)
@@ -231,11 +246,11 @@ class Geofetcher:
         self.discard_soft = discard_soft
         self.add_dotfile = add_dotfile
         self.disable_progressbar = disable_progressbar
-
+        self.add_convert_modifier = add_convert_modifier
         self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
         # Some sanity checks before proceeding
-        if bam_conversion and not just_metadata and not self._which("samtools"):
+        if bam_conversion and not just_metadata and not _which("samtools"):
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
         self.just_object = False
@@ -310,8 +325,14 @@ class Geofetcher:
 
         return new_pr_dict
 
-    def fetch_all(self, input: str, name: str = None):
-        """Main script driver/workflow"""
+    def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
+        """
+        Main function driver/workflow
+        Function that search, filters, downloads and save data and metadata from  GEO and SRA
+        :param input: GSE or input file with gse's
+        :param name: Name of the project
+        :return: NoReturn or peppy Project
+        """
 
         if name is not None:
             self.project_name = name
@@ -403,7 +424,7 @@ class Geofetcher:
                 (
                     meta_processed_samples,
                     meta_processed_series,
-                ) = self.fetchone_processed(
+                ) = self.fetch_processed_one(
                     gse_file_content=file_gse_content,
                     gsm_file_content=file_gsm_content,
                     gsm_filter_list=gsm_enter_dict,
@@ -506,7 +527,7 @@ class Geofetcher:
         gsm_metadata: dict = None,
     ):
         """
-        Creating srp multitable and updating gsm_metadata based on srp
+        Create srp multitable and update gsm_metadata based on srp
         :param srp_list_result: list of srp got from sra file
         :param gsm_enter_dict: gsm enter content
         :param gsm_metadata: dict of samples of gsm
@@ -532,12 +553,12 @@ class Geofetcher:
 
             if not sample_name or sample_name == "":
                 temp = gsm_metadata[experiment]["Sample_title"]
-                sample_name = self._sanitize_name(temp)
+                sample_name = _sanitize_name(temp)
 
             # Otherwise, record that there's SRA data for this run.
             # And set a few columns that are used as input to the Looper
             # print("Updating columns for looper")
-            self._update_columns(
+            _update_columns(
                 gsm_metadata,
                 experiment,
                 sample_name=sample_name,
@@ -586,7 +607,12 @@ class Geofetcher:
 
         return gsm_multi_table, gsm_metadata, runs
 
-    def _download_raw_data(self, run_name):
+    def _download_raw_data(self, run_name: str) -> NoReturn:
+        """
+        Downloade raw data from SRA by providing run name
+        :param run_name: Run name from SRA
+        :return: NoReturn
+        """
         bam_file = (
             ""
             if self.bam_folder == ""
@@ -615,7 +641,7 @@ class Geofetcher:
                     # converting sra to bam using
                     # TODO: sam-dump has a built-in prefetch. I don't have to do
                     # any of this stuff... This also solves the bad sam-dump issues.
-                    self._sra_bam_conversion(bam_file, run_name)
+                    self._sra_to_bam_conversion_sam_dump(bam_file, run_name)
 
                     # checking if bam_file converted correctly, if not --> use fastq-dump
                     st = os.stat(bam_file)
@@ -623,21 +649,23 @@ class Geofetcher:
                         self._LOGGER.warning(
                             "Bam conversion failed with sam-dump. Trying fastq-dump..."
                         )
-                        self._sra_bam_conversion2(bam_file, run_name, self.picard_path)
+                        self._sra_to_bam_conversion_fastq_damp(
+                            bam_file, run_name, self.picard_path
+                        )
 
                 except FileNotFoundError as err:
                     self._LOGGER.info(
                         f"SRA file doesn't exist, please download it first: {err}"
                     )
 
-    def fetchone_processed(
+    def fetch_processed_one(
         self,
         gse_file_content: list,
         gsm_file_content: list,
         gsm_filter_list: dict,
     ) -> Tuple:
         """
-        Fetching just one processed GSE project
+        Fetche one processed GSE project and return its metadata
         :param gsm_file_content: gse soft file content
         :param gse_file_content: gsm soft file content
         :param gsm_filter_list: list of gsm that have to be downloaded
@@ -649,9 +677,7 @@ class Geofetcher:
         ) = self._get_list_of_processed_files(gse_file_content, gsm_file_content)
 
         # taking into account list of GSM that is specified in the input file
-        meta_processed_samples = self._filter_gsm(
-            meta_processed_samples, gsm_filter_list
-        )
+        meta_processed_samples = _filter_gsm(meta_processed_samples, gsm_filter_list)
 
         # samples
         meta_processed_samples = self._expand_metadata_list(meta_processed_samples)
@@ -660,8 +686,8 @@ class Geofetcher:
         meta_processed_series = self._expand_metadata_list(meta_processed_series)
 
         # convert column names to lowercase and underscore
-        meta_processed_samples = self._standardize_colnames(meta_processed_samples)
-        meta_processed_series = self._standardize_colnames(meta_processed_series)
+        meta_processed_samples = _standardize_colnames(meta_processed_samples)
+        meta_processed_series = _standardize_colnames(meta_processed_series)
 
         return meta_processed_samples, meta_processed_series
 
@@ -732,7 +758,7 @@ class Geofetcher:
         self, acc_gse: str, meta_processed_samples: list, meta_processed_series: list
     ) -> NoReturn:
         """
-        Function that downloads processed data
+        Download processed data from GEO by providing project annotation list
         :param acc_gse: accession number of the project
         :param meta_processed_samples: list of annotation of samples
         :param meta_processed_series: list of annotation of series
@@ -768,16 +794,16 @@ class Geofetcher:
             for file_url in processed_series_files:
                 self._download_processed_file(file_url, data_geo_folder)
 
-    def _expand_metadata_list_in_dict(self, metadata_dict: dict) -> dict:
+    def _expand_metadata_dict(self, metadata_dict: dict) -> dict:
         """
-        Expanding all lists of all items in the dict by creating new items or joining them
+        Expand all lists of all items in the dict by creating new items or joining them
 
         :param metadata_dict: metadata dict
         :return: expanded metadata dict
         """
-        prj_list = self._dict_to_list_convector(proj_dict=metadata_dict)
+        prj_list = _dict_to_list_converter(proj_dict=metadata_dict)
         prj_list = self._expand_metadata_list(prj_list)
-        return self._dict_to_list_convector(proj_list=prj_list)
+        return _dict_to_list_converter(proj_list=prj_list)
 
     def _expand_metadata_list(self, metadata_list: list) -> list:
         """
@@ -787,14 +813,14 @@ class Geofetcher:
         :return list: expanded metadata list
         """
         self._LOGGER.info("Expanding metadata list...")
-        list_of_keys = self._get_list_of_keys(metadata_list)
+        list_of_keys = _get_list_of_keys(metadata_list)
         for key_in_list in list_of_keys:
             metadata_list = self._expand_metadata_list_item(metadata_list, key_in_list)
         return metadata_list
 
     def _expand_metadata_list_item(self, metadata_list: list, dict_key: str):
         """
-        Expanding list of one element (item) in the list by creating new items or joining them
+        Expand list of one element (item) in the list by creating new items or joining them
         ["first1: fff", ...] -> separate columns
 
         :param list metadata_list: list of dicts that store metadata
@@ -869,77 +895,6 @@ class Geofetcher:
             self._LOGGER.warning("expand_metadata_list: Value Error: {err}")
             return metadata_list
 
-    def _filter_gsm(self, meta_processed_samples: list, gsm_list: dict) -> list:
-        """
-        Getting metadata list of all samples of one experiment and filtering it
-        by the list of GSM that was specified in the input files.
-        And then changing names of the sample names.
-
-        :param meta_processed_samples: list of metadata dicts of samples
-        :param gsm_list: list of dicts where GSM (samples) are keys and
-            sample names are values. Where values can be empty string
-        """
-
-        if gsm_list.keys():
-            new_gsm_list = []
-            for gsm_sample in meta_processed_samples:
-                if gsm_sample["Sample_geo_accession"] in gsm_list.keys():
-                    gsm_sample_new = gsm_sample
-                    if gsm_list[gsm_sample["Sample_geo_accession"]] != "":
-                        gsm_sample_new["sample_name"] = gsm_list[
-                            gsm_sample["Sample_geo_accession"]
-                        ]
-                    new_gsm_list.append(gsm_sample_new)
-            return new_gsm_list
-        return meta_processed_samples
-
-    @staticmethod
-    def _get_list_of_keys(list_of_dict: list):
-        """
-        Getting list of all keys that are in the dictionaries in the list
-
-        :param list list_of_dict: list of dicts with metadata
-        :return list: list of dictionary keys
-        """
-
-        list_of_keys = []
-        for element in list_of_dict:
-            list_of_keys.extend(list(element.keys()))
-        return list(set(list_of_keys))
-
-    def _unify_list_keys(self, processed_meta_list: list) -> list:
-        """
-        Unifying list of dicts with metadata, so every dict will have
-            same keys
-
-        :param list processed_meta_list: list of dicts with metadata
-        :return list: list of unified dicts with metadata
-        """
-        list_of_keys = self._get_list_of_keys(processed_meta_list)
-        for k in list_of_keys:
-            for list_elem in range(len(processed_meta_list)):
-                if k not in processed_meta_list[list_elem]:
-                    processed_meta_list[list_elem][k] = ""
-        return processed_meta_list
-
-    def _find_genome(self, metadata_list):
-        """
-        Create new genome column by searching joining few columns
-        """
-        list_keys = self._get_list_of_keys(metadata_list)
-        genome_keys = [
-            "assembly",
-            "genome_build",
-        ]
-        proj_gen_keys = list(set(list_keys).intersection(genome_keys))
-
-        for sample in enumerate(metadata_list):
-            sample_genome = ""
-            for key in proj_gen_keys:
-                sample_genome = " ".join([sample_genome, sample[1][key]])
-            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
-        return metadata_list
-
     def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
         """
         Write metadata sheet out as an annotation file.
@@ -973,7 +928,7 @@ class Geofetcher:
         just_object: bool = False,
     ) -> Union[NoReturn, peppy.Project]:
         """
-        Saving annotation file by providing list of dictionaries with files metadata
+        Save annotation file by providing list of dictionaries with files metadata
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
         :type just_object: True, if you want to get peppy object without saving file
@@ -992,7 +947,7 @@ class Geofetcher:
             os.makedirs(pep_file_folder)
 
         self._LOGGER.info("Unifying and saving of metadata... ")
-        processed_metadata = self._unify_list_keys(processed_metadata)
+        processed_metadata = _unify_list_keys(processed_metadata)
 
         # delete rare keys
         processed_metadata = self._find_genome(processed_metadata)
@@ -1025,7 +980,7 @@ class Geofetcher:
             # save .pep.yaml file
             if self.add_dotfile:
                 dot_yaml_path = os.path.join(pep_file_folder, ".pep.yaml")
-                self._create_dot_yaml(dot_yaml_path, yaml_name)
+                _create_dot_yaml(dot_yaml_path, yaml_name)
 
             return None
 
@@ -1036,11 +991,32 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(pd_value, config=conf)
             return proj
 
+    @staticmethod
+    def _find_genome(metadata_list: list) -> list:
+        """
+        Create new genome column by searching joining few columns
+        :param metadata_list: list with metadata dict
+        :return: list with metadata dict where genome column was added
+        """
+        list_keys = _get_list_of_keys(metadata_list)
+        genome_keys = [
+            "assembly",
+            "genome_build",
+        ]
+        proj_gen_keys = list(set(list_keys).intersection(genome_keys))
+
+        for sample in enumerate(metadata_list):
+            sample_genome = ""
+            for key in proj_gen_keys:
+                sample_genome = " ".join([sample_genome, sample[1][key]])
+            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
+        return metadata_list
+
     def _write_raw_annotation_new(
         self, name, metadata_dict: dict, subannot_dict: dict = None
     ) -> Union[None, peppy.Project]:
         """
-        Combining individual accessions into project-level annotations, and writing
+        Combine individual accessions into project-level annotations, and writing
         individual accession files (if requested)
         :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
         :param metadata_dict: dictionary of sample annotations
@@ -1106,7 +1082,7 @@ class Geofetcher:
             self._write(proj_root_yaml, template, msg_pre="  Config file: ")
 
             if self.add_dotfile:
-                self._create_dot_yaml(dot_yaml_path, yaml_name)
+                _create_dot_yaml(dot_yaml_path, yaml_name)
 
         else:
             meta_df = pd.DataFrame.from_dict(metadata_dict, orient="index")
@@ -1133,7 +1109,7 @@ class Geofetcher:
         self, file_annotation_path: str, proj_meta: list
     ) -> str:
         """
-        completing and generating config file content
+        Compose and generate config file content
         :param file_annotation_path: root to the annotation file
         :param proj_meta: common metadata that has to added to config file
         :return: generated, complete config file content
@@ -1143,7 +1119,7 @@ class Geofetcher:
         with open(config_template, "r") as template_file:
             template = template_file.read()
         meta_list_str = [
-            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
+            f'{list(i.keys())[0]}: "{_sanitize_config_string(list(i.values())[0])}"'
             for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
@@ -1162,39 +1138,53 @@ class Geofetcher:
 
     def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
         """
-        completing and generating config file content for raw data
+        Compose and generate config file content for raw data
         :param proj_meta: root to the annotation file
         :param proj_root_sample: path to sampletable file
         :param subanot_path_yaml: path to subannotation file
         :return: generated, complete config file content
         """
         meta_list_str = [
-            f'{list(i.keys())[0]}: "{self._sanitize_config_string(list(i.values())[0])}"'
+            f'{list(i.keys())[0]}: "{_sanitize_config_string(list(i.values())[0])}"'
             for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
         # Write project config file
+        geofetchdir = os.path.dirname(__file__)
+
+        if self.file_pipeline_samples or modifiers_str != "":
+            sample_modifier_str = "sample_modifiers:\n  append:"
+        else:
+            sample_modifier_str = ""
         if not self.config_template:
-            geofetchdir = os.path.dirname(__file__)
             self.config_template = os.path.join(geofetchdir, CONFIG_RAW_TEMPLATE_NAME)
+        if self.add_convert_modifier:
+            sra_convert_path = os.path.join(geofetchdir, CONFIG_SRA_TEMPLATE)
+            with open(sra_convert_path, "r") as template_file:
+                sra_convert_template = template_file.read()
+        else:
+            sra_convert_template = ""
         with open(self.config_template, "r") as template_file:
             template = template_file.read()
         template_values = {
             "project_name": self.project_name,
             "annotation": os.path.basename(proj_root_sample),
             "subannotation": subanot_path_yaml,
+            "sample_modifier_str": sample_modifier_str,
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
+            "sra_convert": sra_convert_template,
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
         return template
 
-    def _check_sample_name_standard(self, metadata_dict: dict) -> dict:
+    @staticmethod
+    def _check_sample_name_standard(metadata_dict: dict) -> dict:
         """
-        Standardizing sample name and checking if it exists
+        Standardize sample name and checking if it exists
             (This function is used for raw data)
         :param metadata_dict: metadata dict
         :return: metadata dict with standardize sample names
@@ -1205,58 +1195,22 @@ class Geofetcher:
             if value_sample["sample_name"] == "" or value_sample["sample_name"] is None:
                 fixed_dict[key_sample]["sample_name"] = value_sample["Sample_title"]
             # sanitize names
-            fixed_dict[key_sample]["sample_name"] = self._sanitize_name(
+            fixed_dict[key_sample]["sample_name"] = _sanitize_name(
                 fixed_dict[key_sample]["sample_name"]
             )
         metadata_dict = fixed_dict
-        metadata_dict = self._standardize_colnames(metadata_dict)
+        metadata_dict = _standardize_colnames(metadata_dict)
         return metadata_dict
 
     @staticmethod
-    def _sanitize_config_string(text: str) -> str:
-        """
-        Function that sanitizes text in config file.
-        :param text: Any string that have to be sanitized
-        :return: sanitized strings
-        """
-        new_str = text
-        new_str = new_str.replace('"', f'\\"')
-        new_str = new_str.replace("'", f"''")
-        return new_str
-
-    @staticmethod
-    def _sanitize_name(name_str: str) -> str:
-        """
-        Function that sanitizes strings. (Replace all odd characters)
-        :param str name_str: Any string value that has to be sanitized.
-        :return: sanitized strings
-        """
-        new_str = name_str
-        punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
-        for odd_char in list(punctuation1):
-            new_str = new_str.replace(odd_char, "_")
-        new_str = new_str.replace(" ", "_").replace("__", "_")
-        return new_str
-
-    @staticmethod
-    def _create_dot_yaml(file_path: str, yaml_path: str) -> NoReturn:
-        """
-        Function that creates .pep.yaml file that points to actual yaml file
-        :param str file_path: Path to the .pep.yaml file that we want to create
-        :param str yaml_path: path or name of the actual yaml file
-        """
-        with open(file_path, "w+") as file:
-            file.writelines(f"config_file: {yaml_path}")
-
     def _separate_common_meta(
-        self,
         meta_list: Union[List, Dict],
         max_len: int = 50,
         del_limit: int = 250,
         attr_limit_truncate: int = 500,
     ) -> tuple:
         """
-        This function is separating information for the experiment from a sample
+        Separate experiment(project) metadata from sample metadata
         :param list or dict meta_list: list of dictionaries of samples
         :param int max_len: threshold of the length of the common value that can be stored in the sample table
         :param int del_limit: threshold of the length of the common value that have to be deleted
@@ -1269,9 +1223,9 @@ class Geofetcher:
         input_is_dict = False
         if isinstance(meta_list, dict):
             input_is_dict = True
-            meta_list = self._dict_to_list_convector(proj_dict=meta_list)
+            meta_list = _dict_to_list_converter(proj_dict=meta_list)
 
-        list_of_keys = self._get_list_of_keys(meta_list)
+        list_of_keys = _get_list_of_keys(meta_list)
         list_keys_diff = []
         # finding columns with common values
         for this_key in list_of_keys:
@@ -1325,73 +1279,12 @@ class Geofetcher:
         meta_list = new_list
 
         if input_is_dict:
-            meta_list = self._dict_to_list_convector(proj_list=meta_list)
+            meta_list = _dict_to_list_converter(proj_list=meta_list)
         return meta_list, new_meta_project
-
-    def _standardize_colnames(self, meta_list: Union[list, dict]) -> Union[list, dict]:
-        """
-        Standardize column names by lower-casing and underscore
-        :param list meta_list: list of dictionaries of samples
-        :return : list of dictionaries of samples with standard colnames
-        """
-        # check if meta_list is dict and converting it to list
-        input_is_dict = False
-        if isinstance(meta_list, dict):
-            input_is_dict = True
-            meta_list = self._dict_to_list_convector(proj_dict=meta_list)
-
-        new_metalist = []
-        list_keys = self._get_list_of_keys(meta_list)
-        for item_nb, values in enumerate(meta_list):
-            new_metalist.append({})
-            for key in list_keys:
-                try:
-                    new_key_name = key.lower().strip()
-                    new_key_name = self._sanitize_name(new_key_name)
-
-                    new_metalist[item_nb][new_key_name] = values[key]
-
-                except KeyError:
-                    pass
-
-        if input_is_dict:
-            new_metalist = self._dict_to_list_convector(proj_list=new_metalist)
-
-        return new_metalist
-
-    @staticmethod
-    def _dict_to_list_convector(
-        proj_dict: Dict = None, proj_list: List = None
-    ) -> Union[Dict, List]:
-        """
-        Convector project dict to list and vice versa
-        :param proj_dict: project dictionary
-        :param proj_list: project list
-        :return: converted values
-        """
-        if proj_dict is not None:
-            new_meta_list = []
-            for key in proj_dict:
-                new_dict = proj_dict[key]
-                new_dict["big_key"] = key
-                new_meta_list.append(new_dict)
-
-            meta_list = new_meta_list
-
-        elif proj_list is not None:
-            new_sample_dict = {}
-            for sample in proj_list:
-                new_sample_dict[sample["big_key"]] = sample
-            meta_list = new_sample_dict
-
-        else:
-            raise ValueError
-
-        return meta_list
 
     def _download_SRA_file(self, run_name: str):
         """
-        Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
+        Download SRA file by ising 'prefetch' utility from the SRA Toolkit
         more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
         :param str run_name: SRR number of the SRA file
         """
@@ -1417,30 +1310,9 @@ class Geofetcher:
             )
             time.sleep(t * 2)
 
-    @staticmethod
-    def _which(program: str):
+    def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
         """
-        return str:  the path to a program to make sure it exists
-        """
-        import os
-
-        def is_exe(fp):
-            return os.path.isfile(fp) and os.access(fp, os.X_OK)
-
-        fpath, fname = os.path.split(program)
-        if fpath:
-            if is_exe(program):
-                return program
-        else:
-            for path in os.environ["PATH"].split(os.pathsep):
-                path = path.strip('"')
-                exe_file = os.path.join(path, program)
-                if is_exe(exe_file):
-                    return exe_file
-
-    def _sra_bam_conversion(self, bam_file: str, run_name: str) -> NoReturn:
-        """
-        Converting of SRA file to BAM file by using samtools function "sam-dump"
+        Convert SRA file to BAM file by using samtools function "sam-dump"
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
         """
@@ -1462,58 +1334,11 @@ class Geofetcher:
         self._LOGGER.info(f"Conversion command: {cmd}")
         run_subprocess(cmd, shell=True)
 
-    @staticmethod
-    def _update_columns(
-        metadata: dict, experiment_name: str, sample_name: str, read_type: str
-    ) -> dict:
-        """
-        Update the metadata associated with a particular experiment.
-
-        For the experiment indicated, this function updates the value (mapping),
-        including new data and populating columns used by looper based on
-        existing values in the mapping.
-
-        :param Mapping metadata: the key-value mapping to update
-        :param str experiment_name: name of the experiment from which these
-            data came and are associated; the key in the metadata mapping
-            for which the value is to be updated
-        :param str sample_name: name of the sample with which these data are
-            associated
-        :param str read_type: usually "single" or "paired," an indication of the
-            type of sequencing reads for this experiment
-        :return: updated metadata
-        """
-
-        exp = metadata[experiment_name]
-
-        # Protocol-agnostic
-        exp["sample_name"] = sample_name
-        exp["protocol"] = exp["Sample_library_selection"]
-        exp["read_type"] = read_type
-        exp["organism"] = exp["Sample_organism_ch1"]
-        exp["data_source"] = "SRA"
-        exp["SRX"] = experiment_name
-
-        # Protocol specified is lowercased prior to checking here to alleviate
-        # dependence on case for the value in the annotations file.
-        bisulfite_protocols = {"reduced representation": "RRBS", "random": "WGBS"}
-
-        # Conditional on bisulfite sequencing
-        # print(":" + exp["Sample_library_strategy"] + ":")
-        # Try to be smart about some library methods, refining protocol if possible.
-        if exp["Sample_library_strategy"] == "Bisulfite-Seq":
-            # print("Parsing protocol")
-            proto = exp["Sample_library_selection"].lower()
-            if proto in bisulfite_protocols:
-                exp["protocol"] = bisulfite_protocols[proto]
-
-        return exp
-
-    def _sra_bam_conversion2(
+    def _sra_to_bam_conversion_fastq_damp(
         self, bam_file: str, run_name: str, picard_path: str = None
     ) -> NoReturn:
         """
-        Converting of SRA file to BAM file by using fastq-dump
+        Convert SRA file to BAM file by using fastq-dump
         (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
@@ -1554,7 +1379,7 @@ class Geofetcher:
         self, tabular_data: dict, filepath: str, column_names: list = None
     ):
         """
-        Writes one or more tables to a given CSV filepath.
+        Write one or more tables to a given CSV filepath.
 
         :param tabular_data: Mapping | Iterable[Mapping]: single KV pair collection, or collection
             of such collections, to write to disk as tabular data
@@ -1583,7 +1408,7 @@ class Geofetcher:
         self, file_url: str, data_folder: str, new_name: str = None, sleep_after=0.5
     ) -> NoReturn:
         """
-        Given an url for a file, downloading to specified folder
+        Given an url for a file, downloading file to specified folder
         :param str file_url: the URL of the file to download
         :param str data_folder: path to the folder where data should be downloaded
         :param float sleep_after: time to sleep after downloading
@@ -1625,7 +1450,7 @@ class Geofetcher:
         for line in file_gse_content:
 
             if re.compile(r"!Series_geo_accession").search(line):
-                gse_numb = self._get_value(line)
+                gse_numb = _get_value(line)
                 meta_processed_series["GSE"] = gse_numb
             found = re.findall(SER_SUPP_FILE_PATTERN, line)
 
@@ -1672,7 +1497,7 @@ class Geofetcher:
                     nb = len(meta_processed_samples) - 1
                     for line_gsm in file_gsm_content:
                         if line_gsm[0] == "^":
-                            nb = len(self._check_file_existance(meta_processed_samples))
+                            nb = len(_check_file_existance(meta_processed_samples))
                             meta_processed_samples.append(
                                 {"files": [], "GSE": gse_numb}
                             )
@@ -1716,13 +1541,11 @@ class Geofetcher:
                             if file_url_gsm != "NONE":
                                 meta_processed_samples[nb]["files"].append(file_url_gsm)
 
-                    self._check_file_existance(meta_processed_samples)
-                    meta_processed_samples = self._separate_list_of_files(
+                    _check_file_existance(meta_processed_samples)
+                    meta_processed_samples = _separate_list_of_files(
                         meta_processed_samples
                     )
-                    meta_processed_samples = self._separate_file_url(
-                        meta_processed_samples
-                    )
+                    meta_processed_samples = _separate_file_url(meta_processed_samples)
 
                     self._LOGGER.info(
                         f"\nTotal number of processed SAMPLES files found is: "
@@ -1730,7 +1553,7 @@ class Geofetcher:
                     )
 
                     # expand meta_processed_samples with information about type and size
-                    file_info_add = self._read_tar_filelist(filelist_raw_text)
+                    file_info_add = _read_tar_filelist(filelist_raw_text)
                     for index_nr in range(len(meta_processed_samples)):
                         file_name = meta_processed_samples[index_nr]["file"]
                         meta_processed_samples[index_nr].update(
@@ -1769,8 +1592,8 @@ class Geofetcher:
                     f"IndexError in adding value to meta_processed_series: %s" % ind_err
                 )
 
-        meta_processed_series = self._separate_list_of_files(meta_processed_series)
-        meta_processed_series = self._separate_file_url(meta_processed_series)
+        meta_processed_series = _separate_list_of_files(meta_processed_series)
+        meta_processed_series = _separate_file_url(meta_processed_series)
         self._LOGGER.info(
             f"Total number of processed SERIES files found is: "
             f"%s" % str(len(meta_processed_series))
@@ -1780,69 +1603,12 @@ class Geofetcher:
 
         return meta_processed_samples, meta_processed_series
 
-    @staticmethod
-    def _check_file_existance(meta_processed_sample: list):
+    def _run_filter(self, meta_list: list, col_name: str = "file") -> list:
         """
-        Checking if last element of the list has files. If list of files is empty deleting it
-        """
-        nb = len(meta_processed_sample) - 1
-        if nb > -1:
-            if len(meta_processed_sample[nb]["files"]) == 0:
-                del meta_processed_sample[nb]
-                nb -= 1
-        return meta_processed_sample
-
-    @staticmethod
-    def _separate_list_of_files(meta_list, col_name="files"):
-        """
-        This method is separating list of files (dict value) or just simple dict
-        into two different dicts
-        """
-        separated_list = []
-        if isinstance(meta_list, list):
-            for meta_elem in meta_list:
-                for file_elem in meta_elem[col_name]:
-                    new_dict = meta_elem.copy()
-                    new_dict.pop(col_name, None)
-                    new_dict["file"] = file_elem
-                    separated_list.append(new_dict)
-        elif isinstance(meta_list, dict):
-            for file_elem in meta_list[col_name]:
-                new_dict = meta_list.copy()
-                new_dict.pop(col_name, None)
-                new_dict["file"] = file_elem
-                separated_list.append(new_dict)
-        else:
-            return TypeError("Incorrect type")
-
-        return separated_list
-
-    def _separate_file_url(self, meta_list):
-        """
-        This method is adding dict key without file_name without path
-        """
-        separated_list = []
-        for meta_elem in meta_list:
-            new_dict = meta_elem.copy()
-            new_dict["file_url"] = meta_elem["file"]
-            new_dict["file"] = os.path.basename(meta_elem["file"])
-            # new_dict["sample_name"] = os.path.basename(meta_elem["file"])
-            try:
-                new_dict["sample_name"] = str(meta_elem["Sample_title"])
-                if new_dict["sample_name"] == "" or new_dict["sample_name"] is None:
-                    raise KeyError("sample_name Does not exist. Creating .. ")
-            except KeyError:
-                new_dict["sample_name"] = os.path.basename(meta_elem["file"])
-
-            # sanitize sample names
-            new_dict["sample_name"] = self._sanitize_name(new_dict["sample_name"])
-
-            separated_list.append(new_dict)
-        return separated_list
-
-    def _run_filter(self, meta_list, col_name="file"):
-        """
-        If user specified filter it will filter all this files here by col_name
+        Filters files and metadata using Regular expression filter
+        :param meta_list: list of composed metadata
+        :param col_name: name of the column where file names are stored
+        :return: metadata list after file_name filter
         """
         filtered_list = []
         for meta_elem in meta_list:
@@ -1857,7 +1623,10 @@ class Geofetcher:
 
     def _run_size_filter(self, meta_list, col_name="file_size"):
         """
-        function for filtering file size
+        Filters files and metadata by file size column specified in meta_list
+        :param meta_list: list of composed metadata
+        :param col_name: name of the column where is size information stored
+        :return: metadata list after size filter
         """
         if self.filter_size is not None:
             filtered_list = []
@@ -1874,41 +1643,6 @@ class Geofetcher:
             % len(filtered_list)
         )
         return filtered_list
-
-    @staticmethod
-    def _read_tar_filelist(raw_text: str):
-        """
-        Creating list for supplementary files that are listed in "filelist.txt"
-        :param str raw_text: path to the file with information about files that are zipped ("filelist.txt")
-        :return dict: dict of supplementary file names and additional information
-        """
-        f = StringIO(raw_text)
-        files_info = {}
-        csv_reader = csv.reader(f, delimiter="\t")
-        line_count = 0
-        for row in csv_reader:
-            if line_count == 0:
-                name_index = row.index("Name")
-                size_index = row.index("Size")
-                type_index = row.index("Type")
-
-                line_count += 1
-            else:
-                files_info[row[name_index]] = {
-                    "file_size": row[size_index],
-                    "type": row[type_index],
-                }
-
-        return files_info
-
-    @staticmethod
-    def _get_value(all_line: str):
-        """
-        :param all_line: string with key value. (e.g. '!Series_geo_accession = GSE188720')
-        :return: value (e.g. GSE188720)
-        """
-        line_value = all_line.split("= ")[-1]
-        return line_value.split(": ")[-1].rstrip("\n")
 
     def _download_processed_file(self, file_url: str, data_folder: str) -> bool:
         """
@@ -1995,7 +1729,7 @@ class Geofetcher:
                 try:
                     # downloading metadata
                     srp_list = self._get_SRP_list(acc_SRP)
-                    srp_list = self._unify_list_keys(srp_list)
+                    srp_list = _unify_list_keys(srp_list)
                     if file_sra is not None and not self.discard_soft:
                         with open(file_sra, "w") as m_file:
                             dict_writer = csv.DictWriter(m_file, srp_list[0].keys())
@@ -2037,7 +1771,7 @@ class Geofetcher:
 
     def _get_SRP_list(self, srp_number: str) -> list:
         """
-        By using requests and xml searching and getting list of dicts of SRRs
+        Get a list of srp by using requests and xml searching and getting list of dicts of SRRs
         :param str srp_number: SRP number
         :return: list of dicts of SRRs
         """
@@ -2160,7 +1894,7 @@ class Geofetcher:
                         current_sample_srx = True
         # GSM SOFT file parsed, save it in a list
         self._LOGGER.info(f"Processed {len(samples_list)} samples.")
-        gsm_metadata = self._expand_metadata_list_in_dict(gsm_metadata)
+        gsm_metadata = self._expand_metadata_dict(gsm_metadata)
         return gsm_metadata
 
     def _write(
@@ -2183,294 +1917,6 @@ class Geofetcher:
             f.write(content)
             if not omit_newline:
                 f.write("\n")
-
-
-def _parse_cmdl(cmdl):
-    """
-    parser
-    """
-    parser = argparse.ArgumentParser(
-        description="Automatic GEO and SRA data downloader",
-        usage="""geofetch [<args>]
-        
-The example how to use geofetch (to download GSE573030 just metadata):
-    geofetch -i GSE67303 -m `pwd` --just-metadata
-    
-To download all processed data of GSE57303:
-    geofetch -i GSE67303 --processed --geo-folder `pwd` -m `pwd`
-    
-* where `pwd` is a current directory
-
-""",
-    )
-
-    processed_group = parser.add_argument_group("processed")
-    raw_group = parser.add_argument_group("raw")
-
-    parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
-    )
-
-    # Required
-    parser.add_argument(
-        "-i",
-        "--input",
-        dest="input",
-        required=True,
-        help="required: a GEO (GSE) accession, or a file with a list of GSE numbers",
-    )
-
-    # Optional
-    parser.add_argument(
-        "-n", "--name", help="Specify a project name. Defaults to GSE number"
-    )
-
-    parser.add_argument(
-        "-m",
-        "--metadata-root",
-        dest="metadata_root",
-        default=safe_echo("SRAMETA"),
-        help="Specify a parent folder location to store metadata. "
-        "The project name will be added as a subfolder "
-        "[Default: $SRAMETA:" + safe_echo("SRAMETA") + "]",
-    )
-
-    parser.add_argument(
-        "-u",
-        "--metadata-folder",
-        help="Specify an absolute folder location to store metadata. "
-        "No subfolder will be added. Overrides value of --metadata-root "
-        "[Default: Not used (--metadata-root is used by default)]",
-    )
-
-    parser.add_argument(
-        "--just-metadata",
-        action="store_true",
-        help="If set, don't actually run downloads, just create metadata",
-    )
-
-    parser.add_argument(
-        "-r",
-        "--refresh-metadata",
-        action="store_true",
-        help="If set, re-download metadata even if it exists.",
-    )
-
-    parser.add_argument(
-        "--config-template", default=None, help="Project config yaml file template."
-    )
-
-    # Optional
-    parser.add_argument(
-        "--pipeline-samples",
-        default=None,
-        help="Optional: Specify one or more filepaths to SAMPLES pipeline interface yaml files. "
-        "These will be added to the project config file to make it immediately "
-        "compatible with looper. [Default: null]",
-    )
-
-    # Optional
-    parser.add_argument(
-        "--pipeline-project",
-        default=None,
-        help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
-        "These will be added to the project config file to make it immediately "
-        "compatible with looper. [Default: null]",
-    )
-    # Optional
-    parser.add_argument(
-        "--disable-progressbar",
-        action="store_true",
-        help="Optional: Disable progressbar",
-    )
-
-    # Optional
-    parser.add_argument(
-        "-k",
-        "--skip",
-        default=0,
-        type=int,
-        help="Skip some accessions. [Default: no skip].",
-    )
-
-    parser.add_argument(
-        "--acc-anno",
-        action="store_true",
-        help="Optional: Produce annotation sheets for each accession."
-        " Project combined PEP for the whole project won't be produced.",
-    )
-
-    parser.add_argument(
-        "--discard-soft",
-        action="store_true",
-        help="Optional: After creation of PEP files, all soft and additional files will be deleted",
-    )
-
-    parser.add_argument(
-        "--const-limit-project",
-        type=int,
-        default=50,
-        help="Optional: Limit of the number of the constant sample characters "
-        "that should not be in project yaml. [Default: 50]",
-    )
-
-    parser.add_argument(
-        "--const-limit-discard",
-        type=int,
-        default=250,
-        help="Optional: Limit of the number of the constant sample characters "
-        "that should not be discarded [Default: 250]",
-    )
-
-    parser.add_argument(
-        "--attr-limit-truncate",
-        type=int,
-        default=500,
-        help="Optional: Limit of the number of sample characters."
-        "Any attribute with more than X characters will truncate to the first X,"
-        " where X is a number of characters [Default: 500]",
-    )
-
-    parser.add_argument(
-        "--add-dotfile",
-        action="store_true",
-        help="Optional: Add .pep.yaml file that points .yaml PEP file",
-    )
-
-    processed_group.add_argument(
-        "-p",
-        "--processed",
-        default=False,
-        action="store_true",
-        help="Download processed data [Default: download raw data].",
-    )
-
-    processed_group.add_argument(
-        "--data-source",
-        dest="data_source",
-        choices=["all", "samples", "series"],
-        default="samples",
-        help="Optional: Specifies the source of data on the GEO record"
-        " to retrieve processed data, which may be attached to the"
-        " collective series entity, or to individual samples. "
-        "Allowable values are: samples, series or both (all). "
-        "Ignored unless 'processed' flag is set. [Default: samples]",
-    )
-
-    processed_group.add_argument(
-        "--filter",
-        default=None,
-        help="Optional: Filter regex for processed filenames [Default: None]."
-        "Ignored unless 'processed' flag is set.",
-    )
-
-    processed_group.add_argument(
-        "--filter-size",
-        dest="filter_size",
-        default=None,
-        help="""Optional: Filter size for processed files
-                that are stored as sample repository [Default: None].
-                Works only for sample data.
-                Supported input formats : 12B, 12KB, 12MB, 12GB. 
-                Ignored unless 'processed' flag is set.""",
-    )
-
-    processed_group.add_argument(
-        "-g",
-        "--geo-folder",
-        default=safe_echo("GEODATA"),
-        help="Optional: Specify a location to store processed GEO files."
-        " Ignored unless 'processed' flag is set."
-        "[Default: $GEODATA:" + safe_echo("GEODATA") + "]",
-    )
-
-    raw_group.add_argument(
-        "-x",
-        "--split-experiments",
-        action="store_true",
-        help="""Split SRR runs into individual samples. By default, SRX
-            experiments with multiple SRR Runs will have a single entry in the
-            annotation table, with each run as a separate row in the
-            subannotation table. This setting instead treats each run as a
-            separate sample""",
-    )
-
-    raw_group.add_argument(
-        "-b",
-        "--bam-folder",
-        dest="bam_folder",
-        default=safe_echo("SRABAM"),
-        help="""Optional: Specify folder of bam files. Geofetch will not
-            download sra files when corresponding bam files already exist.
-            [Default: $SRABAM:"""
-        + safe_echo("SRABAM")
-        + "]",
-    )
-
-    raw_group.add_argument(
-        "-f",
-        "--fq-folder",
-        dest="fq_folder",
-        default=safe_echo("SRAFQ"),
-        help="""Optional: Specify folder of fastq files. Geofetch will not
-            download sra files when corresponding fastq files already exist.
-            [Default: $SRAFQ:"""
-        + safe_echo("SRAFQ")
-        + "]",
-    )
-
-    # Deprecated; these are for bam conversion which now happens in sra_convert
-    # it still works here but I hide it so people don't use it, because it's confusing.
-    raw_group.add_argument(
-        "-s",
-        "--sra-folder",
-        dest="sra_folder",
-        default=safe_echo("SRARAW"),
-        help=argparse.SUPPRESS,
-        # help="Optional: Specify a location to store sra files "
-        #   "[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
-    )
-    raw_group.add_argument(
-        "--bam-conversion",
-        action="store_true",
-        # help="Turn on sequential bam conversion. Default: No conversion.",
-        help=argparse.SUPPRESS,
-    )
-
-    raw_group.add_argument(
-        "--picard-path",
-        dest="picard_path",
-        default=safe_echo("PICARD"),
-        # help="Specify a path to the picard jar, if you want to convert "
-        # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
-        help=argparse.SUPPRESS,
-    )
-
-    raw_group.add_argument(
-        "--use-key-subset",
-        action="store_true",
-        help="Use just the keys defined in this module when writing out metadata.",
-    )
-
-    logmuse.add_logging_options(parser)
-    return parser.parse_args(cmdl)
-
-
-def safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
-    return os.getenv(var, "")
-
-
-class InvalidSoftLineException(Exception):
-    """Exception related to parsing SOFT line."""
-
-    def __init__(self, l):
-        """
-        Create the exception by providing the problematic line.
-
-        :param str l: the problematic SOFT line
-        """
-        super(self, f"{l}")
 
 
 def main():

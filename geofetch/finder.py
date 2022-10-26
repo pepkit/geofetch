@@ -27,16 +27,17 @@ coloredlogs.install(
 
 class Finder:
     """
-    Class for finding GSE accessions in special period of time
-    Additionally user can add specific filters for the search.
+    Class for finding GSE accessions in special period of time.
+    Additionally, user can add specific filters for the search,
+    while initialization of the class
     """
 
     def __init__(self, filters: str = None, retmax: int = RETMAX):
         """
-        :param filters: filters that have to be added to query.
+        :param filters: filters that have to be added to the query.
             Filter Patterns can be found here:
             https://www.ncbi.nlm.nih.gov/books/NBK3837/#EntrezHelp.Using_the_Advanced_Search_Pag
-        :param retmax: maximum items should be retrieved
+        :param retmax: maximum number of retrieved accessions.
         """
         self.query_customized_ending = ETOOLS_ENDING.format(retmax=retmax)
         self.query_filter_str = self._create_filter_str(filters)
@@ -65,8 +66,8 @@ class Finder:
 
     def get_gse_by_day_count(self, n_days: int = 1) -> list:
         """
-        Get list of gse accession that were uploaded or updated in last specified number of days
-        :param n_days: number of days from now
+        Get list of gse accessions that were uploaded or updated in last X days
+        :param n_days: number of days from now [e.g. 5]
         :return: list of gse accession
         """
         today = datetime.today()
@@ -88,7 +89,7 @@ class Finder:
 
     def get_gse_id_by_query(self, url: str) -> list:
         """
-        Use esearch query to find uids and then convert them to gse ids
+        Run esearch (ncbi search tool) by specifying URL and retrieve gse list result
         :param url: url of the query
         :return: list of gse ids
         """
@@ -101,24 +102,16 @@ class Finder:
     def uid_to_gse(uid: str) -> str:
         """
         UID to GES accession converter
-        :param uid: uid string
+        :param uid: uid string (Unique Identifier Number in GEO)
         :return: GSE id string
         """
         uid_regex = re.compile(r"[1-9]+0+([1-9]+[0-9]*)")
         return "GSE" + uid_regex.match(uid).group(1)
 
-    def read_file(self, file_path: str) -> list:
-        """
-        Getting list of gse's from file by specifying a file path
-        :param file_path: path to the file
-        :return: list of gse's
-        """
-        pass
-
     @staticmethod
     def find_differences(old_list: list, new_list: list) -> list:
         """
-        Comparing 2 lists and searching for elements that are not in old list
+        Compare 2 lists and search for elements that are not in old list
         :param old_list: old list of elements
         :param new_list: new list of elements
         :return: list of elements that are not in old list but are in new_list
@@ -148,7 +141,7 @@ class Finder:
     @staticmethod
     def _create_filter_str(filters: str = None) -> str:
         """
-        Tuning filter for url request
+        Tune filter for url request
         :param filters: filter should look like here: https://www.ncbi.nlm.nih.gov/books/NBK3837/#EntrezHelp.Using_the_Advanced_Search_Pag
         :return: tuned filter string
         """
@@ -158,7 +151,7 @@ class Finder:
 
     def _compose_url(self, date_filter: str = None) -> str:
         """
-        Composing final url by adding date filter
+        Compose final url by adding date filter
         :param date_filter: date filter that has to be used in the query
         :return: string of final url
         """
@@ -169,7 +162,7 @@ class Finder:
 
     def generate_file(self, file_path: str, gse_list: list = None):
         """
-        Saving list of gse numbers to the file
+        Save the list of GSE accessions stored in this Finder object to a given file
         :param file_path: root to the file where gse accessions have to be saved
         :param gse_list: list of gse accessions
         :return: NoReturn

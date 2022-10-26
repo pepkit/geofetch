@@ -327,7 +327,8 @@ class Geofetcher:
 
     def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
         """
-        Main script driver/workflow
+        Main function driver/workflow
+        Function that search, filters, downloads and save data and metadata from  GEO and SRA
         :param input: GSE or input file with gse's
         :param name: Name of the project
         :return: NoReturn or peppy Project
@@ -423,7 +424,7 @@ class Geofetcher:
                 (
                     meta_processed_samples,
                     meta_processed_series,
-                ) = self.fetchone_processed(
+                ) = self.fetch_processed_one(
                     gse_file_content=file_gse_content,
                     gsm_file_content=file_gsm_content,
                     gsm_filter_list=gsm_enter_dict,
@@ -648,21 +649,23 @@ class Geofetcher:
                         self._LOGGER.warning(
                             "Bam conversion failed with sam-dump. Trying fastq-dump..."
                         )
-                        self._sra_to_bam_conversion_fastq_damp(bam_file, run_name, self.picard_path)
+                        self._sra_to_bam_conversion_fastq_damp(
+                            bam_file, run_name, self.picard_path
+                        )
 
                 except FileNotFoundError as err:
                     self._LOGGER.info(
                         f"SRA file doesn't exist, please download it first: {err}"
                     )
 
-    def fetchone_processed(
+    def fetch_processed_one(
         self,
         gse_file_content: list,
         gsm_file_content: list,
         gsm_filter_list: dict,
     ) -> Tuple:
         """
-        Fetching one processed GSE project
+        Fetching one processed GSE project and return its metadata
         :param gsm_file_content: gse soft file content
         :param gse_file_content: gsm soft file content
         :param gsm_filter_list: list of gsm that have to be downloaded
@@ -755,7 +758,7 @@ class Geofetcher:
         self, acc_gse: str, meta_processed_samples: list, meta_processed_series: list
     ) -> NoReturn:
         """
-        Function that downloads processed data
+        Download processed data from GEO by providing project annotation list
         :param acc_gse: accession number of the project
         :param meta_processed_samples: list of annotation of samples
         :param meta_processed_series: list of annotation of series
@@ -791,7 +794,7 @@ class Geofetcher:
             for file_url in processed_series_files:
                 self._download_processed_file(file_url, data_geo_folder)
 
-    def _expand_metadata_list_in_dict(self, metadata_dict: dict) -> dict:
+    def _expand_metadata_dict(self, metadata_dict: dict) -> dict:
         """
         Expanding all lists of all items in the dict by creating new items or joining them
 
@@ -1106,7 +1109,7 @@ class Geofetcher:
         self, file_annotation_path: str, proj_meta: list
     ) -> str:
         """
-        completing and generating config file content
+        Composing and generating config file content
         :param file_annotation_path: root to the annotation file
         :param proj_meta: common metadata that has to added to config file
         :return: generated, complete config file content
@@ -1135,7 +1138,7 @@ class Geofetcher:
 
     def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
         """
-        completing and generating config file content for raw data
+        Composing and generating config file content for raw data
         :param proj_meta: root to the annotation file
         :param proj_root_sample: path to sampletable file
         :param subanot_path_yaml: path to subannotation file
@@ -1201,7 +1204,7 @@ class Geofetcher:
         attr_limit_truncate: int = 500,
     ) -> tuple:
         """
-        This function is separating information for the experiment from a sample
+        This function is separating experiment(project) metadata from sample metadata
         :param list or dict meta_list: list of dictionaries of samples
         :param int max_len: threshold of the length of the common value that can be stored in the sample table
         :param int del_limit: threshold of the length of the common value that have to be deleted
@@ -1399,7 +1402,7 @@ class Geofetcher:
         self, file_url: str, data_folder: str, new_name: str = None, sleep_after=0.5
     ) -> NoReturn:
         """
-        Given an url for a file, downloading to specified folder
+        Given an url for a file, downloading file to specified folder
         :param str file_url: the URL of the file to download
         :param str data_folder: path to the folder where data should be downloaded
         :param float sleep_after: time to sleep after downloading
@@ -1594,9 +1597,12 @@ class Geofetcher:
 
         return meta_processed_samples, meta_processed_series
 
-    def _run_filter(self, meta_list, col_name="file"):
+    def _run_filter(self, meta_list: list, col_name: str = "file") -> list:
         """
-        If user specified filter it will filter all this files here by col_name
+        Filters files and metadata using Regular expression filter
+        :param meta_list: list of composed metadata
+        :param col_name: name of the column where file names are stored
+        :return: metadata list after file_name filter
         """
         filtered_list = []
         for meta_elem in meta_list:
@@ -1611,7 +1617,10 @@ class Geofetcher:
 
     def _run_size_filter(self, meta_list, col_name="file_size"):
         """
-        function for filtering file size
+        Filters files and metadata by file size column specified in meta_list
+        :param meta_list: list of composed metadata
+        :param col_name: name of the column where is size information stored
+        :return: metadata list after size filter
         """
         if self.filter_size is not None:
             filtered_list = []
@@ -1756,7 +1765,7 @@ class Geofetcher:
 
     def _get_SRP_list(self, srp_number: str) -> list:
         """
-        By using requests and xml searching and getting list of dicts of SRRs
+        Getting list of srp by using requests and xml searching and getting list of dicts of SRRs
         :param str srp_number: SRP number
         :return: list of dicts of SRRs
         """
@@ -1879,7 +1888,7 @@ class Geofetcher:
                         current_sample_srx = True
         # GSM SOFT file parsed, save it in a list
         self._LOGGER.info(f"Processed {len(samples_list)} samples.")
-        gsm_metadata = self._expand_metadata_list_in_dict(gsm_metadata)
+        gsm_metadata = self._expand_metadata_dict(gsm_metadata)
         return gsm_metadata
 
     def _write(

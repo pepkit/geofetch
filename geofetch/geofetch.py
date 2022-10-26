@@ -527,7 +527,7 @@ class Geofetcher:
         gsm_metadata: dict = None,
     ):
         """
-        Creating srp multitable and updating gsm_metadata based on srp
+        Create srp multitable and update gsm_metadata based on srp
         :param srp_list_result: list of srp got from sra file
         :param gsm_enter_dict: gsm enter content
         :param gsm_metadata: dict of samples of gsm
@@ -609,7 +609,7 @@ class Geofetcher:
 
     def _download_raw_data(self, run_name: str) -> NoReturn:
         """
-        Downloading raw data from SRA by providing run name
+        Downloade raw data from SRA by providing run name
         :param run_name: Run name from SRA
         :return: NoReturn
         """
@@ -665,7 +665,7 @@ class Geofetcher:
         gsm_filter_list: dict,
     ) -> Tuple:
         """
-        Fetching one processed GSE project and return its metadata
+        Fetche one processed GSE project and return its metadata
         :param gsm_file_content: gse soft file content
         :param gse_file_content: gsm soft file content
         :param gsm_filter_list: list of gsm that have to be downloaded
@@ -796,7 +796,7 @@ class Geofetcher:
 
     def _expand_metadata_dict(self, metadata_dict: dict) -> dict:
         """
-        Expanding all lists of all items in the dict by creating new items or joining them
+        Expand all lists of all items in the dict by creating new items or joining them
 
         :param metadata_dict: metadata dict
         :return: expanded metadata dict
@@ -820,7 +820,7 @@ class Geofetcher:
 
     def _expand_metadata_list_item(self, metadata_list: list, dict_key: str):
         """
-        Expanding list of one element (item) in the list by creating new items or joining them
+        Expand list of one element (item) in the list by creating new items or joining them
         ["first1: fff", ...] -> separate columns
 
         :param list metadata_list: list of dicts that store metadata
@@ -928,7 +928,7 @@ class Geofetcher:
         just_object: bool = False,
     ) -> Union[NoReturn, peppy.Project]:
         """
-        Saving annotation file by providing list of dictionaries with files metadata
+        Save annotation file by providing list of dictionaries with files metadata
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
         :type just_object: True, if you want to get peppy object without saving file
@@ -1016,7 +1016,7 @@ class Geofetcher:
         self, name, metadata_dict: dict, subannot_dict: dict = None
     ) -> Union[None, peppy.Project]:
         """
-        Combining individual accessions into project-level annotations, and writing
+        Combine individual accessions into project-level annotations, and writing
         individual accession files (if requested)
         :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
         :param metadata_dict: dictionary of sample annotations
@@ -1109,7 +1109,7 @@ class Geofetcher:
         self, file_annotation_path: str, proj_meta: list
     ) -> str:
         """
-        Composing and generating config file content
+        Compose and generate config file content
         :param file_annotation_path: root to the annotation file
         :param proj_meta: common metadata that has to added to config file
         :return: generated, complete config file content
@@ -1138,7 +1138,7 @@ class Geofetcher:
 
     def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
         """
-        Composing and generating config file content for raw data
+        Compose and generate config file content for raw data
         :param proj_meta: root to the annotation file
         :param proj_root_sample: path to sampletable file
         :param subanot_path_yaml: path to subannotation file
@@ -1178,7 +1178,7 @@ class Geofetcher:
     @staticmethod
     def _check_sample_name_standard(metadata_dict: dict) -> dict:
         """
-        Standardizing sample name and checking if it exists
+        Standardize sample name and checking if it exists
             (This function is used for raw data)
         :param metadata_dict: metadata dict
         :return: metadata dict with standardize sample names
@@ -1204,7 +1204,7 @@ class Geofetcher:
         attr_limit_truncate: int = 500,
     ) -> tuple:
         """
-        This function is separating experiment(project) metadata from sample metadata
+        Separate experiment(project) metadata from sample metadata
         :param list or dict meta_list: list of dictionaries of samples
         :param int max_len: threshold of the length of the common value that can be stored in the sample table
         :param int del_limit: threshold of the length of the common value that have to be deleted
@@ -1278,7 +1278,7 @@ class Geofetcher:
 
     def _download_SRA_file(self, run_name: str):
         """
-        Downloading SRA file by ising 'prefetch' utility from the SRA Toolkit
+        Download SRA file by ising 'prefetch' utility from the SRA Toolkit
         more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
         :param str run_name: SRR number of the SRA file
         """
@@ -1306,7 +1306,7 @@ class Geofetcher:
 
     def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
         """
-        Converting of SRA file to BAM file by using samtools function "sam-dump"
+        Convert SRA file to BAM file by using samtools function "sam-dump"
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
         """
@@ -1332,7 +1332,7 @@ class Geofetcher:
         self, bam_file: str, run_name: str, picard_path: str = None
     ) -> NoReturn:
         """
-        Converting of SRA file to BAM file by using fastq-dump
+        Convert SRA file to BAM file by using fastq-dump
         (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
@@ -1373,7 +1373,7 @@ class Geofetcher:
         self, tabular_data: dict, filepath: str, column_names: list = None
     ):
         """
-        Writes one or more tables to a given CSV filepath.
+        Write one or more tables to a given CSV filepath.
 
         :param tabular_data: Mapping | Iterable[Mapping]: single KV pair collection, or collection
             of such collections, to write to disk as tabular data
@@ -1765,7 +1765,7 @@ class Geofetcher:
 
     def _get_SRP_list(self, srp_number: str) -> list:
         """
-        Getting list of srp by using requests and xml searching and getting list of dicts of SRRs
+        Get a list of srp by using requests and xml searching and getting list of dicts of SRRs
         :param str srp_number: SRP number
         :return: list of dicts of SRRs
         """

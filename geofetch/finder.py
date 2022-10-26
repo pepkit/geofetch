@@ -111,7 +111,7 @@ class Finder:
     @staticmethod
     def find_differences(old_list: list, new_list: list) -> list:
         """
-        Comparing 2 lists and searching for elements that are not in old list
+        Compare 2 lists and search for elements that are not in old list
         :param old_list: old list of elements
         :param new_list: new list of elements
         :return: list of elements that are not in old list but are in new_list
@@ -141,7 +141,7 @@ class Finder:
     @staticmethod
     def _create_filter_str(filters: str = None) -> str:
         """
-        Tuning filter for url request
+        Tune filter for url request
         :param filters: filter should look like here: https://www.ncbi.nlm.nih.gov/books/NBK3837/#EntrezHelp.Using_the_Advanced_Search_Pag
         :return: tuned filter string
         """
@@ -151,7 +151,7 @@ class Finder:
 
     def _compose_url(self, date_filter: str = None) -> str:
         """
-        Composing final url by adding date filter
+        Compose final url by adding date filter
         :param date_filter: date filter that has to be used in the query
         :return: string of final url
         """
@@ -162,7 +162,7 @@ class Finder:
 
     def generate_file(self, file_path: str, gse_list: list = None):
         """
-        Saving list of gse numbers to the file
+        Save the list of GSE accessions stored in this Finder object to a given file
         :param file_path: root to the file where gse accessions have to be saved
         :param gse_list: list of gse accessions
         :return: NoReturn

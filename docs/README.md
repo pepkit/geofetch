@@ -21,7 +21,9 @@ Key geofetch advantages:
 - Standardizes output metadata
 - Filters type and size of processed files (from GEO) before downloading them
 - Easy to use
-- Fast execution
+- Fast execution time
+- Can search GEO to find relevant data
+- Can be used either as a command-line tool or from within Python using an API
 
 ## Quick example
 
@@ -54,7 +56,7 @@ geofetch -i GSE95654 --processed --just-metadata
 ![](./img/arguments_outputs.svg)
 
 ---
-### New features available in geofetch 0.11.0 :
+### New features available in geofetch 0.11.0:
 1) Now geofetch is available as Python API package. Geofetch can initialize [peppy](http://peppy.databio.org/) projects without downloading any soft files. Example:
 
 ```python

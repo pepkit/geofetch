@@ -1,15 +1,17 @@
 # Changelog
 
-## [0.11.0] -- 2022-09-06
-- Added initialization of peppy Project without saving any files
+## [0.11.0] -- 2022-10-26
+- Added initialization of peppy Project without saving any files (from within Python using an API)
 - Added Finder (searching GSE tool)
 - Added progress bar
-- Fixed None issue in config file
 - Switched way of saving soft files to request library
-- Fixed saving raw peps bug
-- Fixed config errors
 - Improved documentation
 - Refactored code
+- Added `--add-convert-modifier` flag
+- fixed looper amendments in the config file
+- Fixed special character bug in the config file
+- Fixed None issue in config file
+- Fixed saving raw peps bug
 
 ## [0.10.1] -- 2022-08-04
 - Updated metadata fetching requests from SRA database

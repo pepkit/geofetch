@@ -353,7 +353,8 @@ class Geofetcher:
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
         )
-
+        if len(acc_GSE_list) == 1:
+            self.disable_progressbar = True
         metadata_dict_combined = {}
         subannotation_dict_combined = {}
 
@@ -878,9 +879,10 @@ class Geofetcher:
                         else:
                             del metadata_list[n_elem][dict_key]
                     except KeyError as err:
-                        self._LOGGER.warning(
-                            f"expand_metadata_list: Key Error: {err}, continuing ..."
-                        )
+                        # self._LOGGER.warning(
+                        #     f"expand_metadata_list: Key Error: {err}, continuing ..."
+                        # )
+                        pass
 
                 return metadata_list
             else:
@@ -1472,7 +1474,6 @@ class Geofetcher:
                         self.metadata_expanded, gse_numb + "_file_list.txt"
                     )
 
-                    # TODO: make new function of code below:
                     if not os.path.isfile(filelist_path) or self.refresh_metadata:
                         result = requests.get(tar_files_list_url)
                         if result.ok:
@@ -1702,8 +1703,8 @@ class Geofetcher:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
             # as part of this GEO submission. Can't proceed.
             self._LOGGER.warning(
-                "\033[91mUnable to get SRA accession (SRP#) from GEO GSE SOFT file. "
-                "No raw data detected! Continuing anyway...\033[0m"
+                "Unable to get SRA accession (SRP#) from GEO GSE SOFT file. "
+                "No raw data detected! Continuing anyway..."
             )
             # but wait; another possibility: there's no SRP linked to the GSE, but there
             # could still be an SRX linked to the (each) GSM.
@@ -1740,8 +1741,8 @@ class Geofetcher:
 
                 except Exception as err:
                     self._LOGGER.warning(
-                        f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
-                        f"Error: {err}  \033[0m"
+                        f"Warning: error, while downloading SRA Info Metadata of {acc_SRP}. "
+                        f"Error: {err}. Probably no SRA metadata found"
                     )
                     return []
             else:

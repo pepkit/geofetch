@@ -130,7 +130,7 @@ def parse_SOFT_line(l: str) -> dict:
     :return dict[str, str]: A python Dict object representing the key-value.
     """
     elems = l[1:].split("=")
-    return {elems[0].rstrip(): elems[1].lstrip()}
+    return {elems[0].rstrip(): "".join(elems[1:]).lstrip()}
 
 
 class AccessionException(Exception):
@@ -203,6 +203,7 @@ class Accession(object):
         _LOGGER.debug("Fetching: '%s'", full_url)
 
         result = requests.get(full_url)
+
         if result.ok:
             result.encoding = "UTF-8"
             result_text = result.text

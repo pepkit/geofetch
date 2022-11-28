@@ -830,8 +830,18 @@ class Geofetcher:
         """
         try:
             element_is_list = any(
-                type(list_item.get(dict_key)) is list for list_item in metadata_list
+                isinstance(list_item.get(dict_key), list) for list_item in metadata_list
             )
+
+            # # checking if some items have two keys:
+            # # This code should deal with strings with few keys. e.g. "key1: key2: value"
+            # if not element_is_list:
+            #     if any(
+            #         (len(list_item.get(dict_key).split(": ")) > 0)
+            #         for list_item in metadata_list
+            #     ):
+            #         element_is_list = True
+
             if element_is_list:
                 for n_elem in range(len(metadata_list)):
                     try:

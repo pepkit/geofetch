@@ -1,4 +1,4 @@
-# <img src="docs/img/geofetch_logo.svg" alt="geofetch logo" height="70">
+# <img src="https://raw.githubusercontent.com/pepkit/geofetch/master/docs/img/geofetch_logo.svg?sanitize=true" alt="geofetch logo" height="70">
 
 [![PEP compatible](https://pepkit.github.io/img/PEP-compatible-green.svg)](https://pepkit.github.io)
 ![Run pytests](https://github.com/pepkit/geofetch/workflows/Run%20pytests/badge.svg)

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.11.1] -- 2022-11-28
+- Fixed requirements file
+- Fixed bug in expanding metadata list
+- Fixed bug in metadata links
+
 ## [0.11.0] -- 2022-10-26
 - Added initialization of peppy Project without saving any files (from within Python using an API)
 - Added Finder (searching GSE tool)

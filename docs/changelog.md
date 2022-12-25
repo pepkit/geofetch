@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.2] -- 2022-12-25
+- Changed sample_name of PEP of processed files to file oriented.
+- 
+
 ## [0.11.1] -- 2022-11-28
 - Fixed requirements file
 - Fixed bug in expanding metadata list

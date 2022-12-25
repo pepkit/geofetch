@@ -507,7 +507,7 @@ def _sanitize_name(name_str: str) -> str:
     punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
     for odd_char in list(punctuation1):
         new_str = new_str.replace(odd_char, "_")
-    new_str = new_str.replace(" ", "_").replace("__", "_")
+    new_str = new_str.replace(" ", "_").replace("__", "_").lower()
     return new_str
 
 
@@ -624,10 +624,23 @@ def _separate_file_url(meta_list):
             new_dict["sample_name"] = os.path.basename(meta_elem["file"])
 
         # sanitize sample names
-        new_dict["sample_name"] = _sanitize_name(new_dict["sample_name"])
+        sanit_name = _sanitize_name(new_dict["sample_name"])
+        new_dict["sample_name"] = make_sample_name_unique(sanit_name, separated_list)
 
         separated_list.append(new_dict)
     return separated_list
+
+
+def make_sample_name_unique(sanit_name: str, separated_list: list, new_number: int = 1) -> str:
+    """
+    Check if name is unique for current sample
+    """
+    if sanit_name not in [f['sample_name'] for f in separated_list]:
+        return sanit_name
+    elif f"{sanit_name}_{new_number}" not in [f['sample_name'] for f in separated_list]:
+        return f"{sanit_name}_{new_number}"
+    else:
+        return make_sample_name_unique(sanit_name, separated_list, new_number+1)
 
 
 def _filter_gsm(meta_processed_samples: list, gsm_list: dict) -> list:

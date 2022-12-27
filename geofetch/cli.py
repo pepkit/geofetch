@@ -141,7 +141,7 @@ To download all processed data of GSE57303:
     parser.add_argument(
         "--const-limit-discard",
         type=int,
-        default=250,
+        default=1000,
         help="Optional: Limit of the number of the constant sample characters "
         "that should not be discarded [Default: 250]",
     )

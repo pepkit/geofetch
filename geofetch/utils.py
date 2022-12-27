@@ -631,16 +631,18 @@ def _separate_file_url(meta_list):
     return separated_list
 
 
-def make_sample_name_unique(sanit_name: str, separated_list: list, new_number: int = 1) -> str:
+def make_sample_name_unique(
+    sanit_name: str, separated_list: list, new_number: int = 1
+) -> str:
     """
     Check if name is unique for current sample
     """
-    if sanit_name not in [f['sample_name'] for f in separated_list]:
+    if sanit_name not in [f["sample_name"] for f in separated_list]:
         return sanit_name
-    elif f"{sanit_name}_{new_number}" not in [f['sample_name'] for f in separated_list]:
+    elif f"{sanit_name}_{new_number}" not in [f["sample_name"] for f in separated_list]:
         return f"{sanit_name}_{new_number}"
     else:
-        return make_sample_name_unique(sanit_name, separated_list, new_number+1)
+        return make_sample_name_unique(sanit_name, separated_list, new_number + 1)
 
 
 def _filter_gsm(meta_processed_samples: list, gsm_list: dict) -> list:

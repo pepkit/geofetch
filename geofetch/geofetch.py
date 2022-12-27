@@ -80,7 +80,7 @@ class Geofetcher:
         picard_path: str = "",
         input: str = None,
         const_limit_project: int = 50,
-        const_limit_discard: int = 250,
+        const_limit_discard: int = 1000,
         attr_limit_truncate: int = 500,
         discard_soft: bool = False,
         add_dotfile: bool = False,
@@ -516,7 +516,7 @@ class Geofetcher:
         # saving PEPs for raw data
         else:
             return_value = self._write_raw_annotation_new(
-                "PEP", metadata_dict_combined, subannotation_dict_combined
+                f"{self.project_name}_PEP", metadata_dict_combined, subannotation_dict_combined
             )
             if self.just_object:
                 return return_value
@@ -876,7 +876,20 @@ class Geofetcher:
                                         ": ".join(separated_elements[1:]),
                                     ]
                                     sample_char = dict([list_of_elem])
-                                    metadata_list[n_elem].update(sample_char)
+                                    for samp_key, samp_val in sample_char.items():
+                                        if samp_key not in metadata_list[n_elem]:
+                                            metadata_list[n_elem][samp_key] = samp_val
+                                        else:
+                                            metadata_list[n_elem][samp_key] = ". ".join(
+                                                [
+                                                    str(metadata_list[n_elem][samp_key])
+                                                    + samp_val
+                                                ]
+                                            )
+                                            print(sample_char)
+                                            print(samp_key)
+                                            print(metadata_list[n_elem][samp_key])
+                                    # metadata_list[n_elem].update(sample_char)
                             else:
                                 just_string = True
                                 if this_string != "":
@@ -904,7 +917,7 @@ class Geofetcher:
             self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}")
             return metadata_list
         except ValueError as err:
-            self._LOGGER.warning("expand_metadata_list: Value Error: {err}")
+            self._LOGGER.warning(f"expand_metadata_list: Value Error: {err}")
             return metadata_list
 
     def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
@@ -1218,7 +1231,7 @@ class Geofetcher:
     def _separate_common_meta(
         meta_list: Union[List, Dict],
         max_len: int = 50,
-        del_limit: int = 250,
+        del_limit: int = 1000,
         attr_limit_truncate: int = 500,
     ) -> tuple:
         """

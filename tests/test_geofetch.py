@@ -323,7 +323,7 @@ class TestPeppyInitProcessed:
         gse_numb = "GSE190287"
         p_prop = initiate_geofetcher.get_projects(gse_numb)
         assert (
-            len(p_prop[f"{gse_numb}_samples"].samples) == 8
+            len(p_prop[f"{gse_numb}_samples"].samples) == 11
         )  # it has 11 files but 8 samples
         assert len(p_prop[f"{gse_numb}_series"].samples) == 2
 

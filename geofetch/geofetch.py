@@ -516,7 +516,9 @@ class Geofetcher:
         # saving PEPs for raw data
         else:
             return_value = self._write_raw_annotation_new(
-                f"{self.project_name}_PEP", metadata_dict_combined, subannotation_dict_combined
+                f"{self.project_name}_PEP",
+                metadata_dict_combined,
+                subannotation_dict_combined,
             )
             if self.just_object:
                 return return_value
@@ -1519,7 +1521,17 @@ class Geofetcher:
                         filelist_raw_text = filelist_obj.read()
 
                     nb = len(meta_processed_samples) - 1
+                    sample_table = False
                     for line_gsm in file_gsm_content:
+
+                        # handles #103
+                        if line_gsm == "!sample_table_begin":
+                            sample_table = True
+                        if sample_table:
+                            if line_gsm == "!sample_table_end":
+                                sample_table = False
+                            continue
+
                         if line_gsm[0] == "^":
                             nb = len(_check_file_existance(meta_processed_samples))
                             meta_processed_samples.append(
@@ -1856,7 +1868,18 @@ class Geofetcher:
         current_sample_id = None
         current_sample_srx = False
         samples_list = []
+        sample_table = False
+
         for line in file_gsm_content:
+
+            # handles #103
+            if line == "!sample_table_begin":
+                sample_table = True
+            if sample_table:
+                if line == "!sample_table_end":
+                    sample_table = False
+                continue
+
             line = line.rstrip()
             if len(line) == 0:  # Apparently SOFT files can contain blank lines
                 continue

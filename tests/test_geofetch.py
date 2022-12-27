@@ -146,14 +146,15 @@ class TestListRawMetaFiles:
         yield instance
 
     def test_creating_series_pep_files(self, initiate_geofetcher):
-        initiate_geofetcher.fetch_all("GSE138656")
+        gse_numb = "GSE138656"
+        initiate_geofetcher.fetch_all(gse_numb)
         downloaded_meta_files = list(
-            os.walk(initiate_geofetcher.metadata_expanded + f"/PEP")
+            os.walk(initiate_geofetcher.metadata_expanded + f"/{gse_numb}_PEP")
         )[0][2]
 
-        assert "PEP_raw.csv" in downloaded_meta_files
-        assert "PEP.yaml" in downloaded_meta_files
-        assert "PEP_raw_subtable.csv" in downloaded_meta_files
+        assert f"{gse_numb}_PEP_raw.csv" in downloaded_meta_files
+        assert f"{gse_numb}_PEP.yaml" in downloaded_meta_files
+        assert f"{gse_numb}_PEP_raw_subtable.csv" in downloaded_meta_files
 
 
 class TestDownloadingProcFiles:

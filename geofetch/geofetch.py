@@ -82,6 +82,7 @@ class Geofetcher:
         const_limit_project: int = 50,
         const_limit_discard: int = 1000,
         attr_limit_truncate: int = 500,
+        max_soft_size: str = "1GB",
         discard_soft: bool = False,
         add_dotfile: bool = False,
         disable_progressbar: bool = False,
@@ -120,7 +121,10 @@ class Geofetcher:
                 Any attribute with more than X characters will truncate to the first X, where X is a number of characters
                 [Default: 500]
 
-        :param processed: Download processed data [Default: download raw data].
+        :param max_soft_size: Optional: Max size of soft file.
+                Supported input formats : 12B, 12KB, 12MB, 12GB. [Default value: 1GB]
+
+        :param processed: Download processed da_soft_sizeta [Default: download raw data].
         :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
                 which may be attached to the collective series entity, or to individual samples. Allowable values are:
                 samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
@@ -242,6 +246,7 @@ class Geofetcher:
         self.const_limit_project = const_limit_project
         self.const_limit_discard = const_limit_discard
         self.attr_limit_truncate = attr_limit_truncate
+        self.max_soft_size = convert_size(max_soft_size.lower())
 
         self.discard_soft = discard_soft
         self.add_dotfile = add_dotfile
@@ -400,7 +405,9 @@ class Geofetcher:
 
             if not os.path.isfile(file_gse) or self.refresh_metadata:
                 file_gse_content = Accession(acc_GSE).fetch_metadata(
-                    file_gse, clean=self.discard_soft
+                    file_gse,
+                    clean=self.discard_soft,
+                    max_soft_size=self.max_soft_size,
                 )
             else:
                 self._LOGGER.info(f"Found previous GSE file: {file_gse}")
@@ -410,7 +417,10 @@ class Geofetcher:
 
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
                 file_gsm_content = Accession(acc_GSE).fetch_metadata(
-                    file_gsm, typename="GSM", clean=self.discard_soft
+                    file_gsm,
+                    typename="GSM",
+                    clean=self.discard_soft,
+                    max_soft_size=self.max_soft_size,
                 )
             else:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")

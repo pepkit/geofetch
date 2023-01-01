@@ -161,6 +161,15 @@ To download all processed data of GSE57303:
         help="Optional: Add .pep.yaml file that points .yaml PEP file",
     )
 
+    parser.add_argument(
+        "--max-soft-size",
+        type=str,
+        default="1GB",
+        help="""Optional: Max size of soft file.
+                [Default: 1GB].
+                Supported input formats : 12B, 12KB, 12MB, 12GB. """,
+    )
+
     processed_group.add_argument(
         "-p",
         "--processed",

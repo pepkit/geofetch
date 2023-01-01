@@ -380,7 +380,7 @@ def run_subprocess(*args, **kwargs):
         _LOGGER.info(f"Terminating subprocess: {p.pid} | ({p.args})")
         try:
             p.terminate()
-            print("Pipeline aborted.")
+            _LOGGER.info("Pipeline aborted.")
         except OSError as ose:
             _LOGGER.warning(f"Exception raised during subprocess termination: {ose}")
         sys.exit(1)

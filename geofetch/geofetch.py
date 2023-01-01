@@ -898,9 +898,6 @@ class Geofetcher:
                                                     + samp_val
                                                 ]
                                             )
-                                            print(sample_char)
-                                            print(samp_key)
-                                            print(metadata_list[n_elem][samp_key])
                                     # metadata_list[n_elem].update(sample_char)
                             else:
                                 just_string = True
@@ -980,7 +977,7 @@ class Geofetcher:
 
         # create folder if it does not exist
         pep_file_folder = os.path.split(file_annotation_path)[0]
-        if not os.path.exists(pep_file_folder):
+        if not os.path.exists(pep_file_folder) and not self.just_object:
             os.makedirs(pep_file_folder)
 
         self._LOGGER.info("Unifying and saving of metadata... ")
@@ -1076,7 +1073,7 @@ class Geofetcher:
         )
 
         proj_root = os.path.join(self.metadata_root_full, name)
-        if not os.path.exists(proj_root):
+        if not os.path.exists(proj_root) and not self.just_object:
             os.makedirs(proj_root)
 
         proj_root_sample = os.path.join(

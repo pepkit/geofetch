@@ -1,8 +1,11 @@
 # Changelog
 
 ## [0.11.2] -- 2022-12-25
-- Changed sample_name of PEP of processed files to file oriented.
-- 
+- Changed sample_name of PEP of processed files to file oriented
+- Added `--max-soft-size` argument, that sets size limit of soft files
+- - Added functionality that skips downloading GEO tables that are in soft files
+- Fixed bug of creating unwanted empty folders
+- Fixed problem with missing data
 
 ## [0.11.1] -- 2022-11-28
 - Fixed requirements file

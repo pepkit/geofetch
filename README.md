@@ -5,6 +5,7 @@
 [![docs-badge](https://readthedocs.org/projects/geofetch/badge/?version=latest)](https://geofetch.databio.org/en/latest/)
 [![pypi-badge](https://img.shields.io/pypi/v/geofetch)](https://pypi.org/project/geofetch)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/geofetch/README.html)
 
 `geofetch` is a command-line tool that downloads sequencing data and metadata from GEO and SRA and creates [standard PEPs](https://pep.databio.org/). `geofetch` is hosted at [pypi](https://pypi.org/project/geofetch/). You can convert the result of geofetch into unmapped `bam` or `fastq` files with the included `sraconvert` command.
 

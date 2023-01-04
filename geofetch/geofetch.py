@@ -13,6 +13,7 @@ import requests
 import xmltodict
 import yaml
 import time
+import logging
 
 from .cli import _parse_cmdl
 from .const import *
@@ -158,7 +159,7 @@ class Geofetcher:
         if opts is not None:
             _LOGGER = logmuse.logger_via_cli(opts)
         else:
-            _LOGGER = logmuse.init_logger(name="geofetch")
+            _LOGGER = logging.getLogger(__name__)
 
         self._LOGGER = _LOGGER
 
@@ -939,10 +940,6 @@ class Geofetcher:
         :return str: path to the file
         """
         keys = list(list(gsm_metadata.values())[0].keys())
-
-        self._LOGGER.info(
-            f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m"
-        )
         fp = expandpath(file_annotation)
         with open(fp, "w") as of:
             w = csv.DictWriter(of, keys, extrasaction="ignore")

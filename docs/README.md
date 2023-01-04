@@ -18,12 +18,15 @@ Key geofetch advantages:
 
 - Works with GEO and SRA metadata
 - Combines samples from different projects
+- ![](./img/meta_integration.svg)
 - Standardizes output metadata
 - Filters type and size of processed files (from GEO) before downloading them
 - Easy to use
 - Fast execution time
 - Can search GEO to find relevant data
 - Can be used either as a command-line tool or from within Python using an API
+
+
 
 ## Quick example
 

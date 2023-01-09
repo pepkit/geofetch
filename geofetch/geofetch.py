@@ -13,6 +13,7 @@ import requests
 import xmltodict
 import yaml
 import time
+import logging
 
 from .cli import _parse_cmdl
 from .const import *
@@ -80,8 +81,9 @@ class Geofetcher:
         picard_path: str = "",
         input: str = None,
         const_limit_project: int = 50,
-        const_limit_discard: int = 250,
+        const_limit_discard: int = 1000,
         attr_limit_truncate: int = 500,
+        max_soft_size: str = "1GB",
         discard_soft: bool = False,
         add_dotfile: bool = False,
         disable_progressbar: bool = False,
@@ -120,7 +122,10 @@ class Geofetcher:
                 Any attribute with more than X characters will truncate to the first X, where X is a number of characters
                 [Default: 500]
 
-        :param processed: Download processed data [Default: download raw data].
+        :param max_soft_size: Optional: Max size of soft file.
+                Supported input formats : 12B, 12KB, 12MB, 12GB. [Default value: 1GB]
+
+        :param processed: Download processed da_soft_sizeta [Default: download raw data].
         :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
                 which may be attached to the collective series entity, or to individual samples. Allowable values are:
                 samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
@@ -154,7 +159,7 @@ class Geofetcher:
         if opts is not None:
             _LOGGER = logmuse.logger_via_cli(opts)
         else:
-            _LOGGER = logmuse.init_logger(name="geofetch")
+            _LOGGER = logging.getLogger(__name__)
 
         self._LOGGER = _LOGGER
 
@@ -242,6 +247,7 @@ class Geofetcher:
         self.const_limit_project = const_limit_project
         self.const_limit_discard = const_limit_discard
         self.attr_limit_truncate = attr_limit_truncate
+        self.max_soft_size = convert_size(max_soft_size.lower())
 
         self.discard_soft = discard_soft
         self.add_dotfile = add_dotfile
@@ -400,7 +406,9 @@ class Geofetcher:
 
             if not os.path.isfile(file_gse) or self.refresh_metadata:
                 file_gse_content = Accession(acc_GSE).fetch_metadata(
-                    file_gse, clean=self.discard_soft
+                    file_gse,
+                    clean=self.discard_soft,
+                    max_soft_size=self.max_soft_size,
                 )
             else:
                 self._LOGGER.info(f"Found previous GSE file: {file_gse}")
@@ -410,7 +418,10 @@ class Geofetcher:
 
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
                 file_gsm_content = Accession(acc_GSE).fetch_metadata(
-                    file_gsm, typename="GSM", clean=self.discard_soft
+                    file_gsm,
+                    typename="GSM",
+                    clean=self.discard_soft,
+                    max_soft_size=self.max_soft_size,
                 )
             else:
                 self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
@@ -516,7 +527,9 @@ class Geofetcher:
         # saving PEPs for raw data
         else:
             return_value = self._write_raw_annotation_new(
-                "PEP", metadata_dict_combined, subannotation_dict_combined
+                f"{self.project_name}_PEP",
+                metadata_dict_combined,
+                subannotation_dict_combined,
             )
             if self.just_object:
                 return return_value
@@ -876,7 +889,17 @@ class Geofetcher:
                                         ": ".join(separated_elements[1:]),
                                     ]
                                     sample_char = dict([list_of_elem])
-                                    metadata_list[n_elem].update(sample_char)
+                                    for samp_key, samp_val in sample_char.items():
+                                        if samp_key not in metadata_list[n_elem]:
+                                            metadata_list[n_elem][samp_key] = samp_val
+                                        else:
+                                            metadata_list[n_elem][samp_key] = ". ".join(
+                                                [
+                                                    str(metadata_list[n_elem][samp_key])
+                                                    + samp_val
+                                                ]
+                                            )
+                                    # metadata_list[n_elem].update(sample_char)
                             else:
                                 just_string = True
                                 if this_string != "":
@@ -904,7 +927,7 @@ class Geofetcher:
             self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}")
             return metadata_list
         except ValueError as err:
-            self._LOGGER.warning("expand_metadata_list: Value Error: {err}")
+            self._LOGGER.warning(f"expand_metadata_list: Value Error: {err}")
             return metadata_list
 
     def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
@@ -917,10 +940,6 @@ class Geofetcher:
         :return str: path to the file
         """
         keys = list(list(gsm_metadata.values())[0].keys())
-
-        self._LOGGER.info(
-            f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m"
-        )
         fp = expandpath(file_annotation)
         with open(fp, "w") as of:
             w = csv.DictWriter(of, keys, extrasaction="ignore")
@@ -955,7 +974,7 @@ class Geofetcher:
 
         # create folder if it does not exist
         pep_file_folder = os.path.split(file_annotation_path)[0]
-        if not os.path.exists(pep_file_folder):
+        if not os.path.exists(pep_file_folder) and not self.just_object:
             os.makedirs(pep_file_folder)
 
         self._LOGGER.info("Unifying and saving of metadata... ")
@@ -1051,7 +1070,7 @@ class Geofetcher:
         )
 
         proj_root = os.path.join(self.metadata_root_full, name)
-        if not os.path.exists(proj_root):
+        if not os.path.exists(proj_root) and not self.just_object:
             os.makedirs(proj_root)
 
         proj_root_sample = os.path.join(
@@ -1218,7 +1237,7 @@ class Geofetcher:
     def _separate_common_meta(
         meta_list: Union[List, Dict],
         max_len: int = 50,
-        del_limit: int = 250,
+        del_limit: int = 1000,
         attr_limit_truncate: int = 500,
     ) -> tuple:
         """
@@ -1506,7 +1525,17 @@ class Geofetcher:
                         filelist_raw_text = filelist_obj.read()
 
                     nb = len(meta_processed_samples) - 1
+                    sample_table = False
                     for line_gsm in file_gsm_content:
+
+                        # handles #103
+                        if line_gsm == "!sample_table_begin":
+                            sample_table = True
+                        if sample_table:
+                            if line_gsm == "!sample_table_end":
+                                sample_table = False
+                            continue
+
                         if line_gsm[0] == "^":
                             nb = len(_check_file_existance(meta_processed_samples))
                             meta_processed_samples.append(
@@ -1843,7 +1872,18 @@ class Geofetcher:
         current_sample_id = None
         current_sample_srx = False
         samples_list = []
+        sample_table = False
+
         for line in file_gsm_content:
+
+            # handles #103
+            if line == "!sample_table_begin":
+                sample_table = True
+            if sample_table:
+                if line == "!sample_table_end":
+                    sample_table = False
+                continue
+
             line = line.rstrip()
             if len(line) == 0:  # Apparently SOFT files can contain blank lines
                 continue

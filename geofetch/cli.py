@@ -141,7 +141,7 @@ To download all processed data of GSE57303:
     parser.add_argument(
         "--const-limit-discard",
         type=int,
-        default=250,
+        default=1000,
         help="Optional: Limit of the number of the constant sample characters "
         "that should not be discarded [Default: 250]",
     )
@@ -159,6 +159,15 @@ To download all processed data of GSE57303:
         "--add-dotfile",
         action="store_true",
         help="Optional: Add .pep.yaml file that points .yaml PEP file",
+    )
+
+    parser.add_argument(
+        "--max-soft-size",
+        type=str,
+        default="1GB",
+        help="""Optional: Max size of soft file.
+                [Default: 1GB].
+                Supported input formats : 12B, 12KB, 12MB, 12GB. """,
     )
 
     processed_group.add_argument(

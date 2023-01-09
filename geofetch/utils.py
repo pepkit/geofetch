@@ -146,6 +146,19 @@ class AccessionException(Exception):
         super(AccessionException, self).__init__(reason)
 
 
+class SoftFileException(Exception):
+    """Exceptional condition(s) dealing with accession number(s)."""
+
+    def __init__(self, reason: str = ""):
+        """
+        Optionally provide explanation for exceptional condition.
+
+        :param str reason: some context or perhaps just a value that
+            could not be interpreted as an accession
+        """
+        super(SoftFileException, self).__init__(reason)
+
+
 class Accession(object):
     """Working with accession numbers."""
 
@@ -173,7 +186,11 @@ class Accession(object):
         self.typename = typename.upper()
 
     def fetch_metadata(
-        self, outpath: str = None, typename: str = None, clean: bool = False
+        self,
+        outpath: str = None,
+        typename: str = None,
+        clean: bool = False,
+        max_soft_size: int = 1073741824,
     ) -> list:
         """
         Fetch the metadata associated with this accession.
@@ -182,6 +199,7 @@ class Accession(object):
             parsed at construction if unspecified
         :param str outpath: path to file to which to write output, optional
         :param bool clean: if true, files won't be saved
+        :param int max_soft_size: max soft file size in bytes
         :return: list of lines in soft file
         """
 
@@ -201,6 +219,26 @@ class Accession(object):
             )
             raise
         _LOGGER.debug("Fetching: '%s'", full_url)
+        if typename == "GSM":
+            # check size of the file
+            check_head_url = f"https://ftp.ncbi.nlm.nih.gov/geo/series/{self.accn[:-3]}nnn/{self.accn}/soft/{self.accn}_family.soft.gz"
+
+            try:
+                head_response = requests.head(check_head_url)
+                file_size = head_response.headers["Content-Length"]
+
+                if int(file_size) > max_soft_size:
+                    raise SoftFileException(
+                        f"Error in file size. Soft file: {self.accn}_family.soft.gz."
+                        f"File size: {file_size}. Max_size_set: {max_soft_size}"
+                    )
+            except KeyError as err:
+                self._LOGGER.warning(
+                    f"Error in checking size of soft file, continuing... {err}"
+                )
+            except SoftFileException as err:
+                self._LOGGER.error(f"Soft file is too large. {err}")
+                return []
 
         result = requests.get(full_url)
 
@@ -211,7 +249,7 @@ class Accession(object):
             result_list = [elem for elem in result_list if len(elem) > 0]
 
         else:
-            raise Exception(f"Error in requesting fileL: {full_url}")
+            raise Exception(f"Error in requesting file: {full_url}")
 
         if outpath and not clean:
             # Ensure we have filepath and that needed directories exist.
@@ -342,7 +380,7 @@ def run_subprocess(*args, **kwargs):
         _LOGGER.info(f"Terminating subprocess: {p.pid} | ({p.args})")
         try:
             p.terminate()
-            print("Pipeline aborted.")
+            _LOGGER.info("Pipeline aborted.")
         except OSError as ose:
             _LOGGER.warning(f"Exception raised during subprocess termination: {ose}")
         sys.exit(1)
@@ -507,7 +545,7 @@ def _sanitize_name(name_str: str) -> str:
     punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
     for odd_char in list(punctuation1):
         new_str = new_str.replace(odd_char, "_")
-    new_str = new_str.replace(" ", "_").replace("__", "_")
+    new_str = new_str.replace(" ", "_").replace("__", "_").lower()
     return new_str
 
 
@@ -624,10 +662,25 @@ def _separate_file_url(meta_list):
             new_dict["sample_name"] = os.path.basename(meta_elem["file"])
 
         # sanitize sample names
-        new_dict["sample_name"] = _sanitize_name(new_dict["sample_name"])
+        sanit_name = _sanitize_name(new_dict["sample_name"])
+        new_dict["sample_name"] = make_sample_name_unique(sanit_name, separated_list)
 
         separated_list.append(new_dict)
     return separated_list
+
+
+def make_sample_name_unique(
+    sanit_name: str, separated_list: list, new_number: int = 1
+) -> str:
+    """
+    Check if name is unique for current sample
+    """
+    if sanit_name not in [f["sample_name"] for f in separated_list]:
+        return sanit_name
+    elif f"{sanit_name}_{new_number}" not in [f["sample_name"] for f in separated_list]:
+        return f"{sanit_name}_{new_number}"
+    else:
+        return make_sample_name_unique(sanit_name, separated_list, new_number + 1)
 
 
 def _filter_gsm(meta_processed_samples: list, gsm_list: dict) -> list:

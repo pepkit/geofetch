@@ -4,6 +4,8 @@ pep_version: 2.1.0
 project_name: {project_name}
 sample_table: {sample_table}
 
+{project_metadata}
+
 sample_modifiers:
   append:
     output_file_path: FILES

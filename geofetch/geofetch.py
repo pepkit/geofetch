@@ -500,8 +500,12 @@ class Geofetcher:
 
                 # save one project
                 if self.acc_anno and nkeys > 1:
-                    self._write_raw_annotation_new(name=acc_GSE, metadata_dict=gsm_metadata,
-                                                   subannot_dict=gsm_multi_table, gse_meta_dict=file_gse_content_dict)
+                    self._write_raw_annotation_new(
+                        name=acc_GSE,
+                        metadata_dict=gsm_metadata,
+                        subannot_dict=gsm_multi_table,
+                        gse_meta_dict=file_gse_content_dict,
+                    )
 
                 else:
                     metadata_dict_combined.update(gsm_metadata)
@@ -523,7 +527,9 @@ class Geofetcher:
                     name=self.project_name,
                     meta_processed_samples=processed_metadata_samples,
                     meta_processed_series=processed_metadata_series,
-                    gse_meta_dict=file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None,
+                    gse_meta_dict=file_gse_content_dict
+                    if len(acc_GSE_list.keys()) == 1
+                    else None,
                 )
                 if self.just_object:
                     return return_value
@@ -534,7 +540,9 @@ class Geofetcher:
                 f"{self.project_name}_PEP",
                 metadata_dict_combined,
                 subannotation_dict_combined,
-                gse_meta_dict=file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None,
+                gse_meta_dict=file_gse_content_dict
+                if len(acc_GSE_list.keys()) == 1
+                else None,
             )
             if self.just_object:
                 return return_value
@@ -1007,7 +1015,9 @@ class Geofetcher:
             self.attr_limit_truncate,
         )
 
-        template = self._create_config_processed(file_annotation_path, proj_meta, meta_in_series=gse_meta_dict)
+        template = self._create_config_processed(
+            file_annotation_path, proj_meta, meta_in_series=gse_meta_dict
+        )
 
         if not just_object:
             with open(file_annotation_path, "w") as m_file:
@@ -1060,11 +1070,11 @@ class Geofetcher:
         return metadata_list
 
     def _write_raw_annotation_new(
-            self,
-            name,
-            metadata_dict: dict,
-            subannot_dict: dict = None,
-            gse_meta_dict: dict = None,
+        self,
+        name,
+        metadata_dict: dict,
+        subannot_dict: dict = None,
+        gse_meta_dict: dict = None,
     ) -> Union[None, peppy.Project]:
         """
         Combine individual accessions into project-level annotations, and writing
@@ -1182,12 +1192,9 @@ class Geofetcher:
 
         # series metadata
         if not meta_in_series:
-            project_metadata = ''
+            project_metadata = ""
         else:
-            meta_list_str = {
-                i: j
-                for i, j in meta_in_series.items()
-            }
+            meta_list_str = {i: j for i, j in meta_in_series.items()}
             project_metadata = yaml.dump(meta_list_str, default_style='"')
 
         template_values = {
@@ -1205,11 +1212,8 @@ class Geofetcher:
         return template
 
     def _create_config_raw(
-            self,
-            proj_meta,
-            proj_root_sample,
-            subanot_path_yaml,
-            meta_in_series=None):
+        self, proj_meta, proj_root_sample, subanot_path_yaml, meta_in_series=None
+    ):
         """
         Compose and generate config file content for raw data
         :param proj_meta: root to the annotation file
@@ -1241,12 +1245,9 @@ class Geofetcher:
 
         # series metadata
         if not meta_in_series:
-            project_metadata = ''
+            project_metadata = ""
         else:
-            meta_list_str = {
-                i: j
-                for i, j in meta_in_series.items()
-            }
+            meta_list_str = {i: j for i, j in meta_in_series.items()}
             project_metadata = yaml.dump(meta_list_str, default_style='"')
 
         with open(self.config_template, "r") as template_file:

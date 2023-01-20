@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.3] -- 2023-01-20
+- Added functionality that saves gse metadata to config file
+
 ## [0.11.2] -- 2022-12-25
 - Changed sample_name of PEP of processed files to file oriented
 - Added `--max-soft-size` argument, that sets size limit of soft files

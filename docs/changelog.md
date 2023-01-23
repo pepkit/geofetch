@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.11.3] -- 2023-01-20
+## [0.12.0] -- 2023-01-23
 - Added functionality that saves gse metadata to config file
 
 ## [0.11.2] -- 2022-12-25

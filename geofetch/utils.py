@@ -722,3 +722,25 @@ def _unify_list_keys(processed_meta_list: list) -> list:
             if k not in processed_meta_list[list_elem]:
                 processed_meta_list[list_elem][k] = ""
     return processed_meta_list
+
+
+def gse_content_to_dict(gse_content: List[str]) -> Dict[str, dict]:
+    """
+    Unpack gse soft file to dict
+    :param gse_content: list of strings of gse soft file
+    :return: dict of gse content
+    """
+    gse_dict = {}
+    for line in gse_content:
+        if line.startswith("^"):
+            pass
+        elif line.startswith("!"):
+            key_value = line.split(" = ")
+            new_key = _sanitize_name(key_value[0][1:])
+            new_value = _sanitize_config_string(" ".join(key_value[1:]))
+            if new_key in gse_dict.keys():
+                gse_dict[new_key] = f"{gse_dict[new_key]} + {new_value}"
+            else:
+                gse_dict[new_key] = new_value
+
+    return {"experiment_metadata": gse_dict}

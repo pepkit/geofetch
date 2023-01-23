@@ -39,6 +39,7 @@ from .utils import (
     _separate_file_url,
     _filter_gsm,
     _unify_list_keys,
+    gse_content_to_dict,
 )
 
 from rich.progress import track
@@ -416,6 +417,8 @@ class Geofetcher:
                 file_gse_content = gse_file_obj.read().split("\n")
                 file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
 
+            file_gse_content_dict = gse_content_to_dict(file_gse_content)
+
             if not os.path.isfile(file_gsm) or self.refresh_metadata:
                 file_gsm_content = Accession(acc_GSE).fetch_metadata(
                     file_gsm,
@@ -453,7 +456,10 @@ class Geofetcher:
                 # generating PEPs for processed files:
                 if self.acc_anno:
                     self._generate_processed_meta(
-                        acc_GSE, meta_processed_samples, meta_processed_series
+                        acc_GSE,
+                        meta_processed_samples,
+                        meta_processed_series,
+                        gse_meta_dict=file_gse_content_dict,
                     )
 
                 else:
@@ -498,6 +504,7 @@ class Geofetcher:
                         name=acc_GSE,
                         metadata_dict=gsm_metadata,
                         subannot_dict=gsm_multi_table,
+                        gse_meta_dict=file_gse_content_dict,
                     )
 
                 else:
@@ -520,6 +527,9 @@ class Geofetcher:
                     name=self.project_name,
                     meta_processed_samples=processed_metadata_samples,
                     meta_processed_series=processed_metadata_series,
+                    gse_meta_dict=file_gse_content_dict
+                    if len(acc_GSE_list.keys()) == 1
+                    else None,
                 )
                 if self.just_object:
                     return return_value
@@ -530,6 +540,9 @@ class Geofetcher:
                 f"{self.project_name}_PEP",
                 metadata_dict_combined,
                 subannotation_dict_combined,
+                gse_meta_dict=file_gse_content_dict
+                if len(acc_GSE_list.keys()) == 1
+                else None,
             )
             if self.just_object:
                 return return_value
@@ -706,7 +719,11 @@ class Geofetcher:
         return meta_processed_samples, meta_processed_series
 
     def _generate_processed_meta(
-        self, name: str, meta_processed_samples: list, meta_processed_series: list
+        self,
+        name: str,
+        meta_processed_samples: list,
+        meta_processed_series: list,
+        gse_meta_dict: Union[dict, None] = None,
     ) -> dict:
         """
         Generate and save PEPs for processed accessions. GEO has data in GSE and GSM,
@@ -714,6 +731,8 @@ class Geofetcher:
         :param name: name of the folder/file where PEP will be saved
         :param meta_processed_samples:
         :param meta_processed_series:
+        :param gse_meta_dict: dict of metadata fetched from one experiment.
+            Used to add this data to config file.
         :return: dict of objects if just_object is set, otherwise dicts of None
         """
         return_objects = {f"{name}_samples": None, f"{name}_series": None}
@@ -729,6 +748,7 @@ class Geofetcher:
                 meta_processed_samples,
                 pep_acc_path_sample,
                 just_object=self.just_object,
+                gse_meta_dict=gse_meta_dict,
             )
 
             # series
@@ -753,6 +773,7 @@ class Geofetcher:
                 meta_processed_samples,
                 pep_acc_path_sample,
                 just_object=self.just_object,
+                gse_meta_dict=gse_meta_dict,
             )
         elif self.supp_by == "series":
             return_objects[f"{name}_series"] = pep_acc_path_exp = os.path.join(
@@ -957,12 +978,15 @@ class Geofetcher:
         processed_metadata: list,
         file_annotation_path: str,
         just_object: bool = False,
+        gse_meta_dict: dict = None,
     ) -> Union[NoReturn, peppy.Project]:
         """
         Save annotation file by providing list of dictionaries with files metadata
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
-        :type just_object: True, if you want to get peppy object without saving file
+        :param just_object: True, if you want to get peppy object without saving file
+        :param gse_meta_dict: dict of metadata fetched from one experiment.
+            Used to add this data to config file.
         :return: none, or peppy project
         """
         if len(processed_metadata) == 0:
@@ -991,7 +1015,9 @@ class Geofetcher:
             self.attr_limit_truncate,
         )
 
-        template = self._create_config_processed(file_annotation_path, proj_meta)
+        template = self._create_config_processed(
+            file_annotation_path, proj_meta, meta_in_series=gse_meta_dict
+        )
 
         if not just_object:
             with open(file_annotation_path, "w") as m_file:
@@ -1044,7 +1070,11 @@ class Geofetcher:
         return metadata_list
 
     def _write_raw_annotation_new(
-        self, name, metadata_dict: dict, subannot_dict: dict = None
+        self,
+        name,
+        metadata_dict: dict,
+        subannot_dict: dict = None,
+        gse_meta_dict: dict = None,
     ) -> Union[None, peppy.Project]:
         """
         Combine individual accessions into project-level annotations, and writing
@@ -1052,6 +1082,7 @@ class Geofetcher:
         :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
         :param metadata_dict: dictionary of sample annotations
         :param subannot_dict: dictionary of subsample annotations
+        :param gse_meta_dict: dict of experiment metadata that was sotred in gse
         :return: none or peppy object
         """
         try:
@@ -1101,7 +1132,7 @@ class Geofetcher:
             subanot_path_yaml = f""
 
         template = self._create_config_raw(
-            proj_meta, proj_root_sample, subanot_path_yaml
+            proj_meta, proj_root_sample, subanot_path_yaml, gse_meta_dict
         )
 
         if not self.just_object:
@@ -1137,12 +1168,16 @@ class Geofetcher:
             return proj
 
     def _create_config_processed(
-        self, file_annotation_path: str, proj_meta: list
+        self,
+        file_annotation_path: str,
+        proj_meta: list,
+        meta_in_series: dict = True,
     ) -> str:
         """
         Compose and generate config file content
         :param file_annotation_path: root to the annotation file
         :param proj_meta: common metadata that has to added to config file
+        :param meta_in_series:
         :return: generated, complete config file content
         """
         geofetchdir = os.path.dirname(__file__)
@@ -1154,6 +1189,14 @@ class Geofetcher:
             for i in proj_meta
         ]
         modifiers_str = "\n    ".join(d for d in meta_list_str)
+
+        # series metadata
+        if not meta_in_series:
+            project_metadata = ""
+        else:
+            meta_list_str = {i: j for i, j in meta_in_series.items()}
+            project_metadata = yaml.dump(meta_list_str, default_style='"')
+
         template_values = {
             "project_name": self.project_name,
             "sample_table": os.path.basename(file_annotation_path),
@@ -1161,18 +1204,22 @@ class Geofetcher:
             "pipeline_samples": self.file_pipeline_samples,
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
+            "project_metadata": project_metadata,
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
         return template
 
-    def _create_config_raw(self, proj_meta, proj_root_sample, subanot_path_yaml):
+    def _create_config_raw(
+        self, proj_meta, proj_root_sample, subanot_path_yaml, meta_in_series=None
+    ):
         """
         Compose and generate config file content for raw data
         :param proj_meta: root to the annotation file
         :param proj_root_sample: path to sampletable file
         :param subanot_path_yaml: path to subannotation file
+        :param meta_in_series:
         :return: generated, complete config file content
         """
         meta_list_str = [
@@ -1195,6 +1242,14 @@ class Geofetcher:
                 sra_convert_template = template_file.read()
         else:
             sra_convert_template = ""
+
+        # series metadata
+        if not meta_in_series:
+            project_metadata = ""
+        else:
+            meta_list_str = {i: j for i, j in meta_in_series.items()}
+            project_metadata = yaml.dump(meta_list_str, default_style='"')
+
         with open(self.config_template, "r") as template_file:
             template = template_file.read()
         template_values = {
@@ -1206,6 +1261,7 @@ class Geofetcher:
             "pipeline_project": self.file_pipeline_project,
             "additional_columns": modifiers_str,
             "sra_convert": sra_convert_template,
+            "project_metadata": project_metadata,
         }
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"

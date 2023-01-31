@@ -133,8 +133,10 @@ class Finder:
             x_result = xmltodict.parse(x.text)["eSearchResult"]
             _LOGGER.info(f"Found elements: {x_result['Count']}")
             _LOGGER.info(f"Additional information: {x_result['TranslationSet']}")
-
-            return x_result["IdList"]["Id"]
+            if isinstance(x_result["IdList"]["Id"], list):
+                return x_result["IdList"]["Id"]
+            else:
+                return [x_result["IdList"]["Id"]]
         except Exception:
             return []
 

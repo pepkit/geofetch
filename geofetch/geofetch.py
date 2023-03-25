@@ -376,7 +376,6 @@ class Geofetcher:
             description="Processing... ",
             disable=self.disable_progressbar,
         ):
-
             ncount += 1
             if ncount <= self.skip:
                 continue
@@ -563,7 +562,6 @@ class Geofetcher:
         gsm_multi_table = {}
         runs = []
         for line in srp_list_result:
-
             # Only download if it's in the include list:
             experiment = line["Experiment"]
             run_name = line["Run"]
@@ -889,7 +887,6 @@ class Geofetcher:
                         for elem in metadata_list[n_elem][dict_key]:
                             separated_elements = elem.split(": ")
                             if len(separated_elements) >= 2:
-
                                 # if first element is larger than 40 then treat it like simple string
                                 if len(separated_elements[0]) > 40:
                                     just_string = True
@@ -1537,7 +1534,6 @@ class Geofetcher:
         meta_processed_samples = []
         meta_processed_series = {"GSE": "", "files": []}
         for line in file_gse_content:
-
             if re.compile(r"!Series_geo_accession").search(line):
                 gse_numb = _get_value(line)
                 meta_processed_series["GSE"] = gse_numb
@@ -1585,7 +1581,6 @@ class Geofetcher:
                     nb = len(meta_processed_samples) - 1
                     sample_table = False
                     for line_gsm in file_gsm_content:
-
                         # handles #103
                         if line_gsm == "!sample_table_begin":
                             sample_table = True
@@ -1933,7 +1928,6 @@ class Geofetcher:
         sample_table = False
 
         for line in file_gsm_content:
-
             # handles #103
             if line == "!sample_table_begin":
                 sample_table = True

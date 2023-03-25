@@ -1043,7 +1043,9 @@ class Geofetcher:
 
             conf = yaml.load(template, Loader=yaml.Loader)
             proj = peppy.Project().from_pandas(pd_value, config=conf)
-            proj.description = conf.get("experiment_metadata").get("series_title")
+            proj_exp_data = conf.get("experiment_metadata")
+            if proj_exp_data:
+                proj.description = proj_exp_data.get("series_title")
             return proj
 
     @staticmethod
@@ -1163,7 +1165,9 @@ class Geofetcher:
             conf = yaml.load(template, Loader=yaml.Loader)
 
             proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
-            proj.description = conf.get("experiment_metadata").get("series_title")
+            proj_exp_data = conf.get("experiment_metadata")
+            if proj_exp_data:
+                proj.description = proj_exp_data.get("series_title")
             return proj
 
     def _create_config_processed(

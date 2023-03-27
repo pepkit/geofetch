@@ -1,7 +1,8 @@
 # Changelog
 
-## [0.12.0] -- 2023-01-23
+## [0.12.0] -- 2023-03-27
 - Added functionality that saves gse metadata to config file
+- Fixed description in initialization of pepy object
 
 ## [0.11.2] -- 2022-12-25
 - Changed sample_name of PEP of processed files to file oriented

@@ -1,3 +1,4 @@
-coveralls>=1.1
-pytest-cov>=2.4.0
-pytest>7.1
+black
+pytest
+coveralls
+pytest-cov

@@ -23,7 +23,7 @@ URL_BY_ACC = {
 
 
 def build_prefetch_command(
-    run_id: str, prefetch_path: str = "prefetch", max_size: Union[str, int] = 50000000
+    run_id: str, prefetch_path: str = "prefetch", max_size: Union[str, int] = None
 ) -> List[str]:
     cmd = [prefetch_path, run_id]
     if max_size is not None:

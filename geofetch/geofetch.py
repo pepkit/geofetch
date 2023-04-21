@@ -265,7 +265,9 @@ class Geofetcher:
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
         self.just_object = False
-        self.max_prefetch_size = max_prefetch_size
+        self.max_prefetch_size = (
+            "50g" if max_prefetch_size is None else max_prefetch_size
+        )
 
     def get_projects(
         self, input: str, just_metadata: bool = True, discard_soft: bool = True

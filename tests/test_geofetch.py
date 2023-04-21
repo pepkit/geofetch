@@ -37,6 +37,11 @@ processed_meta_file_test = [
 ]
 
 
+def test_max_prefetch_size__default_is_50g():
+    fetcher = Geofetcher()
+    assert fetcher.max_prefetch_size == "50g"
+
+
 class TestAccParser:
     """
     Testing input parser

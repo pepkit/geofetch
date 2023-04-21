@@ -1,7 +1,7 @@
 import argparse
 import os
 import logmuse
-from ._version import __version__
+from geofetch._version import __version__
 
 
 def _safe_echo(var):

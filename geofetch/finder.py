@@ -10,14 +10,14 @@ import requests
 import xmltodict
 import re
 import os
-import logmuse
+import logging
 import coloredlogs
 from datetime import datetime
 from datetime import timedelta
 
 __author__ = "Oleksandr Khoroshevskyi"
 
-_LOGGER = logmuse.init_logger("pepannot")
+_LOGGER = logging.getLogger("__name__")
 coloredlogs.install(
     logger=_LOGGER,
     datefmt="%H:%M:%S",

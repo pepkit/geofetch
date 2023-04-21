@@ -1,23 +1,24 @@
-#!/usr/bin/env python3
-
-__author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
-
 import copy
 import csv
 import os
 import sys
-
-# from string import punctuation
-# import tarfile
 import requests
 import xmltodict
 import yaml
 import time
 import logging
 
-from .cli import _parse_cmdl
-from .const import *
-from .utils import (
+from rich.progress import track
+import re
+import logmuse
+from ubiquerg import expandpath, is_command_callable
+from typing import List, Union, Dict, Tuple, NoReturn
+import peppy
+import pandas as pd
+
+from geofetch.cli import _parse_cmdl
+from geofetch.const import *
+from geofetch.utils import (
     Accession,
     build_prefetch_command,
     parse_accessions,
@@ -43,13 +44,7 @@ from .utils import (
     gse_content_to_dict,
 )
 
-from rich.progress import track
-import re
-import logmuse
-from ubiquerg import expandpath, is_command_callable
-from typing import List, Union, Dict, Tuple, NoReturn
-import peppy
-import pandas as pd
+_LOGGER = logging.getLogger(__name__)
 
 
 class Geofetcher:
@@ -162,7 +157,8 @@ class Geofetcher:
         :param kwargs: other values
         """
 
-        self._LOGGER = (
+        global _LOGGER
+        _LOGGER = (
             logmuse.logger_via_cli(opts)
             if opts is not None
             else logging.getLogger(__name__)
@@ -236,7 +232,7 @@ class Geofetcher:
             try:
                 self.filter_size = convert_size(filter_size.lower())
             except ValueError as message:
-                self._LOGGER.error(message)
+                _LOGGER.error(message)
                 raise SystemExit()
         else:
             self.filter_size = filter_size
@@ -258,7 +254,7 @@ class Geofetcher:
         self.add_dotfile = add_dotfile
         self.disable_progressbar = disable_progressbar
         self.add_convert_modifier = add_convert_modifier
-        self._LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
+        _LOGGER.info(f"Metadata folder: {self.metadata_expanded}")
 
         # Some sanity checks before proceeding
         if bam_conversion and not just_metadata and not _which("samtools"):
@@ -297,7 +293,7 @@ class Geofetcher:
                 self.acc_anno = False
                 for acc_GSE in acc_GSE_list.keys():
                     ncount += 1
-                    self._LOGGER.info(
+                    _LOGGER.info(
                         f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                     )
                     project_dict.update(self.fetch_all(input=acc_GSE, name=acc_GSE))
@@ -318,7 +314,7 @@ class Geofetcher:
                 ncount = 0
                 for acc_GSE in acc_GSE_list.keys():
                     ncount += 1
-                    self._LOGGER.info(
+                    _LOGGER.info(
                         f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                     )
                     project = self.fetch_all(input=acc_GSE)
@@ -387,22 +383,22 @@ class Geofetcher:
             if ncount <= self.skip:
                 continue
             elif ncount == self.skip + 1:
-                self._LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
+                _LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
 
             if not self.just_object or not self.acc_anno:
-                self._LOGGER.info(
+                _LOGGER.info(
                     f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                 )
 
             if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
-                self._LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
-                self._LOGGER.warning(
+                _LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
+                _LOGGER.warning(
                     "This does not appear to be a correctly formatted GSE accession! "
                     "Continue anyway..."
                 )
 
             if len(acc_GSE_list[acc_GSE]) > 0:
-                self._LOGGER.info(
+                _LOGGER.info(
                     f"Limit to: {list(acc_GSE_list[acc_GSE])}"
                 )  # a list of GSM#s
 
@@ -418,7 +414,7 @@ class Geofetcher:
                     max_soft_size=self.max_soft_size,
                 )
             else:
-                self._LOGGER.info(f"Found previous GSE file: {file_gse}")
+                _LOGGER.info(f"Found previous GSE file: {file_gse}")
                 gse_file_obj = open(file_gse, "r")
                 file_gse_content = gse_file_obj.read().split("\n")
                 file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
@@ -433,7 +429,7 @@ class Geofetcher:
                     max_soft_size=self.max_soft_size,
                 )
             else:
-                self._LOGGER.info(f"Found previous GSM file: {file_gsm}")
+                _LOGGER.info(f"Found previous GSM file: {file_gsm}")
                 gsm_file_obj = open(file_gsm, "r")
                 file_gsm_content = gsm_file_obj.read().split("\n")
                 file_gsm_content = [elem for elem in file_gsm_content if len(elem) > 0]
@@ -484,13 +480,13 @@ class Geofetcher:
                     file_gse_content, gsm_metadata, file_sra
                 )
                 if not srp_list_result:
-                    self._LOGGER.info(f"No SRP data, continuing ....")
-                    self._LOGGER.warning(f"No raw pep will be created! ....")
+                    _LOGGER.info(f"No SRP data, continuing ....")
+                    _LOGGER.warning(f"No raw pep will be created! ....")
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
                     pass
                 else:
-                    self._LOGGER.info("Parsing SRA file to download SRR records")
+                    _LOGGER.info("Parsing SRA file to download SRR records")
                 gsm_multi_table, gsm_metadata, runs = self._process_sra_meta(
                     srp_list_result, gsm_enter_dict, gsm_metadata
                 )
@@ -499,10 +495,10 @@ class Geofetcher:
                 if not self.just_metadata:
                     for run in runs:
                         # download raw data
-                        self._LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
+                        _LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
                         self._download_raw_data(run)
                 else:
-                    self._LOGGER.info(f"Dry run, no data will be downloaded")
+                    _LOGGER.info(f"Dry run, no data will be downloaded")
 
                 # save one project
                 if self.acc_anno and nkeys > 1:
@@ -517,11 +513,11 @@ class Geofetcher:
                     metadata_dict_combined.update(gsm_metadata)
                     subannotation_dict_combined.update(gsm_multi_table)
 
-        self._LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
+        _LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
 
         # Logging cleaning process:
         if self.discard_soft:
-            self._LOGGER.info(f"Cleaning soft files ...")
+            _LOGGER.info(f"Cleaning soft files ...")
             clean_soft_files(self.metadata_root_full)
 
         #######################################################################################
@@ -600,7 +596,7 @@ class Geofetcher:
             # Some experiments are flagged in SRA as having multiple runs.
             if gsm_metadata[experiment].get("SRR") is not None:
                 # This SRX number already has an entry in the table.
-                self._LOGGER.debug(f"Found additional run: {run_name} ({experiment})")
+                _LOGGER.debug(f"Found additional run: {run_name} ({experiment})")
                 if (
                     isinstance(gsm_metadata[experiment]["SRR"], str)
                     and experiment not in gsm_multi_table
@@ -657,16 +653,14 @@ class Geofetcher:
         )
 
         if os.path.exists(bam_file):
-            self._LOGGER.info(f"BAM found: {bam_file} . Skipping...")
+            _LOGGER.info(f"BAM found: {bam_file} . Skipping...")
         elif os.path.exists(fq_file):
-            self._LOGGER.info(f"FQ found: {fq_file} .Skipping...")
+            _LOGGER.info(f"FQ found: {fq_file} .Skipping...")
         else:
             try:
                 self._download_SRA_file(run_name)
             except Exception as err:
-                self._LOGGER.warning(
-                    f"Error occurred while downloading SRA file: {err}"
-                )
+                _LOGGER.warning(f"Error occurred while downloading SRA file: {err}")
 
             if self.bam_conversion and self.bam_folder != "":
                 try:
@@ -678,7 +672,7 @@ class Geofetcher:
                     # checking if bam_file converted correctly, if not --> use fastq-dump
                     st = os.stat(bam_file)
                     if st.st_size < 100:
-                        self._LOGGER.warning(
+                        _LOGGER.warning(
                             "Bam conversion failed with sam-dump. Trying fastq-dump..."
                         )
                         self._sra_to_bam_conversion_fastq_damp(
@@ -686,7 +680,7 @@ class Geofetcher:
                         )
 
                 except FileNotFoundError as err:
-                    self._LOGGER.info(
+                    _LOGGER.info(
                         f"SRA file doesn't exist, please download it first: {err}"
                     )
 
@@ -805,7 +799,7 @@ class Geofetcher:
         :return: Noreturn
         """
         data_geo_folder = os.path.join(self.geo_folder, acc_gse)
-        self._LOGGER.debug("Data folder: " + data_geo_folder)
+        _LOGGER.debug("Data folder: " + data_geo_folder)
 
         if self.supp_by == "all":
             processed_samples_files = [
@@ -852,7 +846,7 @@ class Geofetcher:
         :param list metadata_list: list of dicts that store metadata
         :return list: expanded metadata list
         """
-        self._LOGGER.info("Expanding metadata list...")
+        _LOGGER.info("Expanding metadata list...")
         list_of_keys = _get_list_of_keys(metadata_list)
         for key_in_list in list_of_keys:
             metadata_list = self._expand_metadata_list_item(metadata_list, key_in_list)
@@ -937,22 +931,22 @@ class Geofetcher:
                         else:
                             del metadata_list[n_elem][dict_key]
                     except KeyError as err:
-                        # self._LOGGER.warning(
+                        # _LOGGER.warning(
                         #     f"expand_metadata_list: Key Error: {err}, continuing ..."
                         # )
                         pass
 
                 return metadata_list
             else:
-                self._LOGGER.debug(
+                _LOGGER.debug(
                     f"Metadata with {dict_key} was not expanded, as item is not list"
                 )
                 return metadata_list
         except KeyError as err:
-            self._LOGGER.warning(f"expand_metadata_list: Key Error: {err}")
+            _LOGGER.warning(f"expand_metadata_list: Key Error: {err}")
             return metadata_list
         except ValueError as err:
-            self._LOGGER.warning(f"expand_metadata_list: Value Error: {err}")
+            _LOGGER.warning(f"expand_metadata_list: Value Error: {err}")
             return metadata_list
 
     def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
@@ -971,10 +965,10 @@ class Geofetcher:
             w.writeheader()
             for item in gsm_metadata:
                 w.writerow(gsm_metadata[item])
-        self._LOGGER.info(
+        _LOGGER.info(
             f"\033[92mSample annotation sheet: {file_annotation} . Saved!\033[0m"
         )
-        self._LOGGER.info("\033[92mFile has been saved successfully\033[0m")
+        _LOGGER.info("\033[92mFile has been saved successfully\033[0m")
         return fp
 
     def _write_processed_annotation(
@@ -994,7 +988,7 @@ class Geofetcher:
         :return: none, or peppy project
         """
         if len(processed_metadata) == 0:
-            self._LOGGER.info(
+            _LOGGER.info(
                 "No files found. No data to save. File %s won't be created"
                 % file_annotation_path
             )
@@ -1005,7 +999,7 @@ class Geofetcher:
         if not os.path.exists(pep_file_folder) and not self.just_object:
             os.makedirs(pep_file_folder)
 
-        self._LOGGER.info("Unifying and saving of metadata... ")
+        _LOGGER.info("Unifying and saving of metadata... ")
         processed_metadata = _unify_list_keys(processed_metadata)
 
         # delete rare keys
@@ -1028,7 +1022,7 @@ class Geofetcher:
                 dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
                 dict_writer.writeheader()
                 dict_writer.writerows(processed_metadata)
-            self._LOGGER.info(
+            _LOGGER.info(
                 "\033[92mFile %s has been saved successfully\033[0m"
                 % file_annotation_path
             )
@@ -1095,7 +1089,7 @@ class Geofetcher:
         try:
             assert len(metadata_dict) > 0
         except AssertionError:
-            self._LOGGER.warning(
+            _LOGGER.warning(
                 "\033[33mNo PEP created, as no raw data was found!!!\033[0m"
             )
             return None
@@ -1103,9 +1097,7 @@ class Geofetcher:
         if self.discard_soft:
             clean_soft_files(os.path.join(self.metadata_root_full))
 
-        self._LOGGER.info(
-            "Creating complete project annotation sheets and config file..."
-        )
+        _LOGGER.info("Creating complete project annotation sheets and config file...")
 
         proj_root = os.path.join(self.metadata_root_full, name)
         if not os.path.exists(proj_root) and not self.just_object:
@@ -1403,9 +1395,7 @@ class Geofetcher:
                     f"Prefetch retries of {run_name} failed. Try this sample later"
                 )
 
-            self._LOGGER.info(
-                "Prefetch attempt failed, wait a few seconds to try again"
-            )
+            _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
             time.sleep(t * 2)
 
     def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
@@ -1414,7 +1404,7 @@ class Geofetcher:
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
         """
-        self._LOGGER.info("Converting to bam: " + run_name)
+        _LOGGER.info("Converting to bam: " + run_name)
         sra_file = os.path.join(self.sra_folder, run_name + ".sra")
         if not os.path.exists(sra_file):
             raise FileNotFoundError(sra_file)
@@ -1429,7 +1419,7 @@ class Geofetcher:
         )
         # sam-dump -u SRR020515.sra | samtools view -bS - > test.bam
 
-        self._LOGGER.info(f"Conversion command: {cmd}")
+        _LOGGER.info(f"Conversion command: {cmd}")
         run_subprocess(cmd, shell=True)
 
     def _sra_to_bam_conversion_fastq_damp(
@@ -1450,10 +1440,10 @@ class Geofetcher:
             + " "
             + os.path.join(self.sra_folder, run_name + ".sra")
         )
-        self._LOGGER.info(f"Command: {cmd}")
+        _LOGGER.info(f"Command: {cmd}")
         run_subprocess(cmd, shell=True)
         if not picard_path:
-            self._LOGGER.warning("Can't convert the fastq to bam without picard path")
+            _LOGGER.warning("Can't convert the fastq to bam without picard path")
         else:
             # was it paired data? you have to process it differently
             # so it knows it's paired end
@@ -1470,7 +1460,7 @@ class Geofetcher:
             cmd += " OUTPUT=" + bam_file
             cmd += " SAMPLE_NAME=" + run_name
             cmd += " QUIET=true"
-            self._LOGGER.info(f"Conversion command: {cmd}")
+            _LOGGER.info(f"Conversion command: {cmd}")
             run_subprocess(cmd, shell=True)
 
     def _write_subannotation(
@@ -1487,9 +1477,9 @@ class Geofetcher:
             write
         :return str: path to file written
         """
-        self._LOGGER.info(f"Sample subannotation sheet: {filepath}")
+        _LOGGER.info(f"Sample subannotation sheet: {filepath}")
         fp = expandpath(filepath)
-        self._LOGGER.info(f"Writing: {fp}")
+        _LOGGER.info(f"Writing: {fp}")
         with open(fp, "w") as openfile:
             writer = csv.writer(openfile, delimiter=",")
             # write header
@@ -1498,7 +1488,7 @@ class Geofetcher:
                 tabular_data = [tabular_data]
             for table in tabular_data:
                 for key, values in table.items():
-                    self._LOGGER.debug(f"{key}: {values}")
+                    _LOGGER.debug(f"{key}: {values}")
                     writer.writerows(values)
         return fp
 
@@ -1519,18 +1509,18 @@ class Geofetcher:
             full_filepath = os.path.join(data_folder, new_name)
 
         if not os.path.exists(full_filepath):
-            self._LOGGER.info(f"\033[38;5;242m")  # set color to gray
+            _LOGGER.info(f"\033[38;5;242m")  # set color to gray
             # if dir does not exist:
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
             ret = run_subprocess(
                 ["wget", "--no-clobber", file_url, "-O", full_filepath]
             )
-            self._LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
+            _LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
             time.sleep(sleep_after)
-            self._LOGGER.info(f"\033[0m")  # Reset to default terminal color
+            _LOGGER.info(f"\033[0m")  # Reset to default terminal color
         else:
-            self._LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
+            _LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
     def _get_list_of_processed_files(
         self, file_gse_content: list, file_gsm_content: list
@@ -1555,7 +1545,7 @@ class Geofetcher:
                 pl = parse_SOFT_line(line)
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
-                self._LOGGER.debug(f"Processed GSE file found: %s" % str(file_url))
+                _LOGGER.debug(f"Processed GSE file found: %s" % str(file_url))
 
                 # search for tar file:
                 if tar_re.search(filename):
@@ -1579,14 +1569,14 @@ class Geofetcher:
                                     with open(filelist_path, "w") as f:
                                         f.write(filelist_raw_text)
                                 except OSError:
-                                    self._LOGGER.warning(
+                                    _LOGGER.warning(
                                         f"{filelist_path} not found. File won't be saved.."
                                     )
 
                         else:
                             raise Exception(f"error in requesting tar_files_list")
                     else:
-                        self._LOGGER.info(f"Found previous GSM file: {filelist_path}")
+                        _LOGGER.info(f"Found previous GSM file: {filelist_path}")
                         filelist_obj = open(filelist_path, "r")
                         filelist_raw_text = filelist_obj.read()
 
@@ -1640,7 +1630,7 @@ class Geofetcher:
                         if found_gsm:
                             pl = parse_SOFT_line(line_gsm)
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
-                            self._LOGGER.debug(
+                            _LOGGER.debug(
                                 f"Processed GSM file found: %s" % str(file_url_gsm)
                             )
                             if file_url_gsm != "NONE":
@@ -1652,7 +1642,7 @@ class Geofetcher:
                     )
                     meta_processed_samples = _separate_file_url(meta_processed_samples)
 
-                    self._LOGGER.info(
+                    _LOGGER.info(
                         f"\nTotal number of processed SAMPLES files found is: "
                         f"%s" % str(len(meta_processed_samples))
                     )
@@ -1693,13 +1683,13 @@ class Geofetcher:
                     else:
                         meta_processed_series[bl_key].append(bl_value)
             except IndexError as ind_err:
-                self._LOGGER.debug(
+                _LOGGER.debug(
                     f"IndexError in adding value to meta_processed_series: %s" % ind_err
                 )
 
         meta_processed_series = _separate_list_of_files(meta_processed_series)
         meta_processed_series = _separate_file_url(meta_processed_series)
-        self._LOGGER.info(
+        _LOGGER.info(
             f"Total number of processed SERIES files found is: "
             f"%s" % str(len(meta_processed_series))
         )
@@ -1719,7 +1709,7 @@ class Geofetcher:
         for meta_elem in meta_list:
             if self.filter_re.search(meta_elem[col_name].lower()):
                 filtered_list.append(meta_elem)
-        self._LOGGER.info(
+        _LOGGER.info(
             "\033[32mTotal number of files after filter is: %i \033[0m"
             % len(filtered_list)
         )
@@ -1739,11 +1729,11 @@ class Geofetcher:
                 if int(meta_elem[col_name]) <= self.filter_size:
                     filtered_list.append(meta_elem)
         else:
-            self._LOGGER.info(
+            _LOGGER.info(
                 "\033[32mTotal number of files after size filter NONE?? \033[0m"
             )
             return meta_list
-        self._LOGGER.info(
+        _LOGGER.info(
             "\033[32mTotal number of files after size filter is: %i \033[0m"
             % len(filtered_list)
         )
@@ -1759,9 +1749,7 @@ class Geofetcher:
         """
 
         if not self.geo_folder:
-            self._LOGGER.error(
-                "You must provide a geo_folder to download processed data."
-            )
+            _LOGGER.error("You must provide a geo_folder to download processed data.")
             sys.exit(1)
 
         filename = os.path.basename(file_url)
@@ -1770,18 +1758,18 @@ class Geofetcher:
         while ntry < 10:
             try:
                 self._download_file(file_url, data_folder)
-                self._LOGGER.info(
+                _LOGGER.info(
                     "\033[92mFile %s has been downloaded successfully\033[0m"
                     % f"{data_folder}/{filename}"
                 )
                 return True
 
             except IOError as e:
-                self._LOGGER.error(str(e))
+                _LOGGER.error(str(e))
                 # The server times out if we are hitting it too frequently,
                 # so we should sleep a bit to reduce frequency
                 sleeptime = (ntry + 1) ** 3
-                self._LOGGER.info(f"Sleeping for {sleeptime} seconds")
+                _LOGGER.info(f"Sleeping for {sleeptime} seconds")
                 time.sleep(sleeptime)
                 ntry += 1
                 if ntry > 4:
@@ -1800,13 +1788,13 @@ class Geofetcher:
             found = re.findall(PROJECT_PATTERN, line)
             if found:
                 acc_SRP = found[0]
-                self._LOGGER.info(f"Found SRA Project accession: {acc_SRP}")
+                _LOGGER.info(f"Found SRA Project accession: {acc_SRP}")
                 break
 
         if not acc_SRP:
             # If I can't get an SRA accession, maybe raw data wasn't submitted to SRA
             # as part of this GEO submission. Can't proceed.
-            self._LOGGER.warning(
+            _LOGGER.warning(
                 "Unable to get SRA accession (SRP#) from GEO GSE SOFT file. "
                 "No raw data detected! Continuing anyway..."
             )
@@ -1815,12 +1803,12 @@ class Geofetcher:
             if len(gsm_metadata) == 1:
                 try:
                     acc_SRP = list(gsm_metadata.keys())[0]
-                    self._LOGGER.warning(
+                    _LOGGER.warning(
                         "But the GSM has an SRX number; instead of an "
                         "SRP, using SRX identifier for this sample: " + acc_SRP
                     )
                 except TypeError:
-                    self._LOGGER.warning("Error in gsm_metadata")
+                    _LOGGER.warning("Error in gsm_metadata")
                     return []
 
             # else:
@@ -1844,14 +1832,14 @@ class Geofetcher:
                     return srp_list
 
                 except Exception as err:
-                    self._LOGGER.warning(
+                    _LOGGER.warning(
                         f"Warning: error, while downloading SRA Info Metadata of {acc_SRP}. "
                         f"Error: {err}. Probably no SRA metadata found"
                     )
                     return []
             else:
                 # open existing annotation
-                self._LOGGER.info(f"Found SRA metadata, opening..")
+                _LOGGER.info(f"Found SRA metadata, opening..")
                 with open(file_sra, "r") as m_file:
                     reader = csv.reader(m_file)
                     file_list = []
@@ -1868,7 +1856,7 @@ class Geofetcher:
                 return srp_list
 
             except Exception as err:
-                self._LOGGER.warning(
+                _LOGGER.warning(
                     f"\033[91mError occurred, while downloading SRA Info Metadata of {acc_SRP}. "
                     f"Error: {err}  \033[0m"
                 )
@@ -1881,9 +1869,9 @@ class Geofetcher:
         :return: list of dicts of SRRs
         """
         if not srp_number:
-            self._LOGGER.info(f"No srp number in this accession found")
+            _LOGGER.info(f"No srp number in this accession found")
             return []
-        self._LOGGER.info(f"Downloading {srp_number} sra metadata")
+        _LOGGER.info(f"Downloading {srp_number} sra metadata")
         ncbi_esearch = NCBI_ESEARCH.format(SRP_NUMBER=srp_number)
 
         # searching ids responding to srp
@@ -1891,7 +1879,7 @@ class Geofetcher:
 
         if x.status_code != 200:
             x.encoding = "UTF-8"
-            self._LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
+            _LOGGER.error(f"Error in ncbi esearch response: {x.status_code}")
             raise x.raise_for_status()
         id_results = x.json()["esearchresult"]["idlist"]
         if len(id_results) > 500:
@@ -1908,7 +1896,7 @@ class Geofetcher:
 
             y = requests.get(id_api)
             if y.status_code != 200:
-                self._LOGGER.error(
+                _LOGGER.error(
                     f"Error in ncbi efetch response in SRA fetching: {x.status_code}"
                 )
                 raise y.raise_for_status()
@@ -1972,13 +1960,13 @@ class Geofetcher:
                     "SRX": None,
                 }
 
-                self._LOGGER.debug(f"Found sample: {current_sample_id}")
+                _LOGGER.debug(f"Found sample: {current_sample_id}")
                 samples_list.append(current_sample_id)
             elif current_sample_id is not None:
                 try:
                     pl = parse_SOFT_line(line)
                 except IndexError:
-                    self._LOGGER.debug(
+                    _LOGGER.debug(
                         f"Failed to parse alleged SOFT line for sample ID {current_sample_id}; "
                         f"line: {line}"
                     )
@@ -1999,7 +1987,7 @@ class Geofetcher:
                 if not current_sample_srx:
                     found = re.findall(EXPERIMENT_PATTERN, line)
                     if found:
-                        self._LOGGER.debug(f"(SRX accession: {found[0]})")
+                        _LOGGER.debug(f"(SRX accession: {found[0]})")
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
                         gsm_metadata[srx_id][
@@ -2008,7 +1996,7 @@ class Geofetcher:
                         current_sample_id = srx_id
                         current_sample_srx = True
         # GSM SOFT file parsed, save it in a list
-        self._LOGGER.info(f"Processed {len(samples_list)} samples.")
+        _LOGGER.info(f"Processed {len(samples_list)} samples.")
         gsm_metadata = self._expand_metadata_dict(gsm_metadata)
         return gsm_metadata
 
@@ -2027,7 +2015,7 @@ class Geofetcher:
         :param omit_newline: omit new line
         """
         fp = expandpath(f_var_value)
-        self._LOGGER.info((msg_pre or "") + fp)
+        _LOGGER.info((msg_pre or "") + fp)
         with open(fp, "w") as f:
             f.write(content)
             if not omit_newline:
@@ -2040,12 +2028,3 @@ def main():
     args_dict = vars(args)
     args_dict["args"] = args
     Geofetcher(**args_dict).fetch_all(args_dict["input"])
-
-
-if __name__ == "__main__":
-    try:
-        sys.exit(main())
-
-    except KeyboardInterrupt:
-        print("Pipeline aborted.")
-        sys.exit(1)

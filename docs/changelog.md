@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2] -- 2023-03-27
+- Added `max-prefetch-size` argument.
+- Improved code and logger structure.
+
+## [0.12.1] -- 2023-03-27
+- Fixed Finder bug
+
 ## [0.12.0] -- 2023-03-27
 - Added functionality that saves gse metadata to config file
 - Fixed description in initialization of pepy object

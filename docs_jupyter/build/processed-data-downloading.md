@@ -24,11 +24,6 @@ Calling geofetch will do 4 tasks:
 
 Complete details about geofetch outputs is cataloged in the [metadata outputs reference](metadata_output.md).
 
-from IPython.core.display import SVG
-SVG(filename='logo.svg')
-
-![arguments_outputs.svg](attachment:arguments_outputs.svg)
-
 ## Download the data
 
 First, create the metadata for processed data (by adding --processed and --just-metadata):

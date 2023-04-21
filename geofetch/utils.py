@@ -8,7 +8,7 @@ import re
 import requests
 from io import StringIO
 import csv
-from typing import NoReturn, Dict, List, Union
+from typing import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,15 @@ URL_BY_ACC = {
     "GSE": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gse&acc={ACCESSION}&form=text&view=full",
     "GSM": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=gsm&acc={ACCESSION}&form=text&view=full",
 }
+
+
+def build_prefetch_command(
+    run_id: str, prefetch_path: str = "prefetch", max_size: Union[str, int] = 50000000
+) -> List[str]:
+    cmd = [prefetch_path, run_id]
+    if max_size is not None:
+        cmd.extend(["--max-size", str(max_size)])
+    return cmd
 
 
 def is_known_type(accn: str = None, typename: str = None):
@@ -43,7 +52,7 @@ def is_known_type(accn: str = None, typename: str = None):
         return False
 
 
-def parse_accessions(input_arg, metadata_folder, just_metadata=False):
+def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=None):
     """
     Create a list of GSE accessions, either from file or a single value.
 
@@ -56,6 +65,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
     :param str metadata_folder: path to folder for accession metadata
     :param bool just_metadata: whether to only process metadata, not the
         actual data associated with the accession
+    :param str | int max_size: argument for prefetch command's --max-size option
     """
 
     acc_GSE_list = {}
@@ -81,7 +91,7 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False):
                         run_ids.append(r_id)
             _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
-                run_subprocess(["prefetch", r_id, "--max-size", "50000000"])
+                run_subprocess(build_prefetch_command(run_id=r_id, max_size=max_size))
             # Early return if we've just handled SRP accession directly.
             return
         else:

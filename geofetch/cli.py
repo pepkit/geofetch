@@ -170,6 +170,11 @@ To download all processed data of GSE57303:
                 Supported input formats : 12B, 12KB, 12MB, 12GB. """,
     )
 
+    parser.add_argument(
+        "--max-prefetch-size",
+        help="Argument to pass to prefetch program's --max-size option, if prefetch will be used in this run of geofetch; for reference: https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool",
+    )
+
     processed_group.add_argument(
         "-p",
         "--processed",

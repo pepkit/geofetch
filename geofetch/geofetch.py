@@ -19,6 +19,7 @@ from .cli import _parse_cmdl
 from .const import *
 from .utils import (
     Accession,
+    build_prefetch_command,
     parse_accessions,
     parse_SOFT_line,
     convert_size,
@@ -90,10 +91,12 @@ class Geofetcher:
         disable_progressbar: bool = False,
         add_convert_modifier: bool = False,
         opts=None,
+        max_prefetch_size=None,
         **kwargs,
     ):
         """
-        init function
+        Constructor
+
         :param input: GSEnumber or path to the input file
         :param name: Specify a project name. Defaults to GSE number or name of accessions file name
         :param metadata_root:  Specify a parent folder location to store metadata.
@@ -154,15 +157,16 @@ class Geofetcher:
 
         :param skip: Skip some accessions. [Default: no skip].
         :param opts: opts object [Optional]
+        :param str | int max_prefetch_size: argmuent to prefetch command's --max-size option;
+            for reference: https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool
         :param kwargs: other values
         """
 
-        if opts is not None:
-            _LOGGER = logmuse.logger_via_cli(opts)
-        else:
-            _LOGGER = logging.getLogger(__name__)
-
-        self._LOGGER = _LOGGER
+        self._LOGGER = (
+            logmuse.logger_via_cli(opts)
+            if opts is not None
+            else logging.getLogger(__name__)
+        )
 
         if name:
             self.project_name = name
@@ -261,6 +265,9 @@ class Geofetcher:
             raise SystemExit("For SAM/BAM processing, samtools should be on PATH.")
 
         self.just_object = False
+        self.max_prefetch_size = (
+            "50g" if max_prefetch_size is None else max_prefetch_size
+        )
 
     def get_projects(
         self, input: str, just_metadata: bool = True, discard_soft: bool = True
@@ -634,9 +641,9 @@ class Geofetcher:
 
     def _download_raw_data(self, run_name: str) -> NoReturn:
         """
-        Downloade raw data from SRA by providing run name
+        Download raw data from SRA by providing run name
+
         :param run_name: Run name from SRA
-        :return: NoReturn
         """
         bam_file = (
             ""
@@ -1376,6 +1383,7 @@ class Geofetcher:
         """
         Download SRA file by ising 'prefetch' utility from the SRA Toolkit
         more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+
         :param str run_name: SRR number of the SRA file
         """
 
@@ -1384,7 +1392,7 @@ class Geofetcher:
         while True:
             t = t + 1
             subprocess_return = run_subprocess(
-                ["prefetch", run_name, "--max-size", "50000000"]
+                build_prefetch_command(run_id=run_name, max_size=self.max_prefetch_size)
             )
 
             if subprocess_return == 0:

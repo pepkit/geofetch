@@ -17,7 +17,7 @@ from geofetch import Finder
 gse_obj = Finder()
 
 # Optionally: provide filter string and max number of retrieve elements
-gse_obj = Finder(filter="((bed) OR narrow peak) AND Homo sapiens[Organism]", retmax=10)
+gse_obj = Finder(filters="((bed) OR narrow peak) AND Homo sapiens[Organism]", retmax=10)
 ```
 
 1) Get list of all GSE in GEO 

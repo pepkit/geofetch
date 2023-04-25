@@ -1,7 +1,7 @@
 import argparse
 import os
 import logmuse
-from ._version import __version__
+from geofetch._version import __version__
 
 
 def _safe_echo(var):
@@ -18,12 +18,10 @@ def _parse_cmdl(cmdl):
         usage="""geofetch [<args>]
 
 The example how to use geofetch (to download GSE573030 just metadata):
-    geofetch -i GSE67303 -m `pwd` --just-metadata
+    geofetch -i GSE67303 -m <folder> --just-metadata
 
 To download all processed data of GSE57303:
-    geofetch -i GSE67303 --processed --geo-folder `pwd` -m `pwd`
-
-* where `pwd` is a current directory
+    geofetch -i GSE67303 --processed --geo-folder <folder> -m <folder>
 
 """,
     )
@@ -63,8 +61,7 @@ To download all processed data of GSE57303:
         "-u",
         "--metadata-folder",
         help="Specify an absolute folder location to store metadata. "
-        "No subfolder will be added. Overrides value of --metadata-root "
-        "[Default: Not used (--metadata-root is used by default)]",
+        "No subfolder will be added. Overrides value of --metadata-root.",
     )
 
     parser.add_argument(
@@ -127,7 +124,7 @@ To download all processed data of GSE57303:
     parser.add_argument(
         "--discard-soft",
         action="store_true",
-        help="Optional: After creation of PEP files, all soft and additional files will be deleted",
+        help="Optional: After creation of PEP files, all .soft files will be deleted",
     )
 
     parser.add_argument(
@@ -168,6 +165,12 @@ To download all processed data of GSE57303:
         help="""Optional: Max size of soft file.
                 [Default: 1GB].
                 Supported input formats : 12B, 12KB, 12MB, 12GB. """,
+    )
+
+    parser.add_argument(
+        "--max-prefetch-size",
+        help="Argument to pass to prefetch program's --max-size option, if prefetch will be used in this run of geofetch; "
+        "for reference: https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool",
     )
 
     processed_group.add_argument(

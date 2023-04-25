@@ -3,6 +3,7 @@
 
 # Python
 *.pyc
+build/
 
 # ignore test results
 tests/test/*

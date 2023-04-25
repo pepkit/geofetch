@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.2] -- 2023-04-25
+- Added `max-prefetch-size` argument. #113
+- Improved code and logger structure.
+
 ## [0.12.0] -- 2023-03-27
 - Added functionality that saves gse metadata to config file
 - Fixed description in initialization of pepy object

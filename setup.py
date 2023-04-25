@@ -48,6 +48,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     keywords="project, bioinformatics, sequencing, ngs, workflow, GUI",
@@ -56,7 +57,7 @@ setup(
     license="BSD2",
     entry_points={
         "console_scripts": [
-            "geofetch = geofetch.geofetch:main",
+            "geofetch = geofetch.__main__:main",
             "sraconvert = geofetch.sraconvert:main",
         ],
     },

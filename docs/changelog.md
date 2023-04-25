@@ -1,7 +1,7 @@
 # Changelog
 
-## [0.12.2] -- 2023-04-32
-- Added `max-prefetch-size` argument.
+## [0.12.2] -- 2023-04-25
+- Added `max-prefetch-size` argument. #113
 - Improved code and logger structure.
 
 ## [0.12.0] -- 2023-03-27

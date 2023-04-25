@@ -9,12 +9,10 @@
 usage: geofetch [<args>]
 
 The example how to use geofetch (to download GSE573030 just metadata):
-    geofetch -i GSE67303 -m `pwd` --just-metadata
+    geofetch -i GSE67303 -m <folder> --just-metadata
 
 To download all processed data of GSE57303:
-    geofetch -i GSE67303 --processed --geo-folder `pwd` -m `pwd`
-
-* where `pwd` is a current directory
+    geofetch -i GSE67303 --processed --geo-folder <folder> -m <folder>
 
 Automatic GEO and SRA data downloader
 
@@ -32,8 +30,7 @@ options:
   -u METADATA_FOLDER, --metadata-folder METADATA_FOLDER
                         Specify an absolute folder location to store metadata.
                         No subfolder will be added. Overrides value of
-                        --metadata-root [Default: Not used (--metadata-root is
-                        used by default)]
+                        --metadata-root.
   --just-metadata       If set, don't actually run downloads, just create
                         metadata
   -r, --refresh-metadata
@@ -56,8 +53,8 @@ options:
   --acc-anno            Optional: Produce annotation sheets for each
                         accession. Project combined PEP for the whole project
                         won't be produced.
-  --discard-soft        Optional: After creation of PEP files, all soft and
-                        additional files will be deleted
+  --discard-soft        Optional: After creation of PEP files, all .soft files
+                        will be deleted
   --const-limit-project CONST_LIMIT_PROJECT
                         Optional: Limit of the number of the constant sample
                         characters that should not be in project yaml.

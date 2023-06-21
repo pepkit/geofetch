@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.12.3] -- 2023-06-21
+- Fixed preserving order of project keys (#119)
+
 ## [0.12.2] -- 2023-04-25
 - Added `max-prefetch-size` argument. #113
 - Improved code and logger structure.

@@ -404,10 +404,13 @@ def _get_list_of_keys(list_of_dict: list):
     :return list: list of dictionary keys
     """
 
-    list_of_keys = []
-    for element in list_of_dict:
-        list_of_keys.extend(list(element.keys()))
-    return list(set(list_of_keys))
+    dict_keys = {"sample_name": None}
+
+    for sample in list_of_dict:
+        for element in sample.keys():
+            dict_keys[element] = None
+
+    return list(dict_keys.keys())
 
 
 def _get_value(all_line: str):

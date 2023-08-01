@@ -1435,7 +1435,7 @@ class Geofetcher:
 
         # check to make sure it worked
         cmd = (
-            "fastq-dump --split-3 -O "
+            "fasterq-dump --split-3 -O "
             + os.path.realpath(self.sra_folder)
             + " "
             + os.path.join(self.sra_folder, run_name + ".sra")

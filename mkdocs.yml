@@ -18,6 +18,7 @@ nav:
   - How-to Guides:
     - Specifying samples to download: file-specification.md
     - Set SRA data download location: howto-location.md
+    - Run SRA convert: how_to_convert_fastq_from_sra.md
   - Reference:
     - Metadata output: metadata_output.md
     - Usage: usage.md

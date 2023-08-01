@@ -143,7 +143,7 @@ def main():
                 # fastq-dump --split-files will produce *_1.fastq and *_2.fastq
                 # for paired-end data, and only *_1.fastq for single-end data.
                 outfile = "{fq_prefix}_1.fastq.gz".format(fq_prefix=fq_prefix)
-                cmd = "fastq-dump {data_source} --split-files --gzip -O {outfolder}".format(
+                cmd = "fasterq-dump {data_source} -O {outfolder}".format(
                     data_source=infile, outfolder=args.fqfolder, nofail=True
                 )
             elif args.format == "bam":

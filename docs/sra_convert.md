@@ -15,4 +15,4 @@ This effectively makes it easier to interact with *project-level* management of 
 
 ## Tutorial
 
-See the [tutorial](raw-data-downloading.md) for an example of how to use `sraconvert`.
+See the [how-to](how_to_convert_fastq_from_sra.md) for an example of how to use `sraconvert`.

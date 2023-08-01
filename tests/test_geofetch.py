@@ -366,7 +366,7 @@ def test_clean_func(tmpdir):
     """
     Testing deleting soft files
     """
-    files_dir = os.path.join(GSE_FILES, "GSE138657")
+    files_dir = os.path.join(GSE_FILES, "GSE189141")
     for file_name in os.listdir(files_dir):
         shutil.copyfile(
             os.path.join(files_dir, file_name), os.path.join(tmpdir, file_name)

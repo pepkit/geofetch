@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.4] -- 2023-08-01
+- Fixed SRA convert
+- Added how to convert SRA
+
 ## [0.12.3] -- 2023-06-21
 - Fixed preserving order of project keys (#119)
 

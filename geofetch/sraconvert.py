@@ -144,12 +144,14 @@ def main():
                 # for paired-end data, and only *_1.fastq for single-end data.
                 outfile = "{fq_prefix}_1.fastq.gz".format(fq_prefix=fq_prefix)
                 cmd = "fasterq-dump {data_source} -O {outfolder}".format(
-                    data_source=infile, outfolder=args.fqfolder, nofail=True
+                    data_source=infile,
+                    outfolder=args.fqfolder,
                 )
             elif args.format == "bam":
                 outfile = os.path.join(args.bamfolder, args.srr[i] + ".bam")
                 cmd = "sam-dump -u {data_source} | samtools view -bS - > {outfile}".format(
-                    data_source=infile, outfile=outfile, nofail=True
+                    data_source=infile,
+                    outfile=outfile,
                 )
             else:
                 raise KeyError("Unknown format: {}".format(args.format))
@@ -160,7 +162,7 @@ def main():
                 pm.info("Already completed files: {}".format(failed_files))
                 try:
                     failed_files.remove(infile)
-                except:
+                except Exception:
                     pass
 
         elif args.mode == "delete_bam":

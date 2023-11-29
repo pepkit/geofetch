@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.12.5] -- 2023-11-29
+- Fixed bug, where description was not populated in PEP
+
 ## [0.12.4] -- 2023-08-01
 - Fixed SRA convert
 - Added how to convert SRA

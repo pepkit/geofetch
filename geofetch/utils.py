@@ -8,7 +8,7 @@ import re
 import requests
 from io import StringIO
 import csv
-from typing import *
+from typing import Union, List, NoReturn, Dict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def is_known_type(accn: str = None, typename: str = None):
     try:
         prefix, number = split_accn(accn)
         return prefix.upper() in URL_BY_ACC
-    except:
+    except Exception:
         return False
 
 
@@ -85,9 +85,9 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=N
             # Read the Run identifiers to download.
             run_ids = []
             with open(file_sra, "r") as f:
-                for l in f:
-                    if l.startswith("SRR"):
-                        r_id = l.split(",")[0]
+                for line in f:
+                    if line.startswith("SRR"):
+                        r_id = line.split(",")[0]
                         run_ids.append(r_id)
             _LOGGER.info("{} run(s)".format(len(run_ids)))
             for r_id in run_ids:
@@ -132,14 +132,14 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=N
     return acc_GSE_list
 
 
-def parse_SOFT_line(l: str) -> dict:
+def parse_SOFT_line(line: str) -> dict:
     """
     Parse SOFT formatted line, returning a dictionary with the key-value pair.
 
-    :param str l: A SOFT-formatted line to parse ( !key = value )
+    :param str line: A SOFT-formatted line to parse ( !key = value )
     :return dict[str, str]: A python Dict object representing the key-value.
     """
-    elems = l[1:].split("=")
+    elems = line[1:].split("=")
     return {elems[0].rstrip(): "=".join(elems[1:]).lstrip()}
 
 
@@ -543,8 +543,8 @@ def _sanitize_config_string(text: str) -> str:
     :return: sanitized strings
     """
     new_str = text
-    new_str = new_str.replace('"', f'\\"')
-    new_str = new_str.replace("'", f"''")
+    new_str = new_str.replace('"', '\\"')
+    new_str = new_str.replace("'", "''")
     return new_str
 
 

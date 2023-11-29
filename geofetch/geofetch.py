@@ -17,7 +17,24 @@ import peppy
 import pandas as pd
 
 from geofetch.cli import _parse_cmdl
-from geofetch.const import *
+from geofetch.const import (
+    GSE_PATTERN,
+    SAMPLE_SUPP_METADATA_FILE,
+    EXP_SUPP_METADATA_FILE,
+    NEW_GENOME_COL_NAME,
+    FILE_RAW_NAME_SAMPLE_PATTERN,
+    FILE_RAW_NAME_SUBSAMPLE_PATTERN,
+    CONFIG_RAW_TEMPLATE_NAME,
+    CONFIG_SRA_TEMPLATE,
+    CONFIG_PROCESSED_TEMPLATE_NAME,
+    NUM_RETRIES,
+    SER_SUPP_FILE_PATTERN,
+    SUPP_FILE_PATTERN,
+    PROJECT_PATTERN,
+    NCBI_EFETCH,
+    NCBI_ESEARCH,
+    EXPERIMENT_PATTERN,
+)
 from geofetch.utils import (
     Accession,
     build_prefetch_command,
@@ -480,8 +497,8 @@ class Geofetcher:
                     file_gse_content, gsm_metadata, file_sra
                 )
                 if not srp_list_result:
-                    _LOGGER.info(f"No SRP data, continuing ....")
-                    _LOGGER.warning(f"No raw pep will be created! ....")
+                    _LOGGER.info("No SRP data, continuing ....")
+                    _LOGGER.warning("No raw pep will be created! ....")
                     # delete current acc if no raw data was found
                     # del metadata_dict[acc_GSE]
                     pass
@@ -498,7 +515,7 @@ class Geofetcher:
                         _LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
                         self._download_raw_data(run)
                 else:
-                    _LOGGER.info(f"Dry run, no data will be downloaded")
+                    _LOGGER.info("Dry run, no data will be downloaded")
 
                 # save one project
                 if self.acc_anno and nkeys > 1:
@@ -517,7 +534,7 @@ class Geofetcher:
 
         # Logging cleaning process:
         if self.discard_soft:
-            _LOGGER.info(f"Cleaning soft files ...")
+            _LOGGER.info("Cleaning soft files ...")
             clean_soft_files(self.metadata_root_full)
 
         #######################################################################################
@@ -878,7 +895,7 @@ class Geofetcher:
             if element_is_list:
                 for n_elem in range(len(metadata_list)):
                     try:
-                        if type(metadata_list[n_elem][dict_key]) is not list:
+                        if not isinstance(metadata_list[n_elem][dict_key], list):
                             metadata_list[n_elem][dict_key] = [
                                 metadata_list[n_elem][dict_key]
                             ]
@@ -930,7 +947,7 @@ class Geofetcher:
                             metadata_list[n_elem][dict_key] = this_string
                         else:
                             del metadata_list[n_elem][dict_key]
-                    except KeyError as err:
+                    except KeyError:
                         # _LOGGER.warning(
                         #     f"expand_metadata_list: Key Error: {err}, continuing ..."
                         # )
@@ -980,6 +997,7 @@ class Geofetcher:
     ) -> Union[NoReturn, peppy.Project]:
         """
         Save annotation file by providing list of dictionaries with files metadata
+
         :param list processed_metadata: list of dictionaries with files metadata
         :param str file_annotation_path: the path to the metadata file that has to be saved
         :param just_object: True, if you want to get peppy object without saving file
@@ -1046,13 +1064,14 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(pd_value, config=conf)
             proj_exp_data = conf.get("experiment_metadata")
             if proj_exp_data:
-                proj["description"] = proj_exp_data.get("series_title")
+                proj.description = proj_exp_data.get("series_title")
             return proj
 
     @staticmethod
     def _find_genome(metadata_list: list) -> list:
         """
         Create new genome column by searching joining few columns
+
         :param metadata_list: list with metadata dict
         :return: list with metadata dict where genome column was added
         """
@@ -1080,6 +1099,7 @@ class Geofetcher:
         """
         Combine individual accessions into project-level annotations, and writing
         individual accession files (if requested)
+
         :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
         :param metadata_dict: dictionary of sample annotations
         :param subannot_dict: dictionary of subsample annotations
@@ -1128,7 +1148,7 @@ class Geofetcher:
                 f"subsample_table: {os.path.basename(proj_root_subsample)}"
             )
         else:
-            subanot_path_yaml = f""
+            subanot_path_yaml = ""
 
         template = self._create_config_raw(
             proj_meta, proj_root_sample, subanot_path_yaml, gse_meta_dict
@@ -1166,7 +1186,7 @@ class Geofetcher:
             proj = peppy.Project().from_pandas(meta_df, sub_meta_df, conf)
             proj_exp_data = conf.get("experiment_metadata")
             if proj_exp_data:
-                proj["description"] = proj_exp_data.get("series_title")
+                proj.description = proj_exp_data.get("series_title")
             return proj
 
     def _create_config_processed(
@@ -1177,6 +1197,7 @@ class Geofetcher:
     ) -> str:
         """
         Compose and generate config file content
+
         :param file_annotation_path: root to the annotation file
         :param proj_meta: common metadata that has to added to config file
         :param meta_in_series:
@@ -1218,6 +1239,7 @@ class Geofetcher:
     ):
         """
         Compose and generate config file content for raw data
+
         :param proj_meta: root to the annotation file
         :param proj_root_sample: path to sampletable file
         :param subanot_path_yaml: path to subannotation file
@@ -1275,6 +1297,7 @@ class Geofetcher:
         """
         Standardize sample name and checking if it exists
             (This function is used for raw data)
+
         :param metadata_dict: metadata dict
         :return: metadata dict with standardize sample names
         """
@@ -1300,14 +1323,16 @@ class Geofetcher:
     ) -> tuple:
         """
         Separate experiment(project) metadata from sample metadata
+
         :param list or dict meta_list: list of dictionaries of samples
         :param int max_len: threshold of the length of the common value that can be stored in the sample table
         :param int del_limit: threshold of the length of the common value that have to be deleted
         :param int attr_limit_truncate: max length of the attribute in the sample csv
         :return set: Return is a set of list, where 1 list (or dict) is
-        list of samples metadata dictionaries and 2: list of common samples metadata
-        dictionaries that are linked to the project.
+            list of samples metadata dictionaries and 2: list of common samples metadata
+            dictionaries that are linked to the project.
         """
+
         # check if meta_list is dict and converting it to list
         input_is_dict = False
         if isinstance(meta_list, dict):
@@ -1401,6 +1426,7 @@ class Geofetcher:
     def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
         """
         Convert SRA file to BAM file by using samtools function "sam-dump"
+
         :param str bam_file: path to BAM file that has to be created
         :param str run_name: SRR number of the SRA file that has to be converted
         """
@@ -1509,7 +1535,7 @@ class Geofetcher:
             full_filepath = os.path.join(data_folder, new_name)
 
         if not os.path.exists(full_filepath):
-            _LOGGER.info(f"\033[38;5;242m")  # set color to gray
+            _LOGGER.info("\033[38;5;242m")  # set color to gray
             # if dir does not exist:
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
@@ -1518,7 +1544,7 @@ class Geofetcher:
             )
             _LOGGER.info(f"\033[38;5;242m{ret}\033[0m")
             time.sleep(sleep_after)
-            _LOGGER.info(f"\033[0m")  # Reset to default terminal color
+            _LOGGER.info("\033[0m")  # Reset to default terminal color
         else:
             _LOGGER.info(f"\033[38;5;242mFile {full_filepath} exists.\033[0m")
 
@@ -1545,7 +1571,7 @@ class Geofetcher:
                 pl = parse_SOFT_line(line)
                 file_url = pl[list(pl.keys())[0]].rstrip()
                 filename = os.path.basename(file_url)
-                _LOGGER.debug(f"Processed GSE file found: %s" % str(file_url))
+                _LOGGER.debug(f"Processed GSE file found: {str(file_url)}")
 
                 # search for tar file:
                 if tar_re.search(filename):
@@ -1574,7 +1600,7 @@ class Geofetcher:
                                     )
 
                         else:
-                            raise Exception(f"error in requesting tar_files_list")
+                            raise Exception("error in requesting tar_files_list")
                     else:
                         _LOGGER.info(f"Found previous GSM file: {filelist_path}")
                         filelist_obj = open(filelist_path, "r")
@@ -1610,9 +1636,8 @@ class Geofetcher:
                                 ):
                                     meta_processed_samples[nb].update(pl)
                                 else:
-                                    if (
-                                        type(meta_processed_samples[nb][element_keys])
-                                        is not list
+                                    if not isinstance(
+                                        meta_processed_samples[nb][element_keys], list
                                     ):
                                         meta_processed_samples[nb][element_keys] = [
                                             meta_processed_samples[nb][element_keys]
@@ -1631,7 +1656,7 @@ class Geofetcher:
                             pl = parse_SOFT_line(line_gsm)
                             file_url_gsm = pl[list(pl.keys())[0]].rstrip()
                             _LOGGER.debug(
-                                f"Processed GSM file found: %s" % str(file_url_gsm)
+                                f"Processed GSM file found: {str(file_url_gsm)}"
                             )
                             if file_url_gsm != "NONE":
                                 meta_processed_samples[nb]["files"].append(file_url_gsm)
@@ -1643,8 +1668,7 @@ class Geofetcher:
                     meta_processed_samples = _separate_file_url(meta_processed_samples)
 
                     _LOGGER.info(
-                        f"\nTotal number of processed SAMPLES files found is: "
-                        f"%s" % str(len(meta_processed_samples))
+                        f"\nTotal number of processed SAMPLES files found is: {str(len(meta_processed_samples))}"
                     )
 
                     # expand meta_processed_samples with information about type and size
@@ -1677,21 +1701,21 @@ class Geofetcher:
                 if bl_key not in meta_processed_series.keys():
                     meta_processed_series.update(bl)
                 else:
-                    if type(meta_processed_series[bl_key]) is not list:
+                    if not isinstance(meta_processed_series[bl_key], list):
                         meta_processed_series[bl_key] = [meta_processed_series[bl_key]]
                         meta_processed_series[bl_key].append(bl_value)
                     else:
                         meta_processed_series[bl_key].append(bl_value)
             except IndexError as ind_err:
                 _LOGGER.debug(
-                    f"IndexError in adding value to meta_processed_series: %s" % ind_err
+                    f"IndexError in adding value to meta_processed_series: {ind_err}"
                 )
 
         meta_processed_series = _separate_list_of_files(meta_processed_series)
         meta_processed_series = _separate_file_url(meta_processed_series)
         _LOGGER.info(
             f"Total number of processed SERIES files found is: "
-            f"%s" % str(len(meta_processed_series))
+            f"{str(len(meta_processed_series))}"
         )
         if self.filter_re:
             meta_processed_series = self._run_filter(meta_processed_series)
@@ -1778,6 +1802,7 @@ class Geofetcher:
     def _get_SRA_meta(self, file_gse_content: list, gsm_metadata, file_sra=None):
         """
         Parse out the SRA project identifier from the GSE file
+
         :param list file_gse_content: list of content of file_sde_content
         :param dict gsm_metadata: dict of GSM metadata
         :param str file_sra: full path to SRA.csv metafile that has to be downloaded
@@ -1805,7 +1830,7 @@ class Geofetcher:
                     acc_SRP = list(gsm_metadata.keys())[0]
                     _LOGGER.warning(
                         "But the GSM has an SRX number; instead of an "
-                        "SRP, using SRX identifier for this sample: " + acc_SRP
+                        f"SRP, using SRX identifier for this sample: {acc_SRP}"
                     )
                 except TypeError:
                     _LOGGER.warning("Error in gsm_metadata")
@@ -1839,7 +1864,7 @@ class Geofetcher:
                     return []
             else:
                 # open existing annotation
-                _LOGGER.info(f"Found SRA metadata, opening..")
+                _LOGGER.info("Found SRA metadata, opening..")
                 with open(file_sra, "r") as m_file:
                     reader = csv.reader(m_file)
                     file_list = []
@@ -1869,7 +1894,7 @@ class Geofetcher:
         :return: list of dicts of SRRs
         """
         if not srp_number:
-            _LOGGER.info(f"No srp number in this accession found")
+            _LOGGER.info("No srp number in this accession found")
             return []
         _LOGGER.info(f"Downloading {srp_number} sra metadata")
         ncbi_esearch = NCBI_ESEARCH.format(SRP_NUMBER=srp_number)

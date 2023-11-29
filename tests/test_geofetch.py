@@ -1,7 +1,8 @@
 import peppy
 
 import geofetch
-from geofetch import parse_accessions, Geofetcher, utils
+from geofetch import Geofetcher, utils
+from geofetch.utils import parse_accessions
 import os
 import pytest
 import shutil
@@ -89,10 +90,10 @@ class TestListProcessedMetaFiles:
     def test_file_list(
         self, gse_numb, soft_gse, soft_gsm, sample_len, series_len, initiate_geofetcher
     ):
-        file_gse_content = geofetch.Accession(gse_numb).fetch_metadata(
+        file_gse_content = geofetch.utils.Accession(gse_numb).fetch_metadata(
             soft_gse, typename="GSE", clean=False
         )
-        file_gsm_content = geofetch.Accession(gse_numb).fetch_metadata(
+        file_gsm_content = geofetch.utils.Accession(gse_numb).fetch_metadata(
             soft_gsm, typename="GSM", clean=False
         )
         (
@@ -358,8 +359,20 @@ class TestPeppyInitRaw:
     def test_number_of_samples(self, initiate_geofetcher):
         gse_numb = "GSE189141"
         p_prop = initiate_geofetcher.get_projects(gse_numb)
-        a = [d["sample_name"] for d in p_prop[f"{gse_numb}_raw"].samples]
+        # a = [d["sample_name"] for d in p_prop[f"{gse_numb}_raw"].samples]
         assert len(p_prop[f"{gse_numb}_raw"].samples) == 16  # it has 16 samples
+
+    def test_description_created_correctly_series(self, initiate_geofetcher):
+        gse_numb = "GSE189141"
+        p_prop = initiate_geofetcher.get_projects(gse_numb)
+        peppy_obj = p_prop[f"{gse_numb}_raw"].to_dict(extended=True)
+        assert peppy_obj["_config"]["description"] is not None
+
+    def test_description_created_correctly_samples(self, initiate_geofetcher):
+        gse_numb = "GSE189141"
+        p_prop = initiate_geofetcher.get_projects(gse_numb)
+        peppy_obj = p_prop[f"{gse_numb}_raw"].to_dict(extended=True)
+        assert peppy_obj["_config"]["description"] is not None
 
 
 def test_clean_func(tmpdir):

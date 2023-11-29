@@ -16,11 +16,11 @@ extra = {}
 def read_reqs(reqs_name):
     deps = []
     with open(os.path.join(REQDIR, "requirements-{}.txt".format(reqs_name)), "r") as f:
-        for l in f:
-            if not l.strip():
+        for line in f:
+            if not line.strip():
                 continue
-            # deps.append(l.split("=")[0].rstrip("<>"))
-            deps.append(l)
+            # deps.append(line.split("=")[0].rstrip("<>"))
+            deps.append(line)
     return deps
 
 
@@ -69,5 +69,5 @@ setup(
     setup_requires=(
         ["pytest-runner"] if {"test", "pytest", "ptr"} & set(sys.argv) else []
     ),
-    **extra
+    **extra,
 )

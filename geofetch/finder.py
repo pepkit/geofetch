@@ -127,7 +127,7 @@ class Finder:
         """
         x = requests.get(url)
         if x.status_code != 200:
-            _LOGGER.error(f"Request status != 200. Error. Check your request")
+            _LOGGER.error("Request status != 200. Error. Check your request")
             return []
         try:
             x_result = xmltodict.parse(x.text)["eSearchResult"]

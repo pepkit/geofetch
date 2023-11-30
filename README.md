@@ -9,7 +9,7 @@
 
 `geofetch` is a command-line tool that downloads sequencing data and metadata from GEO and SRA and creates [standard PEPs](https://pep.databio.org/). `geofetch` is hosted at [pypi](https://pypi.org/project/geofetch/). You can convert the result of geofetch into unmapped `bam` or `fastq` files with the included `sraconvert` command.
 
-Key geofetch features:
+## Key geofetch features:
 
 - Works with GEO and SRA metadata
 - Combines samples from different projects

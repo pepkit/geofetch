@@ -14,7 +14,7 @@
 
 ![](./img/pipeline.svg)
 
-Key geofetch advantages:
+## Key geofetch advantages:
 
 - Works with GEO and SRA metadata
 - Combines samples from different projects

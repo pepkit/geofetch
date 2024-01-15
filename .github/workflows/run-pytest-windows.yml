@@ -23,7 +23,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install test dependencies
-      run: if [ -f requirements/requirements-test.txt ]; then pip install -r requirements/requirements-test.txt; fi
+      run: pip install -r requirements/requirements-test.txt
 
     - name: Install package
       run: python -m pip install .

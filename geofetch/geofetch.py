@@ -372,10 +372,17 @@ class Geofetcher:
         # check to make sure prefetch is callable
         if not self.just_metadata and not self.processed:
             if not is_command_callable("prefetch"):
-                raise SystemExit(
-                    "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
-                    " Installation instruction: http://geofetch.databio.org/en/latest/install/"
-                )
+                if os.name == "nt":
+                    _LOGGER.warning(
+                        "GEOfetch is not checking if prefetch is installed on Windows,"
+                        " please make sure it is installed and in your PATH, otherwise "
+                        "it will not be possible to download raw data."
+                    )
+                else:
+                    raise SystemExit(
+                        "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
+                        " Installation instruction: http://geofetch.databio.org/en/latest/install/"
+                    )
 
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata
@@ -1036,7 +1043,7 @@ class Geofetcher:
         )
 
         if not just_object:
-            with open(file_annotation_path, "w") as m_file:
+            with open(file_annotation_path, "w", encoding="utf-8") as m_file:
                 dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
                 dict_writer.writeheader()
                 dict_writer.writerows(processed_metadata)
@@ -1865,12 +1872,13 @@ class Geofetcher:
             else:
                 # open existing annotation
                 _LOGGER.info("Found SRA metadata, opening..")
-                with open(file_sra, "r") as m_file:
+                with open(file_sra, "r", encoding="UTF-8") as m_file:
                     reader = csv.reader(m_file)
                     file_list = []
                     srp_list = []
                     for k in reader:
-                        file_list.append(k)
+                        if k:
+                            file_list.append(k)
                     for value_list in file_list[1:]:
                         srp_list.append(dict(zip(file_list[0], value_list)))
 

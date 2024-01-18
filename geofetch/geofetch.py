@@ -1796,15 +1796,22 @@ class Geofetcher:
                 return True
 
             except IOError as e:
-                _LOGGER.error(str(e))
-                # The server times out if we are hitting it too frequently,
-                # so we should sleep a bit to reduce frequency
-                sleeptime = (ntry + 1) ** 3
-                _LOGGER.info(f"Sleeping for {sleeptime} seconds")
-                time.sleep(sleeptime)
-                ntry += 1
-                if ntry > 4:
-                    raise e
+                if os.name == "nt":
+                    _LOGGER.error(f"{e}")
+                    raise OSError(
+                        "Windows may not have wget command. "
+                        "Check if `wget` command is installed correctly."
+                    )
+                else:
+                    _LOGGER.error(str(e))
+                    # The server times out if we are hitting it too frequently,
+                    # so we should sleep a bit to reduce frequency
+                    sleeptime = (ntry + 1) ** 3
+                    _LOGGER.info(f"Sleeping for {sleeptime} seconds")
+                    time.sleep(sleeptime)
+                    ntry += 1
+                    if ntry > 4:
+                        raise e
 
     def _get_SRA_meta(self, file_gse_content: list, gsm_metadata, file_sra=None):
         """

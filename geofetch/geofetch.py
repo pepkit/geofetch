@@ -1,6 +1,7 @@
 import copy
 import csv
 import os
+import subprocess
 import sys
 import requests
 import xmltodict
@@ -11,7 +12,7 @@ import logging
 from rich.progress import track
 import re
 import logmuse
-from ubiquerg import expandpath, is_command_callable
+from ubiquerg import expandpath
 from typing import List, Union, Dict, Tuple, NoReturn
 import peppy
 import pandas as pd
@@ -63,6 +64,20 @@ from geofetch.utils import (
 
 _LOGGER = logging.getLogger(__name__)
 
+def is_prefetch_callable() -> bool:
+    """
+    Test if the prefetch command can be run.
+    :return: True if it is available.
+    """
+    try:
+        # Option -V means display version and then quit.
+        subprocess.run(["prefetch", "-V"],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+        return True
+    except (subprocess.SubprocessError, OSError):
+        return False
 
 class Geofetcher:
     """
@@ -351,7 +366,7 @@ class Geofetcher:
                 new_pr_dict[pr_key] = project_dict[pr_key]
 
         return new_pr_dict
-
+    
     def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
         """
         Main function driver/workflow
@@ -371,18 +386,11 @@ class Geofetcher:
 
         # check to make sure prefetch is callable
         if not self.just_metadata and not self.processed:
-            if not is_command_callable("prefetch"):
-                if os.name == "nt":
-                    _LOGGER.warning(
-                        "GEOfetch is not checking if prefetch is installed on Windows,"
-                        " please make sure it is installed and in your PATH, otherwise "
-                        "it will not be possible to download raw data."
-                    )
-                else:
-                    raise SystemExit(
-                        "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
-                        " Installation instruction: http://geofetch.databio.org/en/latest/install/"
-                    )
+            if not is_prefetch_callable():
+                raise SystemExit(
+                    "To download raw data, you must first install the sratoolkit, with prefetch in your PATH. "
+                    "Installation instruction: http://geofetch.databio.org/en/latest/install/"
+                )
 
         acc_GSE_list = parse_accessions(
             input, self.metadata_expanded, self.just_metadata

@@ -11,7 +11,7 @@ import logging
 from rich.progress import track
 import re
 import logmuse
-from ubiquerg import expandpath, is_command_callable
+from ubiquerg import expandpath
 from typing import List, Union, Dict, Tuple, NoReturn
 import peppy
 import pandas as pd
@@ -59,6 +59,7 @@ from geofetch.utils import (
     _filter_gsm,
     _unify_list_keys,
     gse_content_to_dict,
+    is_prefetch_callable,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -371,10 +372,10 @@ class Geofetcher:
 
         # check to make sure prefetch is callable
         if not self.just_metadata and not self.processed:
-            if not is_command_callable("prefetch"):
+            if not is_prefetch_callable():
                 raise SystemExit(
-                    "To download raw data You must first install the sratoolkit, with prefetch in your PATH."
-                    " Installation instruction: http://geofetch.databio.org/en/latest/install/"
+                    "To download raw data, you must first install the sratoolkit, with prefetch in your PATH. "
+                    "Installation instruction: http://geofetch.databio.org/en/latest/install/"
                 )
 
         acc_GSE_list = parse_accessions(
@@ -546,9 +547,9 @@ class Geofetcher:
                     name=self.project_name,
                     meta_processed_samples=processed_metadata_samples,
                     meta_processed_series=processed_metadata_series,
-                    gse_meta_dict=file_gse_content_dict
-                    if len(acc_GSE_list.keys()) == 1
-                    else None,
+                    gse_meta_dict=(
+                        file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None
+                    ),
                 )
                 if self.just_object:
                     return return_value
@@ -559,9 +560,9 @@ class Geofetcher:
                 f"{self.project_name}_PEP",
                 metadata_dict_combined,
                 subannotation_dict_combined,
-                gse_meta_dict=file_gse_content_dict
-                if len(acc_GSE_list.keys()) == 1
-                else None,
+                gse_meta_dict=(
+                    file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None
+                ),
             )
             if self.just_object:
                 return return_value
@@ -1036,7 +1037,7 @@ class Geofetcher:
         )
 
         if not just_object:
-            with open(file_annotation_path, "w") as m_file:
+            with open(file_annotation_path, "w", encoding="utf-8") as m_file:
                 dict_writer = csv.DictWriter(m_file, processed_metadata[0].keys())
                 dict_writer.writeheader()
                 dict_writer.writerows(processed_metadata)
@@ -1789,15 +1790,22 @@ class Geofetcher:
                 return True
 
             except IOError as e:
-                _LOGGER.error(str(e))
-                # The server times out if we are hitting it too frequently,
-                # so we should sleep a bit to reduce frequency
-                sleeptime = (ntry + 1) ** 3
-                _LOGGER.info(f"Sleeping for {sleeptime} seconds")
-                time.sleep(sleeptime)
-                ntry += 1
-                if ntry > 4:
-                    raise e
+                if os.name == "nt":
+                    _LOGGER.error(f"{e}")
+                    raise OSError(
+                        "Windows may not have wget command. "
+                        "Check if `wget` command is installed correctly."
+                    )
+                else:
+                    _LOGGER.error(str(e))
+                    # The server times out if we are hitting it too frequently,
+                    # so we should sleep a bit to reduce frequency
+                    sleeptime = (ntry + 1) ** 3
+                    _LOGGER.info(f"Sleeping for {sleeptime} seconds")
+                    time.sleep(sleeptime)
+                    ntry += 1
+                    if ntry > 4:
+                        raise e
 
     def _get_SRA_meta(self, file_gse_content: list, gsm_metadata, file_sra=None):
         """
@@ -1865,12 +1873,13 @@ class Geofetcher:
             else:
                 # open existing annotation
                 _LOGGER.info("Found SRA metadata, opening..")
-                with open(file_sra, "r") as m_file:
+                with open(file_sra, "r", encoding="UTF-8") as m_file:
                     reader = csv.reader(m_file)
                     file_list = []
                     srp_list = []
                     for k in reader:
-                        file_list.append(k)
+                        if k:
+                            file_list.append(k)
                     for value_list in file_list[1:]:
                         srp_list.append(dict(zip(file_list[0], value_list)))
 

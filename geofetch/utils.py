@@ -275,7 +275,7 @@ class Accession(object):
                 os.makedirs(dirpath)
 
             # save file:
-            with open(outpath, "w") as f:
+            with open(outpath, "w", encoding="utf-8") as f:
                 f.write(result_text)
 
         return result_list
@@ -757,3 +757,22 @@ def gse_content_to_dict(gse_content: List[str]) -> Dict[str, dict]:
                 gse_dict[new_key] = new_value
 
     return {"experiment_metadata": gse_dict}
+
+
+def is_prefetch_callable() -> bool:
+    """
+    Test if the prefetch command can be run.
+
+    :return: True if it is available.
+    """
+    try:
+        # Option -V means display version and then quit.
+        subprocess.run(
+            ["prefetch", "-V"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return True
+    except (subprocess.SubprocessError, OSError):
+        return False

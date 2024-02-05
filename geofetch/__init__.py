@@ -1,4 +1,5 @@
 """ Package-level data """
+
 import logmuse
 import coloredlogs
 

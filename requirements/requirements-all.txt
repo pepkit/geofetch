@@ -1,10 +1,9 @@
-attmap>=0.1.8
 colorama>=0.3.9
 logmuse>=0.2.6
 ubiquerg>=0.6.2
 requests>=2.28.1
 xmltodict>=0.13.0
 pandas>=1.5.3
-peppy>=0.35.3
+peppy>=0.40.0
 rich>=12.5.1
 coloredlogs>=15.0.1

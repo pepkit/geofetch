@@ -54,6 +54,10 @@ geofetch -i GSE95654 --just-metadata
 geofetch -i GSE95654 --processed --just-metadata
 ```
 
+
+&#8291;**Note:** We ensure that GEOfetch is compatible with Unix, Linux, and Mac OS X. 
+However, due to dependencies, some features of GEOfetch may not be available on Windows.
+
 ### Check out what exactly argument you want to use to download data:
 
 ![](./img/arguments_outputs.svg)

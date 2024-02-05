@@ -1,7 +1,6 @@
 import copy
 import csv
 import os
-import subprocess
 import sys
 import requests
 import xmltodict
@@ -60,24 +59,11 @@ from geofetch.utils import (
     _filter_gsm,
     _unify_list_keys,
     gse_content_to_dict,
+    is_prefetch_callable,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-def is_prefetch_callable() -> bool:
-    """
-    Test if the prefetch command can be run.
-    :return: True if it is available.
-    """
-    try:
-        # Option -V means display version and then quit.
-        subprocess.run(["prefetch", "-V"],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-        return True
-    except (subprocess.SubprocessError, OSError):
-        return False
 
 class Geofetcher:
     """
@@ -366,7 +352,7 @@ class Geofetcher:
                 new_pr_dict[pr_key] = project_dict[pr_key]
 
         return new_pr_dict
-    
+
     def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
         """
         Main function driver/workflow
@@ -561,9 +547,9 @@ class Geofetcher:
                     name=self.project_name,
                     meta_processed_samples=processed_metadata_samples,
                     meta_processed_series=processed_metadata_series,
-                    gse_meta_dict=file_gse_content_dict
-                    if len(acc_GSE_list.keys()) == 1
-                    else None,
+                    gse_meta_dict=(
+                        file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None
+                    ),
                 )
                 if self.just_object:
                     return return_value
@@ -574,9 +560,9 @@ class Geofetcher:
                 f"{self.project_name}_PEP",
                 metadata_dict_combined,
                 subannotation_dict_combined,
-                gse_meta_dict=file_gse_content_dict
-                if len(acc_GSE_list.keys()) == 1
-                else None,
+                gse_meta_dict=(
+                    file_gse_content_dict if len(acc_GSE_list.keys()) == 1 else None
+                ),
             )
             if self.just_object:
                 return return_value

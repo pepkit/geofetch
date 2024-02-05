@@ -1,7 +1,7 @@
 # Changelog
 
-## [0.12.6] -- 2024-01-18
-- Updated support for Windows (Some of the functionality could not be available on Windows)
+## [0.12.6] -- 2024-02-05
+- Updated support for Windows in Prefetch (Note: Some functionality may still be unavailable on Windows)
 
 ## [0.12.5] -- 2023-11-29
 - Fixed bug, where description was not populated in PEP

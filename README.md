@@ -20,4 +20,4 @@
 - Can search GEO to find relevant data
 - Can be used either as a command-line tool or from within Python using an API
 
-For more information, see [complete documentation at geofetch.databio.org](http://geofetch.databio.org) (source in the [/docs](/docs) folder).
+For more information, see [complete documentation at https://pep.databio.org/geofetch](https://pep.databio.org/geofetch).

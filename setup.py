@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 
 import os
-from setuptools import setup
 import sys
+
+from setuptools import setup
 
 PACKAGE = "geofetch"
 REQDIR = "requirements"
@@ -49,6 +50,8 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     keywords="project, bioinformatics, sequencing, ngs, workflow, GUI",

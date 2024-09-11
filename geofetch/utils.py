@@ -1,14 +1,15 @@
 """ Independently-importable utilities to circumvent true scripts. """
 
+import csv
 import logging
 import os
+import re
 import subprocess
 import sys
-import re
-import requests
 from io import StringIO
-import csv
-from typing import Union, List, NoReturn, Dict
+from typing import Dict, List, NoReturn, Union
+
+import requests
 
 _LOGGER = logging.getLogger(__name__)
 

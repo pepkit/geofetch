@@ -1,65 +1,65 @@
 import copy
 import csv
+import logging
 import os
+import re
 import sys
+import time
+from typing import Dict, List, NoReturn, Tuple, Union
+
+import logmuse
+import pandas as pd
+import peppy
 import requests
 import xmltodict
 import yaml
-import time
-import logging
-
 from rich.progress import track
-import re
-import logmuse
 from ubiquerg import expandpath
-from typing import List, Union, Dict, Tuple, NoReturn
-import peppy
-import pandas as pd
 
 from geofetch.cli import _parse_cmdl
 from geofetch.const import (
-    GSE_PATTERN,
-    SAMPLE_SUPP_METADATA_FILE,
-    EXP_SUPP_METADATA_FILE,
-    NEW_GENOME_COL_NAME,
-    FILE_RAW_NAME_SAMPLE_PATTERN,
-    FILE_RAW_NAME_SUBSAMPLE_PATTERN,
+    CONFIG_PROCESSED_TEMPLATE_NAME,
     CONFIG_RAW_TEMPLATE_NAME,
     CONFIG_SRA_TEMPLATE,
-    CONFIG_PROCESSED_TEMPLATE_NAME,
-    NUM_RETRIES,
-    SER_SUPP_FILE_PATTERN,
-    SUPP_FILE_PATTERN,
-    PROJECT_PATTERN,
+    EXP_SUPP_METADATA_FILE,
+    EXPERIMENT_PATTERN,
+    FILE_RAW_NAME_SAMPLE_PATTERN,
+    FILE_RAW_NAME_SUBSAMPLE_PATTERN,
+    GSE_PATTERN,
     NCBI_EFETCH,
     NCBI_ESEARCH,
-    EXPERIMENT_PATTERN,
+    NEW_GENOME_COL_NAME,
+    NUM_RETRIES,
+    PROJECT_PATTERN,
+    SAMPLE_SUPP_METADATA_FILE,
+    SER_SUPP_FILE_PATTERN,
+    SUPP_FILE_PATTERN,
 )
 from geofetch.utils import (
     Accession,
-    build_prefetch_command,
-    parse_accessions,
-    parse_SOFT_line,
-    convert_size,
-    clean_soft_files,
-    run_subprocess,
+    _check_file_existance,
+    _create_dot_yaml,
+    _dict_to_list_converter,
+    _filter_gsm,
     _get_list_of_keys,
     _get_value,
     _read_tar_filelist,
-    _check_file_existance,
-    _separate_list_of_files,
-    _update_columns,
-    _sanitize_name,
     _sanitize_config_string,
-    _create_dot_yaml,
-    _which,
-    _dict_to_list_converter,
-    _standardize_colnames,
+    _sanitize_name,
     _separate_file_url,
-    _filter_gsm,
+    _separate_list_of_files,
+    _standardize_colnames,
     _unify_list_keys,
+    _update_columns,
+    _which,
+    build_prefetch_command,
+    clean_soft_files,
+    convert_size,
     gse_content_to_dict,
     is_prefetch_callable,
+    parse_accessions,
+    parse_SOFT_line,
+    run_subprocess,
 )
 
 _LOGGER = logging.getLogger(__name__)

@@ -1,11 +1,12 @@
+import os
+import shutil
+
 import peppy
+import pytest
 
 import geofetch
 from geofetch import Geofetcher, utils
 from geofetch.utils import parse_accessions
-import os
-import pytest
-import shutil
 
 INPUT_ACC_FILE = "tests/test_files/input_acc.txt"
 GSE_FILES = "tests/test_files/soft_files"

@@ -1,6 +1,8 @@
 import argparse
 import os
+
 import logmuse
+
 from geofetch._version import __version__
 
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from argparse import ArgumentParser
 import os
-import pypiper
-import logmuse
 import sys
+from argparse import ArgumentParser
+
+import logmuse
+import pypiper
 
 __version__ = "0.1.0"
 

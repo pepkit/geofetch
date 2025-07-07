@@ -1087,7 +1087,7 @@ class Geofetcher:
             sample_genome = ""
             for key in proj_gen_keys:
                 sample_genome = " ".join([sample_genome, sample[1][key]])
-            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
+            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome.strip()
         return metadata_list
 
     def _write_raw_annotation_new(

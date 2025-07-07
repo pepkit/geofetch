@@ -867,6 +867,8 @@ class Geofetcher:
         _LOGGER.info("Expanding metadata list...")
         list_of_keys = _get_list_of_keys(metadata_list)
         for key_in_list in list_of_keys:
+            if key_in_list == "Sample_characteristics_ch1":
+                pass
             metadata_list = self._expand_metadata_list_item(metadata_list, key_in_list)
         return metadata_list
 
@@ -881,7 +883,13 @@ class Geofetcher:
         """
         try:
             element_is_list = any(
-                isinstance(list_item.get(dict_key), list) for list_item in metadata_list
+                isinstance(list_item.get(dict_key), list)
+                or (
+                    len(list_item.get(dict_key).split(": ")) == 2
+                    if list_item.get(dict_key)
+                    else False
+                )
+                for list_item in metadata_list
             )
 
             # # checking if some items have two keys:
@@ -900,6 +908,8 @@ class Geofetcher:
                             metadata_list[n_elem][dict_key] = [
                                 metadata_list[n_elem][dict_key]
                             ]
+                        else:
+                            pass
 
                         just_string = False
                         this_string = ""

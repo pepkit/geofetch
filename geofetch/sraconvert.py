@@ -2,7 +2,7 @@
 
 import os
 import sys
-from argparse import ArgumentParser
+from ubiquerg import VersionInHelpParser
 
 import logmuse
 import pypiper
@@ -15,7 +15,7 @@ def _parse_cmdl(cmdl):
     provides convenience functions for converting or deleting sra data in
     various formats.
     """
-    parser = ArgumentParser(description=description)
+    parser = VersionInHelpParser(description=description)
     # parser = pypiper.add_pypiper_args(parser, args=["output-parent"])
     parser.add_argument(
         "-m",
@@ -71,6 +71,9 @@ def _parse_cmdl(cmdl):
         nargs="+",
         help="Name for sample to run",
         metavar="SAMPLE_NAME",
+    )
+    parser.add_argument(
+        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
     parser.add_argument("-r", "--srr", required=True, nargs="+", help="SRR files")

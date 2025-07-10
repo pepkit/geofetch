@@ -44,6 +44,12 @@ or install the latest version from the GitHub repository:
 pip install git+https://github.com/pepkit/geofetch.git
 ```
 
+## All GEO projects (GSE + GSM) in PEP format.
+
+All GEO projects are available in PEPhub under geo namespace: https://pephub.databio.org/geo/ .
+User can search for GEO projects using the search bar, or download archive with all GEO PEPs from archive section of the namespace:
+[https://pephub.databio.org/geo?view=archive](https://pephub.databio.org/geo?view=archive)
+
 
 ## How to cite:
 https://doi.org/10.1093/bioinformatics/btad069

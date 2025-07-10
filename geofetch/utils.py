@@ -1,4 +1,4 @@
-""" Independently-importable utilities to circumvent true scripts. """
+"""Independently-importable utilities to circumvent true scripts."""
 
 import csv
 import logging

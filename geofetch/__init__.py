@@ -1,4 +1,4 @@
-""" Package-level data """
+"""Package-level data"""
 
 import coloredlogs
 import logmuse

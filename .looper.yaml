@@ -1,4 +1,0 @@
-pep_config: /home/bnt4me/virginia/repos/geofetch/red_algae/GSE67303_PEP/GSE67303_PEP.yaml
-output_dir: /home/bnt4me/virginia/repos/geofetch/red_algae/GSE67303_PEP
-pipeline_interfaces:
-  - /home/bnt4me/virginia/repos/geofetch/pipeline_interface_convert.yaml

@@ -4,7 +4,7 @@
   derive:
     attributes: [read1, read2, SRR_files]
     sources:
-      SRA: "${SRABAM}/{srr}.bam"
+      SRA: "${SRARAW}/{srr}/{srr}.sra"
       FQ: "${SRAFQ}/{srr}.fastq.gz"
       FQ1: "${SRAFQ}/{srr}_1.fastq.gz"
       FQ2: "${SRAFQ}/{srr}_2.fastq.gz"
@@ -26,20 +26,3 @@
         read_type: "SINGLE"
       then:
         read1: FQ1
-
-project_modifiers:
-  amend:
-    sra_convert:
-      looper:
-        results_subdir: sra_convert_results
-      sample_modifiers:
-        append:
-          SRR_files: SRA
-          pipeline_interfaces: ${CODE}/geofetch/pipeline_interface_convert.yaml
-        derive:
-          attributes: [read1, read2, SRR_files]
-          sources:
-            SRA: "${SRARAW}/{srr}/{srr}.sra"
-            FQ: "${SRAFQ}/{srr}.fastq.gz"
-            FQ1: "${SRAFQ}/{srr}_1.fastq.gz"
-            FQ2: "${SRAFQ}/{srr}_2.fastq.gz"

@@ -44,9 +44,14 @@ NCBI_EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&
 
 NEW_GENOME_COL_NAME = "ref_genome"
 
+TEMPLATES_DIR = "templates"
 CONFIG_PROCESSED_TEMPLATE_NAME = "config_processed_template.yaml"
 CONFIG_RAW_TEMPLATE_NAME = "config_template.yaml"
-CONFIG_SRA_TEMPLATE = "looper_sra_convert.yaml"
+CONFIG_SRA_TEMPLATE_NAME = "looper_sra_convert.yaml"
+PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME = "pipeline_interface_convert.yaml"
+LOOPER_SRA_CONVERT = "looper_config_template.yaml"
+# SRA_CONVERT_SCHEMA_NAME = "sra_convert_schema.yaml"
+# RESOURCES_NAME = "resources.tsv"
 
 # const for Finder:
 RETMAX = 10000000  # once it should be increased
@@ -63,3 +68,5 @@ DATE_FILTER = (
     '+AND+("{start_date}"[Publication%20Date]%20:%20"{end_date}"[Publication%20Date])'
 )
 THREE_MONTH_FILTER = '+AND+"published+last+3+months"[Filter]'
+
+LOOPER_CONFIG_FILE_NAME = "looper_config.yaml"

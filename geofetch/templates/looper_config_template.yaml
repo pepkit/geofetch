@@ -1,0 +1,4 @@
+pep_config: {pep_config}
+output_dir: {output_dir}
+pipeline_interfaces:
+  - {pipeline_interface_convert}

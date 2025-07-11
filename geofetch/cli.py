@@ -2,6 +2,7 @@ import argparse
 import os
 
 import logmuse
+from ubiquerg import VersionInHelpParser
 
 from geofetch._version import __version__
 
@@ -15,7 +16,7 @@ def _parse_cmdl(cmdl):
     """
     parser
     """
-    parser = argparse.ArgumentParser(
+    parser = VersionInHelpParser(
         description="Automatic GEO and SRA data downloader",
         usage="""geofetch [<args>]
 
@@ -26,14 +27,11 @@ To download all processed data of GSE57303:
     geofetch -i GSE67303 --processed --geo-folder <folder> -m <folder>
 
 """,
+        version=__version__,
     )
 
     processed_group = parser.add_argument_group("processed")
     raw_group = parser.add_argument_group("raw")
-
-    parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
-    )
 
     # Required
     parser.add_argument(

@@ -20,7 +20,7 @@ from geofetch.cli import _parse_cmdl
 from geofetch.const import (
     CONFIG_PROCESSED_TEMPLATE_NAME,
     CONFIG_RAW_TEMPLATE_NAME,
-    CONFIG_SRA_TEMPLATE,
+    CONFIG_SRA_TEMPLATE_NAME,
     EXP_SUPP_METADATA_FILE,
     EXPERIMENT_PATTERN,
     FILE_RAW_NAME_SAMPLE_PATTERN,
@@ -34,6 +34,10 @@ from geofetch.const import (
     SAMPLE_SUPP_METADATA_FILE,
     SER_SUPP_FILE_PATTERN,
     SUPP_FILE_PATTERN,
+    TEMPLATES_DIR,
+    PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME,
+    LOOPER_SRA_CONVERT,
+    LOOPER_CONFIG_FILE_NAME,
 )
 from geofetch.utils import (
     Accession,
@@ -867,6 +871,8 @@ class Geofetcher:
         _LOGGER.info("Expanding metadata list...")
         list_of_keys = _get_list_of_keys(metadata_list)
         for key_in_list in list_of_keys:
+            if key_in_list == "Sample_characteristics_ch1":
+                pass
             metadata_list = self._expand_metadata_list_item(metadata_list, key_in_list)
         return metadata_list
 
@@ -881,7 +887,13 @@ class Geofetcher:
         """
         try:
             element_is_list = any(
-                isinstance(list_item.get(dict_key), list) for list_item in metadata_list
+                isinstance(list_item.get(dict_key), list)
+                or (
+                    len(list_item.get(dict_key).split(": ")) == 2
+                    if list_item.get(dict_key)
+                    else False
+                )
+                for list_item in metadata_list
             )
 
             # # checking if some items have two keys:
@@ -900,6 +912,8 @@ class Geofetcher:
                             metadata_list[n_elem][dict_key] = [
                                 metadata_list[n_elem][dict_key]
                             ]
+                        else:
+                            pass
 
                         just_string = False
                         this_string = ""
@@ -1087,7 +1101,7 @@ class Geofetcher:
             sample_genome = ""
             for key in proj_gen_keys:
                 sample_genome = " ".join([sample_genome, sample[1][key]])
-            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome
+            metadata_list[sample[0]][NEW_GENOME_COL_NAME] = sample_genome.strip()
         return metadata_list
 
     def _write_raw_annotation_new(
@@ -1161,10 +1175,42 @@ class Geofetcher:
             if len(subannot_dict) > 0:
                 self._write_subannotation(subannot_dict, proj_root_subsample)
 
-            self._write(proj_root_yaml, template, msg_pre="  Config file: ")
+            self._write(proj_root_yaml, template, msg_pre="Config file: ")
 
             if self.add_dotfile:
                 _create_dot_yaml(dot_yaml_path, yaml_name)
+
+            if self.add_convert_modifier:
+                geofetchdir = os.path.dirname(__file__)
+                pipeline_interface_convert_path = os.path.join(
+                    geofetchdir, TEMPLATES_DIR, PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME
+                )
+
+                looper_config_template_path = os.path.join(
+                    geofetchdir, TEMPLATES_DIR, LOOPER_SRA_CONVERT
+                )
+
+                with open(looper_config_template_path, "r") as template_file:
+                    template_looper = template_file.read()
+
+                template_values = {
+                    "pep_config": proj_root_yaml,
+                    "output_dir": os.path.join(self.metadata_root_full, "output_dir"),
+                    "pipeline_interface_convert": pipeline_interface_convert_path,
+                }
+
+                for k, v in template_values.items():
+                    placeholder = "{" + str(k) + "}"
+                    template_looper = template_looper.replace(placeholder, str(v))
+
+                looper_config_file = os.path.join(
+                    self.metadata_root_full,
+                    LOOPER_CONFIG_FILE_NAME,
+                )
+
+                self._write(
+                    looper_config_file, template_looper, msg_pre="Looper config file: "
+                )
 
         else:
             meta_df = pd.DataFrame.from_dict(metadata_dict, orient="index")
@@ -1204,8 +1250,11 @@ class Geofetcher:
         :param meta_in_series:
         :return: generated, complete config file content
         """
+
         geofetchdir = os.path.dirname(__file__)
-        config_template = os.path.join(geofetchdir, CONFIG_PROCESSED_TEMPLATE_NAME)
+        config_template = os.path.join(
+            geofetchdir, TEMPLATES_DIR, CONFIG_PROCESSED_TEMPLATE_NAME
+        )
         with open(config_template, "r") as template_file:
             template = template_file.read()
         meta_list_str = [
@@ -1260,9 +1309,13 @@ class Geofetcher:
         else:
             sample_modifier_str = ""
         if not self.config_template:
-            self.config_template = os.path.join(geofetchdir, CONFIG_RAW_TEMPLATE_NAME)
+            self.config_template = os.path.join(
+                geofetchdir, TEMPLATES_DIR, CONFIG_RAW_TEMPLATE_NAME
+            )
         if self.add_convert_modifier:
-            sra_convert_path = os.path.join(geofetchdir, CONFIG_SRA_TEMPLATE)
+            sra_convert_path = os.path.join(
+                geofetchdir, TEMPLATES_DIR, CONFIG_SRA_TEMPLATE_NAME
+            )
             with open(sra_convert_path, "r") as template_file:
                 sra_convert_template = template_file.read()
         else:
@@ -1291,6 +1344,7 @@ class Geofetcher:
         for k, v in template_values.items():
             placeholder = "{" + str(k) + "}"
             template = template.replace(placeholder, str(v))
+
         return template
 
     @staticmethod

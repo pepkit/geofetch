@@ -401,139 +401,143 @@ class Geofetcher:
             description="Processing... ",
             disable=self.disable_progressbar,
         ):
-            ncount += 1
-            if ncount <= self.skip:
-                continue
-            elif ncount == self.skip + 1:
-                _LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
+            try:
+                ncount += 1
+                if ncount <= self.skip:
+                    continue
+                elif ncount == self.skip + 1:
+                    _LOGGER.info(f"Skipped {self.skip} accessions. Starting now.")
 
-            if not self.just_object or not self.acc_anno:
-                _LOGGER.info(
-                    f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
-                )
-
-            if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
-                _LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
-                _LOGGER.warning(
-                    "This does not appear to be a correctly formatted GSE accession! "
-                    "Continue anyway..."
-                )
-
-            if len(acc_GSE_list[acc_GSE]) > 0:
-                _LOGGER.info(
-                    f"Limit to: {list(acc_GSE_list[acc_GSE])}"
-                )  # a list of GSM#s
-
-            # For each GSE acc, produce a series of metadata files
-            file_gse = os.path.join(self.metadata_expanded, acc_GSE + "_GSE.soft")
-            file_gsm = os.path.join(self.metadata_expanded, acc_GSE + "_GSM.soft")
-            file_sra = os.path.join(self.metadata_expanded, acc_GSE + "_SRA.csv")
-
-            if not os.path.isfile(file_gse) or self.refresh_metadata:
-                file_gse_content = Accession(acc_GSE).fetch_metadata(
-                    file_gse,
-                    clean=self.discard_soft,
-                    max_soft_size=self.max_soft_size,
-                )
-            else:
-                _LOGGER.info(f"Found previous GSE file: {file_gse}")
-                gse_file_obj = open(file_gse, "r")
-                file_gse_content = gse_file_obj.read().split("\n")
-                file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
-
-            file_gse_content_dict = gse_content_to_dict(file_gse_content)
-
-            if not os.path.isfile(file_gsm) or self.refresh_metadata:
-                file_gsm_content = Accession(acc_GSE).fetch_metadata(
-                    file_gsm,
-                    typename="GSM",
-                    clean=self.discard_soft,
-                    max_soft_size=self.max_soft_size,
-                )
-            else:
-                _LOGGER.info(f"Found previous GSM file: {file_gsm}")
-                gsm_file_obj = open(file_gsm, "r")
-                file_gsm_content = gsm_file_obj.read().split("\n")
-                file_gsm_content = [elem for elem in file_gsm_content if len(elem) > 0]
-
-            gsm_enter_dict = acc_GSE_list[acc_GSE]
-
-            # download processed data
-            if self.processed:
-                (
-                    meta_processed_samples,
-                    meta_processed_series,
-                ) = self.fetch_processed_one(
-                    gse_file_content=file_gse_content,
-                    gsm_file_content=file_gsm_content,
-                    gsm_filter_list=gsm_enter_dict,
-                )
-
-                # download processed files:
-                if not self.just_metadata:
-                    self._download_processed_data(
-                        acc_gse=acc_GSE,
-                        meta_processed_samples=meta_processed_samples,
-                        meta_processed_series=meta_processed_series,
+                if not self.just_object or not self.acc_anno:
+                    _LOGGER.info(
+                        f"\033[38;5;200mProcessing accession {ncount} of {nkeys}: '{acc_GSE}'\033[0m"
                     )
 
-                # generating PEPs for processed files:
-                if self.acc_anno:
-                    self._generate_processed_meta(
-                        acc_GSE,
+                if len(re.findall(GSE_PATTERN, acc_GSE)) != 1:
+                    _LOGGER.debug(len(re.findall(GSE_PATTERN, acc_GSE)))
+                    _LOGGER.warning(
+                        "This does not appear to be a correctly formatted GSE accession! "
+                        "Continue anyway..."
+                    )
+
+                if len(acc_GSE_list[acc_GSE]) > 0:
+                    _LOGGER.info(
+                        f"Limit to: {list(acc_GSE_list[acc_GSE])}"
+                    )  # a list of GSM#s
+
+                # For each GSE acc, produce a series of metadata files
+                file_gse = os.path.join(self.metadata_expanded, acc_GSE + "_GSE.soft")
+                file_gsm = os.path.join(self.metadata_expanded, acc_GSE + "_GSM.soft")
+                file_sra = os.path.join(self.metadata_expanded, acc_GSE + "_SRA.csv")
+
+                if not os.path.isfile(file_gse) or self.refresh_metadata:
+                    file_gse_content = Accession(acc_GSE).fetch_metadata(
+                        file_gse,
+                        clean=self.discard_soft,
+                        max_soft_size=self.max_soft_size,
+                    )
+                else:
+                    _LOGGER.info(f"Found previous GSE file: {file_gse}")
+                    gse_file_obj = open(file_gse, "r")
+                    file_gse_content = gse_file_obj.read().split("\n")
+                    file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
+
+                file_gse_content_dict = gse_content_to_dict(file_gse_content)
+
+                if not os.path.isfile(file_gsm) or self.refresh_metadata:
+                    file_gsm_content = Accession(acc_GSE).fetch_metadata(
+                        file_gsm,
+                        typename="GSM",
+                        clean=self.discard_soft,
+                        max_soft_size=self.max_soft_size,
+                    )
+                else:
+                    _LOGGER.info(f"Found previous GSM file: {file_gsm}")
+                    gsm_file_obj = open(file_gsm, "r")
+                    file_gsm_content = gsm_file_obj.read().split("\n")
+                    file_gsm_content = [elem for elem in file_gsm_content if len(elem) > 0]
+
+                gsm_enter_dict = acc_GSE_list[acc_GSE]
+
+                # download processed data
+                if self.processed:
+                    (
                         meta_processed_samples,
                         meta_processed_series,
-                        gse_meta_dict=file_gse_content_dict,
+                    ) = self.fetch_processed_one(
+                        gse_file_content=file_gse_content,
+                        gsm_file_content=file_gsm_content,
+                        gsm_filter_list=gsm_enter_dict,
                     )
 
+                    # download processed files:
+                    if not self.just_metadata:
+                        self._download_processed_data(
+                            acc_gse=acc_GSE,
+                            meta_processed_samples=meta_processed_samples,
+                            meta_processed_series=meta_processed_series,
+                        )
+
+                    # generating PEPs for processed files:
+                    if self.acc_anno:
+                        self._generate_processed_meta(
+                            acc_GSE,
+                            meta_processed_samples,
+                            meta_processed_series,
+                            gse_meta_dict=file_gse_content_dict,
+                        )
+
+                    else:
+                        # adding metadata from current experiment to the project
+                        processed_metadata_samples.extend(meta_processed_samples)
+                        processed_metadata_series.extend(meta_processed_series)
+
                 else:
-                    # adding metadata from current experiment to the project
-                    processed_metadata_samples.extend(meta_processed_samples)
-                    processed_metadata_series.extend(meta_processed_series)
-
-            else:
-                # read gsm metadata
-                gsm_metadata = self._read_gsm_metadata(
-                    acc_GSE, acc_GSE_list, file_gsm_content
-                )
-
-                # download sra metadata
-                srp_list_result = self._get_SRA_meta(
-                    file_gse_content, gsm_metadata, file_sra
-                )
-                if not srp_list_result:
-                    _LOGGER.info("No SRP data, continuing ....")
-                    _LOGGER.warning("No raw pep will be created! ....")
-                    # delete current acc if no raw data was found
-                    # del metadata_dict[acc_GSE]
-                    pass
-                else:
-                    _LOGGER.info("Parsing SRA file to download SRR records")
-                gsm_multi_table, gsm_metadata, runs = self._process_sra_meta(
-                    srp_list_result, gsm_enter_dict, gsm_metadata
-                )
-
-                # download raw data:
-                if not self.just_metadata:
-                    for run in runs:
-                        # download raw data
-                        _LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
-                        self._download_raw_data(run)
-                else:
-                    _LOGGER.info("Dry run, no data will be downloaded")
-
-                # save one project
-                if self.acc_anno and nkeys > 1:
-                    self._write_raw_annotation_new(
-                        name=acc_GSE,
-                        metadata_dict=gsm_metadata,
-                        subannot_dict=gsm_multi_table,
-                        gse_meta_dict=file_gse_content_dict,
+                    # read gsm metadata
+                    gsm_metadata = self._read_gsm_metadata(
+                        acc_GSE, acc_GSE_list, file_gsm_content
                     )
 
-                else:
-                    metadata_dict_combined.update(gsm_metadata)
-                    subannotation_dict_combined.update(gsm_multi_table)
+                    # download sra metadata
+                    srp_list_result = self._get_SRA_meta(
+                        file_gse_content, gsm_metadata, file_sra
+                    )
+                    if not srp_list_result:
+                        _LOGGER.info("No SRP data, continuing ....")
+                        _LOGGER.warning("No raw pep will be created! ....")
+                        # delete current acc if no raw data was found
+                        # del metadata_dict[acc_GSE]
+                        pass
+                    else:
+                        _LOGGER.info("Parsing SRA file to download SRR records")
+                    gsm_multi_table, gsm_metadata, runs = self._process_sra_meta(
+                        srp_list_result, gsm_enter_dict, gsm_metadata
+                    )
+
+                    # download raw data:
+                    if not self.just_metadata:
+                        for run in runs:
+                            # download raw data
+                            _LOGGER.info(f"Getting SRR: {run}  in ({acc_GSE})")
+                            self._download_raw_data(run)
+                    else:
+                        _LOGGER.info("Dry run, no data will be downloaded")
+
+                    # save one project
+                    if self.acc_anno and nkeys > 1:
+                        self._write_raw_annotation_new(
+                            name=acc_GSE,
+                            metadata_dict=gsm_metadata,
+                            subannot_dict=gsm_multi_table,
+                            gse_meta_dict=file_gse_content_dict,
+                        )
+
+                    else:
+                        metadata_dict_combined.update(gsm_metadata)
+                        subannotation_dict_combined.update(gsm_multi_table)
+            except Exception as e:
+                _LOGGER.warning(f"Couldn't process {acc_GSE}: {e}")
+                continue
 
         _LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")
 

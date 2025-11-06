@@ -1676,7 +1676,7 @@ class Geofetcher:
                     # find and download filelist - file with information about files in tar
                     index = file_url.rfind("/")
                     tar_files_list_url = (
-                        "https" + file_url[3 : index + 1] + "filelist.txt"
+                        "https" + file_url[3:index + 1] + "filelist.txt"
                     )
                     # file_list_name
                     filelist_path = os.path.join(
@@ -2027,7 +2027,7 @@ class Geofetcher:
         id_results = x.json()["esearchresult"]["idlist"]
         if len(id_results) > 500:
             id_results = [
-                id_results[x : x + 100] for x in range(0, len(id_results), 100)
+                id_results[x:x + 100] for x in range(0, len(id_results), 100)
             ]
         else:
             id_results = [id_results]

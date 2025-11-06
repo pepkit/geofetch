@@ -219,7 +219,7 @@ To download all processed data of GSE57303:
         help="""Optional: Filter size for processed files
                 that are stored as sample repository [Default: None].
                 Works only for sample data.
-                Supported input formats : 12B, 12KB, 12MB, 12GB. 
+                Supported input formats : 12B, 12KB, 12MB, 12GB.
                 Ignored unless 'processed' flag is set.""",
     )
 

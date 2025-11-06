@@ -1650,7 +1650,7 @@ class Geofetcher:
 
         Args:
             file_gse_content: List of lines of gse metafile.
-            file_gsm_content: List of lines of gse metafile.
+            file_gsm_content: List of lines of gsm metafile.
 
         Returns:
             Tuple[list of metadata of processed sample files and series files].

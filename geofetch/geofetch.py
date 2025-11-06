@@ -438,9 +438,11 @@ class Geofetcher:
                     )
                 else:
                     _LOGGER.info(f"Found previous GSE file: {file_gse}")
-                    gse_file_obj = open(file_gse, "r")
-                    file_gse_content = gse_file_obj.read().split("\n")
-                    file_gse_content = [elem for elem in file_gse_content if len(elem) > 0]
+                    with open(file_gse, "r") as gse_file_obj:
+                        file_gse_content = gse_file_obj.read().split("\n")
+                    file_gse_content = [
+                        elem for elem in file_gse_content if len(elem) > 0
+                    ]
 
                 file_gse_content_dict = gse_content_to_dict(file_gse_content)
 
@@ -453,9 +455,11 @@ class Geofetcher:
                     )
                 else:
                     _LOGGER.info(f"Found previous GSM file: {file_gsm}")
-                    gsm_file_obj = open(file_gsm, "r")
-                    file_gsm_content = gsm_file_obj.read().split("\n")
-                    file_gsm_content = [elem for elem in file_gsm_content if len(elem) > 0]
+                    with open(file_gsm, "r") as gsm_file_obj:
+                        file_gsm_content = gsm_file_obj.read().split("\n")
+                    file_gsm_content = [
+                        elem for elem in file_gsm_content if len(elem) > 0
+                    ]
 
                 gsm_enter_dict = acc_GSE_list[acc_GSE]
 
@@ -536,7 +540,7 @@ class Geofetcher:
                         metadata_dict_combined.update(gsm_metadata)
                         subannotation_dict_combined.update(gsm_multi_table)
             except Exception as e:
-                _LOGGER.warning(f"Couldn't process {acc_GSE}: {e}")
+                _LOGGER.warning(f"Couldn't process {acc_GSE}: {e}", exc_info=True)
                 continue
 
         _LOGGER.info(f"Finished processing {len(acc_GSE_list)} accession(s)")

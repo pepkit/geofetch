@@ -810,7 +810,7 @@ class Geofetcher:
                 f"{name}_series",
                 name + EXP_SUPP_METADATA_FILE,
             )
-            self._write_processed_annotation(
+            return_objects[f"{name}_series"] = self._write_processed_annotation(
                 meta_processed_series,
                 pep_acc_path_exp,
                 just_object=self.just_object,

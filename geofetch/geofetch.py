@@ -70,9 +70,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Geofetcher:
-    """
-    Class to download or get projects, metadata, data from GEO and SRA
-    """
+    """Class to download or get projects, metadata, data from GEO and SRA."""
 
     def __init__(
         self,
@@ -111,72 +109,67 @@ class Geofetcher:
         max_prefetch_size=None,
         **kwargs,
     ):
-        """
-        Constructor
+        """Constructor.
 
-        :param input: GSEnumber or path to the input file
-        :param name: Specify a project name. Defaults to GSE number or name of accessions file name
-        :param metadata_root:  Specify a parent folder location to store metadata.
-                The project name will be added as a subfolder [Default: $SRAMETA:]
-        :param metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
-                Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)]
-        :param just_metadata: If set, don't actually run downloads, just create metadata
-        :param refresh_metadata: If set, re-download metadata even if it exists.
-        :param config_template: Project config yaml file template.
-        :param pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
+        Args:
+            input: GSEnumber or path to the input file.
+            name: Specify a project name. Defaults to GSE number or name of accessions file name.
+            metadata_root: Specify a parent folder location to store metadata.
+                The project name will be added as a subfolder [Default: $SRAMETA:].
+            metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
+                Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)].
+            just_metadata: If set, don't actually run downloads, just create metadata.
+            refresh_metadata: If set, re-download metadata even if it exists.
+            config_template: Project config yaml file template.
+            pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
                 These will be added to the project config file to make it immediately compatible with looper.
-                [Default: null]
-        :param pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
+                [Default: null].
+            pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
                 These will be added to the project config file to make it immediately compatible with looper.
-                [Default: null]
-        :param acc_anno:  Produce annotation sheets for each accession.
+                [Default: null].
+            acc_anno: Produce annotation sheets for each accession.
                 Project combined PEP for the whole project won't be produced.
-        :param discard_soft: Create project without downloading soft files on the disc
-        :param add_dotfile: Add .pep.yaml file that points .yaml PEP file
-        :param disable_progressbar: Set true to disable progressbar
-
-        :param const_limit_project: Optional: Limit of the number of the constant sample characters
-                that should not be in project yaml. [Default: 50]
-        :param const_limit_discard: Optional: Limit of the number of the constant sample characters
-                that should not be discarded [Default: 250]
-        :param attr_limit_truncate: Optional: Limit of the number of sample characters.
+            discard_soft: Create project without downloading soft files on the disc.
+            add_dotfile: Add .pep.yaml file that points .yaml PEP file.
+            disable_progressbar: Set true to disable progressbar.
+            const_limit_project: Optional: Limit of the number of the constant sample characters
+                that should not be in project yaml. [Default: 50].
+            const_limit_discard: Optional: Limit of the number of the constant sample characters
+                that should not be discarded [Default: 250].
+            attr_limit_truncate: Optional: Limit of the number of sample characters.
                 Any attribute with more than X characters will truncate to the first X, where X is a number of characters
-                [Default: 500]
-
-        :param max_soft_size: Optional: Max size of soft file.
-                Supported input formats : 12B, 12KB, 12MB, 12GB. [Default value: 1GB]
-
-        :param processed: Download processed da_soft_sizeta [Default: download raw data].
-        :param data_source: Specifies the source of data on the GEO record to retrieve processed data,
+                [Default: 500].
+            max_soft_size: Optional: Max size of soft file.
+                Supported input formats : 12B, 12KB, 12MB, 12GB. [Default value: 1GB].
+            processed: Download processed data [Default: download raw data].
+            data_source: Specifies the source of data on the GEO record to retrieve processed data,
                 which may be attached to the collective series entity, or to individual samples. Allowable values are:
-                samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples]
-        :param filter: Filter regex for processed filenames [Default: None].Ignored unless 'processed' flag is set.
-        :param filter_size: Filter size for processed files that are stored as sample repository [Default: None].
+                samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples].
+            filter: Filter regex for processed filenames [Default: None].Ignored unless 'processed' flag is set.
+            filter_size: Filter size for processed files that are stored as sample repository [Default: None].
                 Works only for sample data. Supported input formats : 12B, 12KB, 12MB, 12GB.
                 Ignored unless 'processed' flag is set.
-        :param geo_folder: Specify a location to store processed GEO files.
-                Ignored unless 'processed' flag is set.[Default: $GEODATA:]
-
-        :param split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
+            geo_folder: Specify a location to store processed GEO files.
+                Ignored unless 'processed' flag is set.[Default: $GEODATA:].
+            split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
                 Runs will have a single entry in the annotation table, with each run as a separate row in the
-                subannotation table. This setting instead treats each run as a separate sample [Works with raw data]
-        :param bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
-                corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data]
-        :param fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
-                fastq files already exist. [Default: $SRAFQ:] [Works with raw data]
-        :param use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data]
-        :param sra_folder: Optional: Specify a location to store sra files
-                [Default: $SRARAW:" + safe_echo("SRARAW") + ]
-        :param bam_conversion: Optional: set True to convert bam files  [Works with raw data]
-        :param picard_path:  Specify a path to the picard jar, if you want to convert fastq to bam
-                [Default: $PICARD:" + safe_echo("PICARD") + "]  [Works with raw data]
-        :param add_convert_modifier: Add looper SRA convert modifier to config file.
-
-        :param skip: Skip some accessions. [Default: no skip].
-        :param opts: opts object [Optional]
-        :param str | int max_prefetch_size: argmuent to prefetch command's --max-size option;
-            for reference: https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool
-        :param kwargs: other values
+                subannotation table. This setting instead treats each run as a separate sample [Works with raw data].
+            bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
+                corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data].
+            fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
+                fastq files already exist. [Default: $SRAFQ:] [Works with raw data].
+            use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data].
+            sra_folder: Optional: Specify a location to store sra files
+                [Default: $SRARAW:" + safe_echo("SRARAW") + ].
+            bam_conversion: Optional: set True to convert bam files [Works with raw data].
+            picard_path: Specify a path to the picard jar, if you want to convert fastq to bam
+                [Default: $PICARD:" + safe_echo("PICARD") + "] [Works with raw data].
+            add_convert_modifier: Add looper SRA convert modifier to config file.
+            skip: Skip some accessions. [Default: no skip].
+            opts: opts object [Optional].
+            max_prefetch_size: Argument to prefetch command's --max-size option;
+                for reference: https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool.
+            **kwargs: Other values.
         """
 
         global _LOGGER
@@ -290,12 +283,15 @@ class Geofetcher:
     def get_projects(
         self, input: str, just_metadata: bool = True, discard_soft: bool = True
     ) -> dict:
-        """
-        Function for fetching projects from GEO|SRA and receiving peppy project
-        :param input: GSE number, or path to file of GSE numbers
-        :param just_metadata: process only metadata
-        :param discard_soft:  clean run, without downloading soft files
-        :return: peppy project or list of project, if acc_anno is set.
+        """Function for fetching projects from GEO|SRA and receiving peppy project.
+
+        Args:
+            input: GSE number, or path to file of GSE numbers.
+            just_metadata: Process only metadata.
+            discard_soft: Clean run, without downloading soft files.
+
+        Returns:
+            Peppy project or list of project, if acc_anno is set.
         """
         self.just_metadata = just_metadata
         self.just_object = True
@@ -358,12 +354,16 @@ class Geofetcher:
         return new_pr_dict
 
     def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
-        """
-        Main function driver/workflow
-        Function that search, filters, downloads and save data and metadata from  GEO and SRA
-        :param input: GSE or input file with gse's
-        :param name: Name of the project
-        :return: NoReturn or peppy Project
+        """Main function driver/workflow.
+
+        Function that search, filters, downloads and save data and metadata from GEO and SRA.
+
+        Args:
+            input: GSE or input file with gse's.
+            name: Name of the project.
+
+        Returns:
+            NoReturn or peppy Project.
         """
 
         if name is not None:
@@ -585,12 +585,15 @@ class Geofetcher:
         gsm_enter_dict: dict = None,
         gsm_metadata: dict = None,
     ):
-        """
-        Create srp multitable and update gsm_metadata based on srp
-        :param srp_list_result: list of srp got from sra file
-        :param gsm_enter_dict: gsm enter content
-        :param gsm_metadata: dict of samples of gsm
-        :return: srp multitable
+        """Create srp multitable and update gsm_metadata based on srp.
+
+        Args:
+            srp_list_result: List of srp got from sra file.
+            gsm_enter_dict: Gsm enter content.
+            gsm_metadata: Dict of samples of gsm.
+
+        Returns:
+            Srp multitable.
         """
         gsm_multi_table = {}
         runs = []
@@ -666,10 +669,10 @@ class Geofetcher:
         return gsm_multi_table, gsm_metadata, runs
 
     def _download_raw_data(self, run_name: str) -> NoReturn:
-        """
-        Download raw data from SRA by providing run name
+        """Download raw data from SRA by providing run name.
 
-        :param run_name: Run name from SRA
+        Args:
+            run_name: Run name from SRA.
         """
         bam_file = (
             ""
@@ -720,12 +723,15 @@ class Geofetcher:
         gsm_file_content: list,
         gsm_filter_list: dict,
     ) -> Tuple:
-        """
-        Fetche one processed GSE project and return its metadata
-        :param gsm_file_content: gse soft file content
-        :param gse_file_content: gsm soft file content
-        :param gsm_filter_list: list of gsm that have to be downloaded
-        :return: Tuple of project list of gsm samples and gse samples
+        """Fetch one processed GSE project and return its metadata.
+
+        Args:
+            gsm_file_content: Gse soft file content.
+            gse_file_content: Gsm soft file content.
+            gsm_filter_list: List of gsm that have to be downloaded.
+
+        Returns:
+            Tuple of project list of gsm samples and gse samples.
         """
         (
             meta_processed_samples,
@@ -754,15 +760,19 @@ class Geofetcher:
         meta_processed_series: list,
         gse_meta_dict: Union[dict, None] = None,
     ) -> dict:
-        """
-        Generate and save PEPs for processed accessions. GEO has data in GSE and GSM,
-            conditions are used to decide which PEPs will be saved.
-        :param name: name of the folder/file where PEP will be saved
-        :param meta_processed_samples:
-        :param meta_processed_series:
-        :param gse_meta_dict: dict of metadata fetched from one experiment.
-            Used to add this data to config file.
-        :return: dict of objects if just_object is set, otherwise dicts of None
+        """Generate and save PEPs for processed accessions.
+
+        GEO has data in GSE and GSM, conditions are used to decide which PEPs will be saved.
+
+        Args:
+            name: Name of the folder/file where PEP will be saved.
+            meta_processed_samples: Metadata for processed samples.
+            meta_processed_series: Metadata for processed series.
+            gse_meta_dict: Dict of metadata fetched from one experiment.
+                Used to add this data to config file.
+
+        Returns:
+            Dict of objects if just_object is set, otherwise dicts of None.
         """
         return_objects = {f"{name}_samples": None, f"{name}_series": None}
 
@@ -821,12 +831,12 @@ class Geofetcher:
     def _download_processed_data(
         self, acc_gse: str, meta_processed_samples: list, meta_processed_series: list
     ) -> NoReturn:
-        """
-        Download processed data from GEO by providing project annotation list
-        :param acc_gse: accession number of the project
-        :param meta_processed_samples: list of annotation of samples
-        :param meta_processed_series: list of annotation of series
-        :return: Noreturn
+        """Download processed data from GEO by providing project annotation list.
+
+        Args:
+            acc_gse: Accession number of the project.
+            meta_processed_samples: List of annotation of samples.
+            meta_processed_series: List of annotation of series.
         """
         data_geo_folder = os.path.join(self.geo_folder, acc_gse)
         _LOGGER.debug("Data folder: " + data_geo_folder)
@@ -859,22 +869,26 @@ class Geofetcher:
                 self._download_processed_file(file_url, data_geo_folder)
 
     def _expand_metadata_dict(self, metadata_dict: dict) -> dict:
-        """
-        Expand all lists of all items in the dict by creating new items or joining them
+        """Expand all lists of all items in the dict by creating new items or joining them.
 
-        :param metadata_dict: metadata dict
-        :return: expanded metadata dict
+        Args:
+            metadata_dict: Metadata dict.
+
+        Returns:
+            Expanded metadata dict.
         """
         prj_list = _dict_to_list_converter(proj_dict=metadata_dict)
         prj_list = self._expand_metadata_list(prj_list)
         return _dict_to_list_converter(proj_list=prj_list)
 
     def _expand_metadata_list(self, metadata_list: list) -> list:
-        """
-        Expanding all lists of all items in the list by creating new items or joining them
+        """Expand all lists of all items in the list by creating new items or joining them.
 
-        :param list metadata_list: list of dicts that store metadata
-        :return list: expanded metadata list
+        Args:
+            metadata_list: List of dicts that store metadata.
+
+        Returns:
+            Expanded metadata list.
         """
         _LOGGER.info("Expanding metadata list...")
         list_of_keys = _get_list_of_keys(metadata_list)
@@ -885,13 +899,16 @@ class Geofetcher:
         return metadata_list
 
     def _expand_metadata_list_item(self, metadata_list: list, dict_key: str):
-        """
-        Expand list of one element (item) in the list by creating new items or joining them
+        """Expand list of one element (item) in the list by creating new items or joining them.
+
         ["first1: fff", ...] -> separate columns
 
-        :param list metadata_list: list of dicts that store metadata
-        :param str dict_key: key in the dictionaries that have to be expanded
-        :return list: expanded metadata list
+        Args:
+            metadata_list: List of dicts that store metadata.
+            dict_key: Key in the dictionaries that have to be expanded.
+
+        Returns:
+            Expanded metadata list.
         """
         try:
             element_is_list = any(
@@ -990,13 +1007,15 @@ class Geofetcher:
             return metadata_list
 
     def _write_gsm_annotation(self, gsm_metadata: dict, file_annotation: str) -> str:
-        """
-        Write metadata sheet out as an annotation file.
+        """Write metadata sheet out as an annotation file.
 
-        :param Mapping gsm_metadata: the data to write, parsed from a file
-            with metadata/annotation information
-        :param str file_annotation: the path to the file to write
-        :return str: path to the file
+        Args:
+            gsm_metadata: The data to write, parsed from a file
+                with metadata/annotation information.
+            file_annotation: The path to the file to write.
+
+        Returns:
+            Path to the file.
         """
         keys = list(list(gsm_metadata.values())[0].keys())
         fp = expandpath(file_annotation)
@@ -1018,15 +1037,17 @@ class Geofetcher:
         just_object: bool = False,
         gse_meta_dict: dict = None,
     ) -> Union[NoReturn, peppy.Project]:
-        """
-        Save annotation file by providing list of dictionaries with files metadata
+        """Save annotation file by providing list of dictionaries with files metadata.
 
-        :param list processed_metadata: list of dictionaries with files metadata
-        :param str file_annotation_path: the path to the metadata file that has to be saved
-        :param just_object: True, if you want to get peppy object without saving file
-        :param gse_meta_dict: dict of metadata fetched from one experiment.
-            Used to add this data to config file.
-        :return: none, or peppy project
+        Args:
+            processed_metadata: List of dictionaries with files metadata.
+            file_annotation_path: The path to the metadata file that has to be saved.
+            just_object: True, if you want to get peppy object without saving file.
+            gse_meta_dict: Dict of metadata fetched from one experiment.
+                Used to add this data to config file.
+
+        Returns:
+            None, or peppy project.
         """
         if len(processed_metadata) == 0:
             _LOGGER.info(
@@ -1092,11 +1113,13 @@ class Geofetcher:
 
     @staticmethod
     def _find_genome(metadata_list: list) -> list:
-        """
-        Create new genome column by searching joining few columns
+        """Create new genome column by searching joining few columns.
 
-        :param metadata_list: list with metadata dict
-        :return: list with metadata dict where genome column was added
+        Args:
+            metadata_list: List with metadata dict.
+
+        Returns:
+            List with metadata dict where genome column was added.
         """
         list_keys = _get_list_of_keys(metadata_list)
         genome_keys = [
@@ -1119,15 +1142,18 @@ class Geofetcher:
         subannot_dict: dict = None,
         gse_meta_dict: dict = None,
     ) -> Union[None, peppy.Project]:
-        """
-        Combine individual accessions into project-level annotations, and writing
-        individual accession files (if requested)
+        """Combine individual accessions into project-level annotations.
 
-        :param name: Name of the run, project, or acc --> will influence name of the folder where project will be created
-        :param metadata_dict: dictionary of sample annotations
-        :param subannot_dict: dictionary of subsample annotations
-        :param gse_meta_dict: dict of experiment metadata that was sotred in gse
-        :return: none or peppy object
+        Write individual accession files (if requested).
+
+        Args:
+            name: Name of the run, project, or acc --> will influence name of the folder where project will be created.
+            metadata_dict: Dictionary of sample annotations.
+            subannot_dict: Dictionary of subsample annotations.
+            gse_meta_dict: Dict of experiment metadata that was stored in gse.
+
+        Returns:
+            None or peppy object.
         """
         try:
             assert len(metadata_dict) > 0
@@ -1250,13 +1276,15 @@ class Geofetcher:
         proj_meta: list,
         meta_in_series: dict = True,
     ) -> str:
-        """
-        Compose and generate config file content
+        """Compose and generate config file content.
 
-        :param file_annotation_path: root to the annotation file
-        :param proj_meta: common metadata that has to added to config file
-        :param meta_in_series:
-        :return: generated, complete config file content
+        Args:
+            file_annotation_path: Root to the annotation file.
+            proj_meta: Common metadata that has to added to config file.
+            meta_in_series: Metadata in series.
+
+        Returns:
+            Generated, complete config file content.
         """
 
         geofetchdir = os.path.dirname(__file__)
@@ -1295,14 +1323,16 @@ class Geofetcher:
     def _create_config_raw(
         self, proj_meta, proj_root_sample, subanot_path_yaml, meta_in_series=None
     ):
-        """
-        Compose and generate config file content for raw data
+        """Compose and generate config file content for raw data.
 
-        :param proj_meta: root to the annotation file
-        :param proj_root_sample: path to sampletable file
-        :param subanot_path_yaml: path to subannotation file
-        :param meta_in_series:
-        :return: generated, complete config file content
+        Args:
+            proj_meta: Root to the annotation file.
+            proj_root_sample: Path to sampletable file.
+            subanot_path_yaml: Path to subannotation file.
+            meta_in_series: Metadata in series.
+
+        Returns:
+            Generated, complete config file content.
         """
         meta_list_str = [
             f'{list(i.keys())[0]}: "{_sanitize_config_string(list(i.values())[0])}"'
@@ -1357,12 +1387,15 @@ class Geofetcher:
 
     @staticmethod
     def _check_sample_name_standard(metadata_dict: dict) -> dict:
-        """
-        Standardize sample name and checking if it exists
-            (This function is used for raw data)
+        """Standardize sample name and check if it exists.
 
-        :param metadata_dict: metadata dict
-        :return: metadata dict with standardize sample names
+        This function is used for raw data.
+
+        Args:
+            metadata_dict: Metadata dict.
+
+        Returns:
+            Metadata dict with standardize sample names.
         """
         fixed_dict = {}
         for key_sample, value_sample in metadata_dict.items():
@@ -1384,14 +1417,16 @@ class Geofetcher:
         del_limit: int = 1000,
         attr_limit_truncate: int = 500,
     ) -> tuple:
-        """
-        Separate experiment(project) metadata from sample metadata
+        """Separate experiment(project) metadata from sample metadata.
 
-        :param list or dict meta_list: list of dictionaries of samples
-        :param int max_len: threshold of the length of the common value that can be stored in the sample table
-        :param int del_limit: threshold of the length of the common value that have to be deleted
-        :param int attr_limit_truncate: max length of the attribute in the sample csv
-        :return set: Return is a set of list, where 1 list (or dict) is
+        Args:
+            meta_list: List of dictionaries of samples.
+            max_len: Threshold of the length of the common value that can be stored in the sample table.
+            del_limit: Threshold of the length of the common value that have to be deleted.
+            attr_limit_truncate: Max length of the attribute in the sample csv.
+
+        Returns:
+            Return is a set of list, where 1 list (or dict) is
             list of samples metadata dictionaries and 2: list of common samples metadata
             dictionaries that are linked to the project.
         """
@@ -1460,11 +1495,12 @@ class Geofetcher:
         return meta_list, new_meta_project
 
     def _download_SRA_file(self, run_name: str):
-        """
-        Download SRA file by ising 'prefetch' utility from the SRA Toolkit
-        more info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+        """Download SRA file using 'prefetch' utility from the SRA Toolkit.
 
-        :param str run_name: SRR number of the SRA file
+        More info: (http://www.ncbi.nlm.nih.gov/books/NBK242621/)
+
+        Args:
+            run_name: SRR number of the SRA file.
         """
 
         # Set up a simple loop to try a few times in case of failure
@@ -1487,11 +1523,11 @@ class Geofetcher:
             time.sleep(t * 2)
 
     def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
-        """
-        Convert SRA file to BAM file by using samtools function "sam-dump"
+        """Convert SRA file to BAM file by using samtools function "sam-dump".
 
-        :param str bam_file: path to BAM file that has to be created
-        :param str run_name: SRR number of the SRA file that has to be converted
+        Args:
+            bam_file: Path to BAM file that has to be created.
+            run_name: SRR number of the SRA file that has to be converted.
         """
         _LOGGER.info("Converting to bam: " + run_name)
         sra_file = os.path.join(self.sra_folder, run_name + ".sra")
@@ -1514,12 +1550,14 @@ class Geofetcher:
     def _sra_to_bam_conversion_fastq_damp(
         self, bam_file: str, run_name: str, picard_path: str = None
     ) -> NoReturn:
-        """
-        Convert SRA file to BAM file by using fastq-dump
-        (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
-        :param str bam_file: path to BAM file that has to be created
-        :param str run_name: SRR number of the SRA file that has to be converted
-        :param str picard_path: Path to The Picard toolkit. More info: https://broadinstitute.github.io/picard/
+        """Convert SRA file to BAM file by using fastq-dump.
+
+        Used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used.
+
+        Args:
+            bam_file: Path to BAM file that has to be created.
+            run_name: SRR number of the SRA file that has to be converted.
+            picard_path: Path to The Picard toolkit. More info: https://broadinstitute.github.io/picard/.
         """
 
         # check to make sure it worked
@@ -1555,16 +1593,17 @@ class Geofetcher:
     def _write_subannotation(
         self, tabular_data: dict, filepath: str, column_names: list = None
     ):
-        """
-        Write one or more tables to a given CSV filepath.
+        """Write one or more tables to a given CSV filepath.
 
-        :param tabular_data: Mapping | Iterable[Mapping]: single KV pair collection, or collection
-            of such collections, to write to disk as tabular data
-        :param str filepath: path to file to write, possibly with environment
-            variables included, e.g. from a config file
-        :param Iterable[str] column_names: collection of names for columns to
-            write
-        :return str: path to file written
+        Args:
+            tabular_data: Single KV pair collection, or collection
+                of such collections, to write to disk as tabular data.
+            filepath: Path to file to write, possibly with environment
+                variables included, e.g. from a config file.
+            column_names: Collection of names for columns to write.
+
+        Returns:
+            Path to file written.
         """
         _LOGGER.info(f"Sample subannotation sheet: {filepath}")
         fp = expandpath(filepath)
@@ -1584,12 +1623,13 @@ class Geofetcher:
     def _download_file(
         self, file_url: str, data_folder: str, new_name: str = None, sleep_after=0.5
     ) -> NoReturn:
-        """
-        Given an url for a file, downloading file to specified folder
-        :param str file_url: the URL of the file to download
-        :param str data_folder: path to the folder where data should be downloaded
-        :param float sleep_after: time to sleep after downloading
-        :param str new_name: new file name in the
+        """Given a url for a file, download file to specified folder.
+
+        Args:
+            file_url: The URL of the file to download.
+            data_folder: Path to the folder where data should be downloaded.
+            sleep_after: Time to sleep after downloading.
+            new_name: New file name.
         """
         filename = os.path.basename(file_url)
         if new_name is None:
@@ -1614,11 +1654,14 @@ class Geofetcher:
     def _get_list_of_processed_files(
         self, file_gse_content: list, file_gsm_content: list
     ) -> tuple:
-        """
-        Given a paths to GSE and GSM metafile create a list of dicts of metadata of processed files
-        :param list file_gse_content: list of lines of gse metafile
-        :param list file_gsm_content: list of lines of gse metafile
-        :return: tuple[list of metadata of processed sample files and series files]
+        """Given paths to GSE and GSM metafile create a list of dicts of metadata of processed files.
+
+        Args:
+            file_gse_content: List of lines of gse metafile.
+            file_gsm_content: List of lines of gsm metafile.
+
+        Returns:
+            Tuple[list of metadata of processed sample files and series files].
         """
         tar_re = re.compile(r".*\.tar$")
         gse_numb = None
@@ -1786,11 +1829,14 @@ class Geofetcher:
         return meta_processed_samples, meta_processed_series
 
     def _run_filter(self, meta_list: list, col_name: str = "file") -> list:
-        """
-        Filters files and metadata using Regular expression filter
-        :param meta_list: list of composed metadata
-        :param col_name: name of the column where file names are stored
-        :return: metadata list after file_name filter
+        """Filter files and metadata using Regular expression filter.
+
+        Args:
+            meta_list: List of composed metadata.
+            col_name: Name of the column where file names are stored.
+
+        Returns:
+            Metadata list after file_name filter.
         """
         filtered_list = []
         for meta_elem in meta_list:
@@ -1804,11 +1850,14 @@ class Geofetcher:
         return filtered_list
 
     def _run_size_filter(self, meta_list, col_name="file_size"):
-        """
-        Filters files and metadata by file size column specified in meta_list
-        :param meta_list: list of composed metadata
-        :param col_name: name of the column where is size information stored
-        :return: metadata list after size filter
+        """Filter files and metadata by file size column specified in meta_list.
+
+        Args:
+            meta_list: List of composed metadata.
+            col_name: Name of the column where is size information stored.
+
+        Returns:
+            Metadata list after size filter.
         """
         if self.filter_size is not None:
             filtered_list = []
@@ -1827,12 +1876,15 @@ class Geofetcher:
         return filtered_list
 
     def _download_processed_file(self, file_url: str, data_folder: str) -> bool:
-        """
-        Given a url for a file, download it, and extract anything passing the filter.
-        :param str file_url: the URL of the file to download
-        :param str data_folder: the local folder where the file should be saved
-        :return bool: True if the file is downloaded successfully; false if it does
-        not pass filters and is not downloaded.
+        """Given a url for a file, download it, and extract anything passing the filter.
+
+        Args:
+            file_url: The URL of the file to download.
+            data_folder: The local folder where the file should be saved.
+
+        Returns:
+            True if the file is downloaded successfully; false if it does
+            not pass filters and is not downloaded.
         """
 
         if not self.geo_folder:
@@ -1870,12 +1922,12 @@ class Geofetcher:
                         raise e
 
     def _get_SRA_meta(self, file_gse_content: list, gsm_metadata, file_sra=None):
-        """
-        Parse out the SRA project identifier from the GSE file
+        """Parse out the SRA project identifier from the GSE file.
 
-        :param list file_gse_content: list of content of file_sde_content
-        :param dict gsm_metadata: dict of GSM metadata
-        :param str file_sra: full path to SRA.csv metafile that has to be downloaded
+        Args:
+            file_gse_content: List of content of file_sde_content.
+            gsm_metadata: Dict of GSM metadata.
+            file_sra: Full path to SRA.csv metafile that has to be downloaded.
         """
         #
         acc_SRP = None
@@ -1959,10 +2011,13 @@ class Geofetcher:
                 return []
 
     def _get_SRP_list(self, srp_number: str) -> list:
-        """
-        Get a list of srp by using requests and xml searching and getting list of dicts of SRRs
-        :param str srp_number: SRP number
-        :return: list of dicts of SRRs
+        """Get a list of srp by using requests and xml searching and getting list of dicts of SRRs.
+
+        Args:
+            srp_number: SRP number.
+
+        Returns:
+            List of dicts of SRRs.
         """
         if not srp_number:
             _LOGGER.info("No srp number in this accession found")
@@ -2004,13 +2059,15 @@ class Geofetcher:
     def _read_gsm_metadata(
         self, acc_GSE: str, acc_GSE_list: dict, file_gsm_content: list
     ) -> dict:
-        """
-        A simple state machine to parse SOFT formatted files (Here, the GSM file)
+        """A simple state machine to parse SOFT formatted files (Here, the GSM file).
 
-        :param str acc_GSE: GSE number (Series accession)
-        :param dict acc_GSE_list: list of GSE
-        :param list file_gsm_content: list of contents of gsm file
-        :return dict: dictionary of experiment information (gsm_metadata)
+        Args:
+            acc_GSE: GSE number (Series accession).
+            acc_GSE_list: List of GSE.
+            file_gsm_content: List of contents of gsm file.
+
+        Returns:
+            Dictionary of experiment information (gsm_metadata).
         """
         gsm_metadata = {}
 
@@ -2103,12 +2160,13 @@ class Geofetcher:
         msg_pre: str = None,
         omit_newline: bool = False,
     ):
-        """
-        Save new file (used for config file)
-        :param f_var_value: path to the file
-        :param content: content of the file
-        :param msg_pre: msg that have to be printed
-        :param omit_newline: omit new line
+        """Save new file (used for config file).
+
+        Args:
+            f_var_value: Path to the file.
+            content: Content of the file.
+            msg_pre: Msg that have to be printed.
+            omit_newline: Omit new line.
         """
         fp = expandpath(f_var_value)
         _LOGGER.info((msg_pre or "") + fp)

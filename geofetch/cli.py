@@ -8,13 +8,25 @@ from geofetch._version import __version__
 
 
 def _safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
+    """Return an environment variable if it exists, or an empty string if not.
+
+    Args:
+        var: Environment variable name.
+
+    Returns:
+        Environment variable value or empty string.
+    """
     return os.getenv(var, "")
 
 
 def _parse_cmdl(cmdl):
-    """
-    parser
+    """Parse command line arguments.
+
+    Args:
+        cmdl: Command line arguments.
+
+    Returns:
+        Parsed arguments.
     """
     parser = VersionInHelpParser(
         description="Automatic GEO and SRA data downloader",
@@ -207,7 +219,7 @@ To download all processed data of GSE57303:
         help="""Optional: Filter size for processed files
                 that are stored as sample repository [Default: None].
                 Works only for sample data.
-                Supported input formats : 12B, 12KB, 12MB, 12GB. 
+                Supported input formats : 12B, 12KB, 12MB, 12GB.
                 Ignored unless 'processed' flag is set.""",
     )
 

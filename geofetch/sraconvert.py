@@ -86,16 +86,25 @@ def _parse_cmdl(cmdl):
 
 
 def safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
+    """Return an environment variable if it exists, or an empty string if not.
+
+    Args:
+        var: Environment variable name.
+
+    Returns:
+        Environment variable value or empty string.
+    """
     return os.getenv(var, "")
 
 
 def uniqify(seq):  # Dave Kirby
-    """
-    Return only unique items in a sequence, preserving order
+    """Return only unique items in a sequence, preserving order.
 
-    :param list seq: List of items to uniqify
-    :return list[object]: Original list with duplicates removed
+    Args:
+        seq: List of items to uniqify.
+
+    Returns:
+        Original list with duplicates removed.
     """
     # Order preserving
     seen = set()

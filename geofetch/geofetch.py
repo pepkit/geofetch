@@ -790,6 +790,7 @@ class Geofetcher:
                 meta_processed_series,
                 pep_acc_path_exp,
                 just_object=self.just_object,
+                gse_meta_dict=gse_meta_dict,
             )
 
         elif self.supp_by == "samples":
@@ -814,6 +815,7 @@ class Geofetcher:
                 meta_processed_series,
                 pep_acc_path_exp,
                 just_object=self.just_object,
+                gse_meta_dict=gse_meta_dict,
             )
 
         return return_objects

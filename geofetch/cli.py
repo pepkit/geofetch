@@ -238,9 +238,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRABAM"),
         help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
-            [Default: $SRABAM:"""
-        + _safe_echo("SRABAM")
-        + "]",
+            [Default: $SRABAM:""" + _safe_echo("SRABAM") + "]",
     )
 
     raw_group.add_argument(
@@ -250,9 +248,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRAFQ"),
         help="""Optional: Specify folder of fastq files. Geofetch will not
             download sra files when corresponding fastq files already exist.
-            [Default: $SRAFQ:"""
-        + _safe_echo("SRAFQ")
-        + "]",
+            [Default: $SRAFQ:""" + _safe_echo("SRAFQ") + "]",
     )
 
     # Deprecated; these are for bam conversion which now happens in sra_convert

@@ -3,7 +3,6 @@ import os
 import re
 from datetime import datetime, timedelta
 
-import coloredlogs
 import requests
 import xmltodict
 
@@ -19,11 +18,6 @@ from .const import (
 __author__ = "Oleksandr Khoroshevskyi"
 
 _LOGGER = logging.getLogger("__name__")
-coloredlogs.install(
-    logger=_LOGGER,
-    datefmt="%H:%M:%S",
-    fmt="[%(levelname)s] [%(asctime)s] %(message)s",
-)
 
 
 class Finder:

@@ -7,7 +7,6 @@ import re
 import subprocess
 import sys
 from io import StringIO
-from typing import Dict, List, NoReturn, Union
 
 import requests
 
@@ -24,23 +23,28 @@ URL_BY_ACC = {
 
 
 def build_prefetch_command(
-    run_id: str, prefetch_path: str = "prefetch", max_size: Union[str, int] = None
-) -> List[str]:
+    run_id: str, prefetch_path: str = "prefetch", max_size: str | int | None = None
+) -> list[str]:
     cmd = [prefetch_path, run_id]
     if max_size is not None:
         cmd.extend(["--max-size", str(max_size)])
     return cmd
 
 
-def is_known_type(accn: str = None, typename: str = None):
+def is_known_type(accn: str | None = None, typename: str | None = None) -> bool:
     """
     Determine if the given accession is of a known type.
 
-    :param str accn: accession of interest
-    :param str typename: check this typename for known status rather
-        than parsing an accession
-    :return bool: whether the given accession is of a known type.
-    :raise TypeError: if neither argument is provided or one/both are empty.
+    Args:
+        accn: Accession of interest.
+        typename: Check this typename for known status rather
+            than parsing an accession.
+
+    Returns:
+        Whether the given accession is of a known type.
+
+    Raises:
+        TypeError: If neither argument is provided or one/both are empty.
     """
     if not (accn or typename):
         raise TypeError("Specify either accession or accession typename")
@@ -53,7 +57,12 @@ def is_known_type(accn: str = None, typename: str = None):
         return False
 
 
-def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=None):
+def parse_accessions(
+    input_arg: str,
+    metadata_folder: str,
+    just_metadata: bool = False,
+    max_size: str | int | None = None,
+) -> dict[str, dict] | None:
     """
     Create a list of GSE accessions, either from file or a single value.
 
@@ -62,11 +71,12 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=N
     interested in from that GSE#. An empty sample list means we should get all
     samples from that GSE#. This loop will create this dict.
 
-    :param input_arg: Input argument (GSE, or file)
-    :param str metadata_folder: path to folder for accession metadata
-    :param bool just_metadata: whether to only process metadata, not the
-        actual data associated with the accession
-    :param str | int max_size: argument for prefetch command's --max-size option
+    Args:
+        input_arg: Input argument (GSE, or file).
+        metadata_folder: Path to folder for accession metadata.
+        just_metadata: Whether to only process metadata, not the
+            actual data associated with the accession.
+        max_size: Argument for prefetch command's --max-size option.
     """
 
     acc_GSE_list = {}
@@ -133,12 +143,15 @@ def parse_accessions(input_arg, metadata_folder, just_metadata=False, max_size=N
     return acc_GSE_list
 
 
-def parse_SOFT_line(line: str) -> dict:
+def parse_SOFT_line(line: str) -> dict[str, str]:
     """
     Parse SOFT formatted line, returning a dictionary with the key-value pair.
 
-    :param str line: A SOFT-formatted line to parse ( !key = value )
-    :return dict[str, str]: A python Dict object representing the key-value.
+    Args:
+        line: A SOFT-formatted line to parse ( !key = value ).
+
+    Returns:
+        A python Dict object representing the key-value.
     """
     elems = line[1:].split("=")
     return {elems[0].rstrip(): "=".join(elems[1:]).lstrip()}
@@ -147,12 +160,13 @@ def parse_SOFT_line(line: str) -> dict:
 class AccessionException(Exception):
     """Exceptional condition(s) dealing with accession number(s)."""
 
-    def __init__(self, reason: str = ""):
+    def __init__(self, reason: str = "") -> None:
         """
         Optionally provide explanation for exceptional condition.
 
-        :param str reason: some context or perhaps just a value that
-            could not be interpreted as an accession
+        Args:
+            reason: Some context or perhaps just a value that
+                could not be interpreted as an accession.
         """
         super(AccessionException, self).__init__(reason)
 
@@ -160,58 +174,66 @@ class AccessionException(Exception):
 class SoftFileException(Exception):
     """Exceptional condition(s) dealing with accession number(s)."""
 
-    def __init__(self, reason: str = ""):
+    def __init__(self, reason: str = "") -> None:
         """
         Optionally provide explanation for exceptional condition.
 
-        :param str reason: some context or perhaps just a value that
-            could not be interpreted as an accession
+        Args:
+            reason: Some context or perhaps just a value that
+                could not be interpreted as an accession.
         """
         super(SoftFileException, self).__init__(reason)
 
 
-class Accession(object):
+class Accession:
     """Working with accession numbers."""
 
     _LOGGER = logging.getLogger("{}.{}".format(__name__, "Accession"))
 
-    def __init__(self, accn, strict=True):
+    def __init__(self, accn: str, strict: bool = True) -> None:
         """
         Create an instance with an accession and optionally a validation
         strictness flag.
 
-        :param str accn: accession
-        :param bool strict: strictness of the validation (whether to require
-            that the accession type is known here)
-        :raise AccessionException: if the given accession value isn't
-            prefixed with three characters followed by an integer, or if
-            strict validation is required and the accession type is unknown
+        Args:
+            accn: Accession.
+            strict: Strictness of the validation (whether to require
+                that the accession type is known here).
+
+        Raises:
+            AccessionException: If the given accession value isn't
+                prefixed with three characters followed by an integer, or if
+                strict validation is required and the accession type is unknown.
         """
         typename, number = self._validate(accn)
         if strict and not is_known_type(accn):
             raise AccessionException(
-                "Unknown accession type for '{}': '{}'; "
-                "supported types: {}".format(accn, typename, URL_BY_ACC.keys())
+                "Unknown accession type for '{}': '{}'; supported types: {}".format(
+                    accn, typename, URL_BY_ACC.keys()
+                )
             )
         self.accn = accn
         self.typename = typename.upper()
 
     def fetch_metadata(
         self,
-        outpath: str = None,
-        typename: str = None,
+        outpath: str | None = None,
+        typename: str | None = None,
         clean: bool = False,
         max_soft_size: int = 1073741824,
-    ) -> list:
+    ) -> list[str]:
         """
         Fetch the metadata associated with this accession.
 
-        :param str typename: type indicating URL format, use type
-            parsed at construction if unspecified
-        :param str outpath: path to file to which to write output, optional
-        :param bool clean: if true, files won't be saved
-        :param int max_soft_size: max soft file size in bytes
-        :return: list of lines in soft file
+        Args:
+            outpath: Path to file to which to write output, optional.
+            typename: Type indicating URL format, use type
+                parsed at construction if unspecified.
+            clean: If true, files won't be saved.
+            max_soft_size: Max soft file size in bytes.
+
+        Returns:
+            List of lines in soft file.
         """
 
         typename = (typename or self.typename).upper()
@@ -282,11 +304,15 @@ class Accession(object):
         return result_list
 
     @staticmethod
-    def _validate(accn: str):
+    def _validate(accn: str) -> tuple[str, int]:
         """
         Determine if given value looks like an accession.
-        :param str accn: ordinary accession identifier.
-        :return: typename, number
+
+        Args:
+            accn: Ordinary accession identifier.
+
+        Returns:
+            Typename and number.
         """
         typename, number = split_accn(accn)
         if len(typename) != 3:
@@ -304,17 +330,22 @@ class Accession(object):
         return typename, number
 
     @staticmethod
-    def accn_type_exception(accn: str, typename: str, include_known: bool = True):
+    def accn_type_exception(
+        accn: str, typename: str, include_known: bool = True
+    ) -> AccessionException:
         """
         Create an exception instance based on an accession and a
         parsed unknown typename.
 
-        :param str accn: accession identifier from which unknown typename
-            was parsed
-        :param str typename: unknown typename that was parsed
-        :param bool include_known: whether to include the known
-            typenames in the exception message
-        :return AccessionException: the exception instance
+        Args:
+            accn: Accession identifier from which unknown typename
+                was parsed.
+            typename: Unknown typename that was parsed.
+            include_known: Whether to include the known
+                typenames in the exception message.
+
+        Returns:
+            The exception instance.
         """
         message = "Unknown accn type for '{}': '{}'".format(accn, typename)
         if include_known:
@@ -322,13 +353,16 @@ class Accession(object):
         return AccessionException(message)
 
 
-def split_accn(accn: str):
+def split_accn(accn: str) -> tuple[str, str]:
     """
     Split accession into prefix and number, leaving suffix as text
     and converting the type prefix to uppercase.
 
-    :param str accn: ordinary accession identifier.
-    :return str, str: prefix and integral suffix
+    Args:
+        accn: Ordinary accession identifier.
+
+    Returns:
+        Prefix and integral suffix.
     """
     typename, number_text = accn[:3], accn[3:]
     return typename.upper(), number_text
@@ -336,9 +370,13 @@ def split_accn(accn: str):
 
 def convert_size(size_str: str) -> int:
     """
-    Converting size, that was provided as string with suffix
-    :param str size_str: size as string with suffix: gb, mb, kb or b
-    :return int: size as int value in bytes
+    Convert size provided as string with suffix to bytes.
+
+    Args:
+        size_str: Size as string with suffix: gb, mb, kb or b.
+
+    Returns:
+        Size as int value in bytes.
     """
     abbreviation_dict = {"gb": 1073741824, "mb": 1048576, "kb": 1024, "b": 1}
     supported_formats = r"(\dgb|\dmb|\db|\dkb)$"
@@ -361,11 +399,12 @@ def convert_size(size_str: str) -> int:
     return size_in_bytes
 
 
-def clean_soft_files(meta_dir: str):
+def clean_soft_files(meta_dir: str) -> None:
     """
-    Cleaning, deleting all soft files after downloading files
-    and creating PEPs
-    :param str meta_dir: Path to the metadata files
+    Delete all soft files after downloading files and creating PEPs.
+
+    Args:
+        meta_dir: Path to the metadata files.
     """
     try:
         dir_files = os.listdir(meta_dir)
@@ -382,8 +421,8 @@ def clean_soft_files(meta_dir: str):
         _LOGGER.debug("Can't clean soft files...folder doesn't exist")
 
 
-def run_subprocess(*args, **kwargs):
-    """Wrapper to gracefully start and stop a running subprocess"""
+def run_subprocess(*args, **kwargs) -> int:
+    """Wrapper to gracefully start and stop a running subprocess."""
     p = subprocess.Popen(*args, **kwargs)
     try:
         return p.wait()
@@ -397,12 +436,15 @@ def run_subprocess(*args, **kwargs):
         sys.exit(1)
 
 
-def _get_list_of_keys(list_of_dict: list):
+def _get_list_of_keys(list_of_dict: list[dict]) -> list[str]:
     """
-    Getting list of all keys that are in the dictionaries in the list
+    Get list of all keys that are in the dictionaries in the list.
 
-    :param list list_of_dict: list of dicts with metadata
-    :return list: list of dictionary keys
+    Args:
+        list_of_dict: List of dicts with metadata.
+
+    Returns:
+        List of dictionary keys.
     """
 
     dict_keys = {"sample_name": None}
@@ -414,20 +456,29 @@ def _get_list_of_keys(list_of_dict: list):
     return list(dict_keys.keys())
 
 
-def _get_value(all_line: str):
+def _get_value(all_line: str) -> str:
     """
-    :param all_line: string with key value. (e.g. '!Series_geo_accession = GSE188720')
-    :return: value (e.g. GSE188720)
+    Extract value from a key-value string.
+
+    Args:
+        all_line: String with key value (e.g. '!Series_geo_accession = GSE188720').
+
+    Returns:
+        The extracted value (e.g. GSE188720).
     """
     line_value = all_line.split("= ")[-1]
     return line_value.split(": ")[-1].rstrip("\n")
 
 
-def _read_tar_filelist(raw_text: str) -> dict:
+def _read_tar_filelist(raw_text: str) -> dict[str, dict]:
     """
-    Creating list for supplementary files that are listed in "filelist.txt"
-    :param str raw_text: path to the file with information about files that are zipped ("filelist.txt")
-    :return dict: dict of supplementary file names and additional information
+    Create list for supplementary files that are listed in "filelist.txt".
+
+    Args:
+        raw_text: Raw text content of the filelist.
+
+    Returns:
+        Dict of supplementary file names and additional information.
     """
     f = StringIO(raw_text)
     files_info = {}
@@ -449,11 +500,15 @@ def _read_tar_filelist(raw_text: str) -> dict:
     return files_info
 
 
-def _check_file_existance(meta_processed_sample: list) -> list:
+def _check_file_existance(meta_processed_sample: list[dict]) -> list[dict]:
     """
-    Checking if last element of the list has files. If list of files is empty deleting it
-    :param: meta_processed_sample: list with metadata dictionary
-    :return: list with metadata dictionary after processing
+    Check if last element of the list has files; delete it if empty.
+
+    Args:
+        meta_processed_sample: List with metadata dictionaries.
+
+    Returns:
+        List with metadata dictionaries after processing.
     """
     nb = len(meta_processed_sample) - 1
     if nb > -1:
@@ -463,12 +518,15 @@ def _check_file_existance(meta_processed_sample: list) -> list:
     return meta_processed_sample
 
 
-def _separate_list_of_files(meta_list: Union[list, dict], col_name: str = "files"):
+def _separate_list_of_files(
+    meta_list: list | dict, col_name: str = "files"
+) -> list[dict]:
     """
-    This method is separating list of files (dict value) or just simple dict
-    into two different dicts
-    :param col_name: column name that should be added with filenames
-    :param meta_list: list, or dict with metadata
+    Separate list of files (dict value) into individual dicts.
+
+    Args:
+        meta_list: List or dict with metadata.
+        col_name: Column name that should be added with filenames.
     """
     separated_list = []
     if isinstance(meta_list, list):
@@ -500,15 +558,16 @@ def _update_columns(
     including new data and populating columns used by looper based on
     existing values in the mapping.
 
-    :param Mapping metadata: the key-value mapping to update
-    :param str experiment_name: name of the experiment from which these
-        data came and are associated; the key in the metadata mapping
-        for which the value is to be updated
-    :param str sample_name: name of the sample with which these data are
-        associated
-    :param str read_type: usually "single" or "paired," an indication of the
-        type of sequencing reads for this experiment
-    :return: updated metadata
+    Args:
+        metadata: The key-value mapping to update.
+        experiment_name: Name of the experiment; the key in the metadata
+            mapping for which the value is to be updated.
+        sample_name: Name of the sample with which these data are associated.
+        read_type: Usually "single" or "paired," an indication of the
+            type of sequencing reads for this experiment.
+
+    Returns:
+        Updated metadata.
     """
 
     exp = metadata[experiment_name]
@@ -538,11 +597,7 @@ def _update_columns(
 
 
 def _sanitize_config_string(text: str) -> str:
-    """
-    Function that sanitizes text in config file.
-    :param text: Any string that have to be sanitized
-    :return: sanitized strings
-    """
+    """Sanitize text for use in config files."""
     new_str = text
     new_str = new_str.replace('"', '\\"')
     new_str = new_str.replace("'", "''")
@@ -550,11 +605,7 @@ def _sanitize_config_string(text: str) -> str:
 
 
 def _sanitize_name(name_str: str) -> str:
-    """
-    Function that sanitizes strings. (Replace all odd characters)
-    :param str name_str: Any string value that has to be sanitized.
-    :return: sanitized strings
-    """
+    """Sanitize a string by replacing special characters with underscores."""
     new_str = name_str
     punctuation1 = r"""!"#$%&'()*,./:;<=>?@[\]^_`{|}~"""
     for odd_char in list(punctuation1):
@@ -563,20 +614,20 @@ def _sanitize_name(name_str: str) -> str:
     return new_str
 
 
-def _create_dot_yaml(file_path: str, yaml_path: str) -> NoReturn:
+def _create_dot_yaml(file_path: str, yaml_path: str) -> None:
     """
-    Function that creates .pep.yaml file that points to actual yaml file
-    :param str file_path: Path to the .pep.yaml file that we want to create
-    :param str yaml_path: path or name of the actual yaml file
+    Create a .pep.yaml file that points to the actual yaml file.
+
+    Args:
+        file_path: Path to the .pep.yaml file to create.
+        yaml_path: Path or name of the actual yaml file.
     """
     with open(file_path, "w+") as file:
         file.writelines(f"config_file: {yaml_path}")
 
 
-def _which(program: str):
-    """
-    return str:  the path to a program to make sure it exists
-    """
+def _which(program: str) -> str | None:
+    """Return the path to a program, or None if not found."""
     import os
 
     def is_exe(fp):
@@ -595,15 +646,17 @@ def _which(program: str):
 
 
 def _dict_to_list_converter(
-    proj_dict: Dict = None, proj_list: List = None
-) -> Union[Dict, List]:
+    proj_dict: dict | None = None, proj_list: list | None = None
+) -> dict | list:
     """
-    Converter project dict to list and vice versa
-    dict -> list
-    list -> dict
-    :param proj_dict: project dictionary
-    :param proj_list: project list
-    :return: converted values
+    Convert project dict to list and vice versa.
+
+    Args:
+        proj_dict: Project dictionary.
+        proj_list: Project list.
+
+    Returns:
+        Converted values.
     """
     if proj_dict is not None:
         new_meta_list = []
@@ -626,11 +679,15 @@ def _dict_to_list_converter(
     return meta_list
 
 
-def _standardize_colnames(meta_list: Union[list, dict]) -> Union[list, dict]:
+def _standardize_colnames(meta_list: list | dict) -> list | dict:
     """
-    Standardize column names by lower-casing and underscore
-    :param list meta_list: list of dictionaries of samples
-    :return : list of dictionaries of samples with standard colnames
+    Standardize column names by lower-casing and underscore.
+
+    Args:
+        meta_list: List of dictionaries of samples.
+
+    Returns:
+        List of dictionaries of samples with standardized column names.
     """
     # check if meta_list is dict and converting it to list
     input_is_dict = False
@@ -658,10 +715,8 @@ def _standardize_colnames(meta_list: Union[list, dict]) -> Union[list, dict]:
     return new_metalist
 
 
-def _separate_file_url(meta_list):
-    """
-    This method is adding dict key without file_name without path
-    """
+def _separate_file_url(meta_list: list[dict]) -> list[dict]:
+    """Add file_url key and set file to basename only."""
     separated_list = []
     for meta_elem in meta_list:
         new_dict = meta_elem.copy()
@@ -684,11 +739,9 @@ def _separate_file_url(meta_list):
 
 
 def make_sample_name_unique(
-    sanit_name: str, separated_list: list, new_number: int = 1
+    sanit_name: str, separated_list: list[dict], new_number: int = 1
 ) -> str:
-    """
-    Check if name is unique for current sample
-    """
+    """Check if name is unique for current sample, appending a number if not."""
     if sanit_name not in [f["sample_name"] for f in separated_list]:
         return sanit_name
     elif f"{sanit_name}_{new_number}" not in [f["sample_name"] for f in separated_list]:
@@ -697,15 +750,13 @@ def make_sample_name_unique(
         return make_sample_name_unique(sanit_name, separated_list, new_number + 1)
 
 
-def _filter_gsm(meta_processed_samples: list, gsm_list: dict) -> list:
+def _filter_gsm(meta_processed_samples: list[dict], gsm_list: dict) -> list[dict]:
     """
-    Getting metadata list of all samples of one experiment and filtering it
-    by the list of GSM that was specified in the input files.
-    And then changing names of the sample names.
+    Filter metadata samples by a GSM list from the input file.
 
-    :param meta_processed_samples: list of metadata dicts of samples
-    :param gsm_list: list of dicts where GSM (samples) are keys and
-        sample names are values. Where values can be empty string
+    Args:
+        meta_processed_samples: List of metadata dicts of samples.
+        gsm_list: Dict where GSM accessions are keys and sample names are values.
     """
 
     if gsm_list.keys():
@@ -722,13 +773,15 @@ def _filter_gsm(meta_processed_samples: list, gsm_list: dict) -> list:
     return meta_processed_samples
 
 
-def _unify_list_keys(processed_meta_list: list) -> list:
+def _unify_list_keys(processed_meta_list: list[dict]) -> list[dict]:
     """
-    Unifying list of dicts with metadata, so every dict will have
-        same keys
+    Unify list of dicts so every dict has the same keys.
 
-    :param list processed_meta_list: list of dicts with metadata
-    :return list: list of unified dicts with metadata
+    Args:
+        processed_meta_list: List of dicts with metadata.
+
+    Returns:
+        List of unified dicts with metadata.
     """
     list_of_keys = _get_list_of_keys(processed_meta_list)
     for k in list_of_keys:
@@ -738,11 +791,15 @@ def _unify_list_keys(processed_meta_list: list) -> list:
     return processed_meta_list
 
 
-def gse_content_to_dict(gse_content: List[str]) -> Dict[str, dict]:
+def gse_content_to_dict(gse_content: list[str]) -> dict[str, dict]:
     """
-    Unpack gse soft file to dict
-    :param gse_content: list of strings of gse soft file
-    :return: dict of gse content
+    Unpack GSE soft file content to a dict.
+
+    Args:
+        gse_content: List of strings of GSE soft file.
+
+    Returns:
+        Dict of GSE content.
     """
     gse_dict = {}
     for line in gse_content:
@@ -761,11 +818,7 @@ def gse_content_to_dict(gse_content: List[str]) -> Dict[str, dict]:
 
 
 def is_prefetch_callable() -> bool:
-    """
-    Test if the prefetch command can be run.
-
-    :return: True if it is available.
-    """
+    """Test if the prefetch command can be run."""
     try:
         # Option -V means display version and then quit.
         subprocess.run(

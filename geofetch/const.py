@@ -1,10 +1,12 @@
+"""Package constants."""
+
 import re
 
 _LOGGER = None
 
 # A set of hard-coded keys if you want to limit to just a few instead of taking
 # all information provided in GEO. Use with `--use-key-subset`
-ANNOTATION_SHEET_KEYS = [
+ANNOTATION_SHEET_KEYS: list[str] = [
     "sample_name",
     "protocol",
     "read_type",
@@ -24,49 +26,49 @@ ANNOTATION_SHEET_KEYS = [
 ]
 
 # Regex to parse out SRA accession identifiers
-PROJECT_PATTERN = re.compile(r"(SRP\d{4,8})")
-EXPERIMENT_PATTERN = re.compile(r"(SRX\d{4,8})")
-GSE_PATTERN = re.compile(r"(GSE\d{4,8})")
-SUPP_FILE_PATTERN = re.compile("Sample_supplementary_file")
-SER_SUPP_FILE_PATTERN = re.compile("Series_supplementary_file")
+PROJECT_PATTERN: re.Pattern[str] = re.compile(r"(SRP\d{4,8})")
+EXPERIMENT_PATTERN: re.Pattern[str] = re.compile(r"(SRX\d{4,8})")
+GSE_PATTERN: re.Pattern[str] = re.compile(r"(GSE\d{4,8})")
+SUPP_FILE_PATTERN: re.Pattern[str] = re.compile("Sample_supplementary_file")
+SER_SUPP_FILE_PATTERN: re.Pattern[str] = re.compile("Series_supplementary_file")
 
-SAMPLE_SUPP_METADATA_FILE = "_samples.csv"
-EXP_SUPP_METADATA_FILE = "_series.csv"
-FILE_RAW_NAME_SAMPLE_PATTERN = "_raw.csv"
-FILE_RAW_NAME_SUBSAMPLE_PATTERN = "_raw_subtable.csv"
+SAMPLE_SUPP_METADATA_FILE: str = "_samples.csv"
+EXP_SUPP_METADATA_FILE: str = "_series.csv"
+FILE_RAW_NAME_SAMPLE_PATTERN: str = "_raw.csv"
+FILE_RAW_NAME_SUBSAMPLE_PATTERN: str = "_raw_subtable.csv"
 
 # How many times should we retry failing prefetch call?
-NUM_RETRIES = 3
-REQUEST_SLEEP = 0.4
+NUM_RETRIES: int = 3
+REQUEST_SLEEP: float = 0.4
 
-NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={SRP_NUMBER}&retmax=999&rettype=uilist&retmode=json"
-NCBI_EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id={ID}&rettype=runinfo&retmode=xml"
+NCBI_ESEARCH: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term={SRP_NUMBER}&retmax=999&rettype=uilist&retmode=json"
+NCBI_EFETCH: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id={ID}&rettype=runinfo&retmode=xml"
 
-NEW_GENOME_COL_NAME = "ref_genome"
+NEW_GENOME_COL_NAME: str = "ref_genome"
 
-TEMPLATES_DIR = "templates"
-CONFIG_PROCESSED_TEMPLATE_NAME = "config_processed_template.yaml"
-CONFIG_RAW_TEMPLATE_NAME = "config_template.yaml"
-CONFIG_SRA_TEMPLATE_NAME = "looper_sra_convert.yaml"
-PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME = "pipeline_interface_convert.yaml"
-LOOPER_SRA_CONVERT = "looper_config_template.yaml"
-# SRA_CONVERT_SCHEMA_NAME = "sra_convert_schema.yaml"
-# RESOURCES_NAME = "resources.tsv"
+TEMPLATES_DIR: str = "templates"
+CONFIG_PROCESSED_TEMPLATE_NAME: str = "config_processed_template.yaml"
+CONFIG_RAW_TEMPLATE_NAME: str = "config_template.yaml"
+CONFIG_SRA_TEMPLATE_NAME: str = "looper_sra_convert.yaml"
+PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME: str = "pipeline_interface_convert.yaml"
+LOOPER_SRA_CONVERT: str = "looper_config_template.yaml"
 
 # const for Finder:
-RETMAX = 10000000  # once it should be increased
+RETMAX: int = 10000000
 
 # gds = geo DataSets
-ETOOLS_GEO_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gds"
-ETOOLS_GEO_GSE_BASE = f"{ETOOLS_GEO_BASE}&term=GSE[ETYP]"
+ETOOLS_GEO_BASE: str = (
+    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gds"
+)
+ETOOLS_GEO_GSE_BASE: str = f"{ETOOLS_GEO_BASE}&term=GSE[ETYP]"
 
-ETOOLS_ENDING = "&retmax={retmax}&usehistory=y"
+ETOOLS_ENDING: str = "&retmax={retmax}&usehistory=y"
 
-TODAY_DATE = "3000"
+TODAY_DATE: str = "3000"
 
-DATE_FILTER = (
+DATE_FILTER: str = (
     '+AND+("{start_date}"[Publication%20Date]%20:%20"{end_date}"[Publication%20Date])'
 )
-THREE_MONTH_FILTER = '+AND+"published+last+3+months"[Filter]'
+THREE_MONTH_FILTER: str = '+AND+"published+last+3+months"[Filter]'
 
-LOOPER_CONFIG_FILE_NAME = "looper_config.yaml"
+LOOPER_CONFIG_FILE_NAME: str = "looper_config.yaml"

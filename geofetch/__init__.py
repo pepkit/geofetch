@@ -1,14 +1,21 @@
-"""Package-level data"""
+"""Package-level data."""
+
+from importlib.metadata import PackageNotFoundError, version
 
 import coloredlogs
 import logmuse
 
-from geofetch._version import __version__
 from geofetch.finder import Finder
 from geofetch.geofetch import Geofetcher
 
-__author__ = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
-__all__ = ["Finder", "Geofetcher", "__version__"]
+__author__: list[str] = ["Oleksandr Khoroshevskyi", "Vince Reuter", "Nathan Sheffield"]
+
+try:
+    __version__: str = version("geofetch")
+except PackageNotFoundError:
+    __version__ = "unknown"
+
+__all__: list[str] = ["Finder", "Geofetcher", "__version__"]
 
 _LOGGER = logmuse.init_logger("geofetch")
 coloredlogs.install(

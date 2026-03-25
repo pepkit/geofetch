@@ -3,7 +3,7 @@
 import argparse
 import os
 import sys
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 import logmuse
 import pypiper
@@ -73,8 +73,12 @@ def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
         help="Name for sample to run",
         metavar="SAMPLE_NAME",
     )
+    try:
+        _pkg_version = version("geofetch")
+    except PackageNotFoundError:
+        _pkg_version = "unknown"
     parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {version('geofetch')}"
+        "-V", "--version", action="version", version=f"%(prog)s {_pkg_version}"
     )
 
     parser.add_argument("-r", "--srr", required=True, nargs="+", help="SRR files")

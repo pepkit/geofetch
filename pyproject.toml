@@ -45,6 +45,9 @@ sraconvert = "geofetch.sraconvert:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+include = ["geofetch/**"]
+
 [project.optional-dependencies]
 test = [
     "pytest",

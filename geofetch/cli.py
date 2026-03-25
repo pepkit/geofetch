@@ -1,6 +1,6 @@
 import argparse
 import os
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 import logmuse
 from ubiquerg import VersionInHelpParser
@@ -9,6 +9,14 @@ from ubiquerg import VersionInHelpParser
 def _safe_echo(var: str) -> str:
     """Return an environment variable if it exists, or an empty string if not."""
     return os.getenv(var, "")
+
+
+def _get_version() -> str:
+    """Return the package version, or 'unknown' if not installed."""
+    try:
+        return version("geofetch")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
@@ -24,7 +32,7 @@ To download all processed data of GSE57303:
     geofetch -i GSE67303 --processed --geo-folder <folder> -m <folder>
 
 """,
-        version=version("geofetch"),
+        version=_get_version(),
     )
 
     processed_group = parser.add_argument_group("processed")
@@ -237,7 +245,7 @@ To download all processed data of GSE57303:
             download sra files when corresponding bam files already exist.
             (Default: $SRABAM:"""
         + _safe_echo("SRABAM")
-        + "]",
+        + ")",
     )
 
     raw_group.add_argument(
@@ -249,7 +257,7 @@ To download all processed data of GSE57303:
             download sra files when corresponding fastq files already exist.
             (Default: $SRAFQ:"""
         + _safe_echo("SRAFQ")
-        + "]",
+        + ")",
     )
 
     # Deprecated; these are for bam conversion which now happens in sra_convert

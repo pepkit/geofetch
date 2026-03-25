@@ -51,7 +51,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRAMETA"),
         help="Specify a parent folder location to store metadata. "
         "The project name will be added as a subfolder "
-        "[Default: $SRAMETA:" + _safe_echo("SRAMETA") + "]",
+        "(Default: $SRAMETA:" + _safe_echo("SRAMETA") + ")",
     )
 
     parser.add_argument(
@@ -84,7 +84,7 @@ To download all processed data of GSE57303:
         default=None,
         help="Optional: Specify one or more filepaths to SAMPLES pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "
-        "compatible with looper. [Default: null]",
+        "compatible with looper. (Default: null)",
     )
 
     # Optional
@@ -93,7 +93,7 @@ To download all processed data of GSE57303:
         default=None,
         help="Optional: Specify one or more filepaths to PROJECT pipeline interface yaml files. "
         "These will be added to the project config file to make it immediately "
-        "compatible with looper. [Default: null]",
+        "compatible with looper. (Default: null)",
     )
     # Optional
     parser.add_argument(
@@ -108,7 +108,7 @@ To download all processed data of GSE57303:
         "--skip",
         default=0,
         type=int,
-        help="Skip some accessions. [Default: no skip].",
+        help="Skip some accessions. (Default: no skip).",
     )
 
     parser.add_argument(
@@ -129,7 +129,7 @@ To download all processed data of GSE57303:
         type=int,
         default=50,
         help="Optional: Limit of the number of the constant sample characters "
-        "that should not be in project yaml. [Default: 50]",
+        "that should not be in project yaml. (Default: 50)",
     )
 
     parser.add_argument(
@@ -137,7 +137,7 @@ To download all processed data of GSE57303:
         type=int,
         default=1000,
         help="Optional: Limit of the number of the constant sample characters "
-        "that should not be discarded [Default: 250]",
+        "that should not be discarded (Default: 250)",
     )
 
     parser.add_argument(
@@ -146,7 +146,7 @@ To download all processed data of GSE57303:
         default=500,
         help="Optional: Limit of the number of sample characters."
         "Any attribute with more than X characters will truncate to the first X,"
-        " where X is a number of characters [Default: 500]",
+        " where X is a number of characters (Default: 500)",
     )
 
     parser.add_argument(
@@ -160,7 +160,7 @@ To download all processed data of GSE57303:
         type=str,
         default="1GB",
         help="""Optional: Max size of soft file.
-                [Default: 1GB].
+                (Default: 1GB).
                 Supported input formats : 12B, 12KB, 12MB, 12GB. """,
     )
 
@@ -175,7 +175,7 @@ To download all processed data of GSE57303:
         "--processed",
         default=False,
         action="store_true",
-        help="Download processed data [Default: download raw data].",
+        help="Download processed data (Default: download raw data).",
     )
 
     processed_group.add_argument(
@@ -187,13 +187,13 @@ To download all processed data of GSE57303:
         " to retrieve processed data, which may be attached to the"
         " collective series entity, or to individual samples. "
         "Allowable values are: samples, series or both (all). "
-        "Ignored unless 'processed' flag is set. [Default: samples]",
+        "Ignored unless 'processed' flag is set. (Default: samples)",
     )
 
     processed_group.add_argument(
         "--filter",
         default=None,
-        help="Optional: Filter regex for processed filenames [Default: None]."
+        help="Optional: Filter regex for processed filenames (Default: None)."
         "Ignored unless 'processed' flag is set.",
     )
 
@@ -202,7 +202,7 @@ To download all processed data of GSE57303:
         dest="filter_size",
         default=None,
         help="""Optional: Filter size for processed files
-                that are stored as sample repository [Default: None].
+                that are stored as sample repository (Default: None).
                 Works only for sample data.
                 Supported input formats : 12B, 12KB, 12MB, 12GB. 
                 Ignored unless 'processed' flag is set.""",
@@ -214,7 +214,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("GEODATA"),
         help="Optional: Specify a location to store processed GEO files."
         " Ignored unless 'processed' flag is set."
-        "[Default: $GEODATA:" + _safe_echo("GEODATA") + "]",
+        "(Default: $GEODATA:" + _safe_echo("GEODATA") + ")",
     )
 
     raw_group.add_argument(
@@ -235,7 +235,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRABAM"),
         help="""Optional: Specify folder of bam files. Geofetch will not
             download sra files when corresponding bam files already exist.
-            [Default: $SRABAM:"""
+            (Default: $SRABAM:"""
         + _safe_echo("SRABAM")
         + "]",
     )
@@ -247,7 +247,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRAFQ"),
         help="""Optional: Specify folder of fastq files. Geofetch will not
             download sra files when corresponding fastq files already exist.
-            [Default: $SRAFQ:"""
+            (Default: $SRAFQ:"""
         + _safe_echo("SRAFQ")
         + "]",
     )
@@ -261,7 +261,7 @@ To download all processed data of GSE57303:
         default=_safe_echo("SRARAW"),
         help=argparse.SUPPRESS,
         # help="Optional: Specify a location to store sra files "
-        #   "[Default: $SRARAW:" + safe_echo("SRARAW") + "]"
+        #   "(Default: $SRARAW:" + safe_echo("SRARAW") + ")"
     )
     raw_group.add_argument(
         "--bam-conversion",
@@ -275,7 +275,7 @@ To download all processed data of GSE57303:
         dest="picard_path",
         default=_safe_echo("PICARD"),
         # help="Specify a path to the picard jar, if you want to convert "
-        # "fastq to bam [Default: $PICARD:" + safe_echo("PICARD") + "]",
+        # "fastq to bam (Default: $PICARD:" + safe_echo("PICARD") + ")",
         help=argparse.SUPPRESS,
     )
 

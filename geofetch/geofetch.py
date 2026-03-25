@@ -115,55 +115,55 @@ class Geofetcher:
             input: GSE number or path to the input file.
             name: Specify a project name. Defaults to GSE number or name of accessions file name.
             metadata_root: Specify a parent folder location to store metadata.
-                The project name will be added as a subfolder [Default: $SRAMETA:].
+                The project name will be added as a subfolder (Default: $SRAMETA:).
             metadata_folder: Specify an absolute folder location to store metadata. No subfolder will be added.
-                Overrides value of --metadata-root [Default: Not used (--metadata-root is used by default)].
+                Overrides value of --metadata-root (Default: Not used (--metadata-root is used by default)).
             just_metadata: If set, don't actually run downloads, just create metadata.
             refresh_metadata: If set, re-download metadata even if it exists.
             config_template: Project config yaml file template.
             pipeline_samples: Specify one or more filepaths to SAMPLES pipeline interface yaml files.
                 These will be added to the project config file to make it immediately compatible with looper.
-                [Default: null].
+                (Default: null).
             pipeline_project: Specify one or more filepaths to PROJECT pipeline interface yaml files.
                 These will be added to the project config file to make it immediately compatible with looper.
-                [Default: null].
+                (Default: null).
             acc_anno: Produce annotation sheets for each accession.
                 Project combined PEP for the whole project won't be produced.
             discard_soft: Create project without downloading soft files on the disc.
             add_dotfile: Add .pep.yaml file that points .yaml PEP file.
             disable_progressbar: Set true to disable progressbar.
             const_limit_project: Optional: Limit of the number of the constant sample characters
-                that should not be in project yaml. [Default: 50].
+                that should not be in project yaml. (Default: 50).
             const_limit_discard: Optional: Limit of the number of the constant sample characters
-                that should not be discarded [Default: 250].
+                that should not be discarded (Default: 250).
             attr_limit_truncate: Optional: Limit of the number of sample characters.
                 Any attribute with more than X characters will truncate to the first X, where X is a number of characters
-                [Default: 500].
+                (Default: 500).
             max_soft_size: Optional: Max size of soft file.
                 Supported input formats: 12B, 12KB, 12MB, 12GB. [Default value: 1GB].
-            processed: Download processed data [Default: download raw data].
+            processed: Download processed data (Default: download raw data).
             data_source: Specifies the source of data on the GEO record to retrieve processed data,
                 which may be attached to the collective series entity, or to individual samples. Allowable values are:
-                samples, series or both (all). Ignored unless 'processed' flag is set. [Default: samples].
-            filter: Filter regex for processed filenames [Default: None]. Ignored unless 'processed' flag is set.
-            filter_size: Filter size for processed files that are stored as sample repository [Default: None].
+                samples, series or both (all). Ignored unless 'processed' flag is set. (Default: samples).
+            filter: Filter regex for processed filenames (Default: None). Ignored unless 'processed' flag is set.
+            filter_size: Filter size for processed files that are stored as sample repository (Default: None).
                 Works only for sample data. Supported input formats: 12B, 12KB, 12MB, 12GB.
                 Ignored unless 'processed' flag is set.
             geo_folder: Specify a location to store processed GEO files.
-                Ignored unless 'processed' flag is set. [Default: $GEODATA:].
+                Ignored unless 'processed' flag is set. (Default: $GEODATA:).
             split_experiments: Split SRR runs into individual samples. By default, SRX experiments with multiple SRR
                 Runs will have a single entry in the annotation table, with each run as a separate row in the
                 subannotation table. This setting instead treats each run as a separate sample [Works with raw data].
             bam_folder: Optional: Specify folder of bam files. Geofetch will not download sra files when
-                corresponding bam files already exist. [Default: $SRABAM:] [Works with raw data].
+                corresponding bam files already exist. (Default: $SRABAM:) [Works with raw data].
             fq_folder: Optional: Specify folder of fastq files. Geofetch will not download sra files when corresponding
-                fastq files already exist. [Default: $SRAFQ:] [Works with raw data].
+                fastq files already exist. (Default: $SRAFQ:) [Works with raw data].
             use_key_subset: Use just the keys defined in this module when writing out metadata. [Works with raw data].
             sra_folder: Optional: Specify a location to store sra files.
             bam_conversion: Optional: set True to convert bam files [Works with raw data].
             picard_path: Specify a path to the picard jar, if you want to convert fastq to bam [Works with raw data].
             add_convert_modifier: Add looper SRA convert modifier to config file.
-            skip: Skip some accessions. [Default: no skip].
+            skip: Skip some accessions. (Default: no skip).
             opts: opts object [Optional].
             max_prefetch_size: Argument to prefetch command's --max-size option.
             kwargs: Other values.

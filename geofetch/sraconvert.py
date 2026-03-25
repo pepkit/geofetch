@@ -39,7 +39,7 @@ def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
         "--bamfolder",
         default=safe_echo("SRABAM"),
         help="Optional: Specify a location to store bam files "
-        "[Default: $SRABAM:" + safe_echo("SRABAM") + "]",
+        "(Default: $SRABAM:" + safe_echo("SRABAM") + ")",
     )
 
     parser.add_argument(
@@ -47,7 +47,7 @@ def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
         "--fqfolder",
         default=safe_echo("SRAFQ"),
         help="Optional: Specify a location to store fastq files "
-        "[Default: $SRAFQ:" + safe_echo("SRAFQ") + "]",
+        "(Default: $SRAFQ:" + safe_echo("SRAFQ") + ")",
     )
 
     parser.add_argument(
@@ -55,7 +55,7 @@ def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
         "--srafolder",
         default=safe_echo("SRARAW"),
         help="Optional: Specify a location to store pipeline output "
-        "[Default: $SRARAW:" + safe_echo("SRARAW") + "]",
+        "(Default: $SRARAW:" + safe_echo("SRARAW") + ")",
     )
 
     parser.add_argument(

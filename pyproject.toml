@@ -1,6 +1,6 @@
 [project]
 name = "geofetch"
-version = "0.12.10"
+version = "0.12.11"
 description = "Downloads data and metadata from GEO and SRA and creates standard PEPs."
 readme = "README.md"
 license = "BSD-2-Clause"

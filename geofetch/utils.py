@@ -7,7 +7,6 @@ import re
 import subprocess
 import sys
 from io import StringIO
-from typing import Dict, List, NoReturn, Union
 
 import requests
 
@@ -24,8 +23,8 @@ URL_BY_ACC = {
 
 
 def build_prefetch_command(
-    run_id: str, prefetch_path: str = "prefetch", max_size: Union[str, int] = None
-) -> List[str]:
+    run_id: str, prefetch_path: str = "prefetch", max_size: str | int | None = None
+) -> list[str]:
     cmd = [prefetch_path, run_id]
     if max_size is not None:
         cmd.extend(["--max-size", str(max_size)])
@@ -190,8 +189,9 @@ class Accession(object):
         typename, number = self._validate(accn)
         if strict and not is_known_type(accn):
             raise AccessionException(
-                "Unknown accession type for '{}': '{}'; "
-                "supported types: {}".format(accn, typename, URL_BY_ACC.keys())
+                "Unknown accession type for '{}': '{}'; supported types: {}".format(
+                    accn, typename, URL_BY_ACC.keys()
+                )
             )
         self.accn = accn
         self.typename = typename.upper()
@@ -463,7 +463,7 @@ def _check_file_existance(meta_processed_sample: list) -> list:
     return meta_processed_sample
 
 
-def _separate_list_of_files(meta_list: Union[list, dict], col_name: str = "files"):
+def _separate_list_of_files(meta_list: list | dict, col_name: str = "files"):
     """
     This method is separating list of files (dict value) or just simple dict
     into two different dicts
@@ -563,7 +563,7 @@ def _sanitize_name(name_str: str) -> str:
     return new_str
 
 
-def _create_dot_yaml(file_path: str, yaml_path: str) -> NoReturn:
+def _create_dot_yaml(file_path: str, yaml_path: str) -> None:
     """
     Function that creates .pep.yaml file that points to actual yaml file
     :param str file_path: Path to the .pep.yaml file that we want to create
@@ -595,8 +595,8 @@ def _which(program: str):
 
 
 def _dict_to_list_converter(
-    proj_dict: Dict = None, proj_list: List = None
-) -> Union[Dict, List]:
+    proj_dict: dict = None, proj_list: list = None
+) -> dict | list:
     """
     Converter project dict to list and vice versa
     dict -> list
@@ -626,7 +626,7 @@ def _dict_to_list_converter(
     return meta_list
 
 
-def _standardize_colnames(meta_list: Union[list, dict]) -> Union[list, dict]:
+def _standardize_colnames(meta_list: list | dict) -> list | dict:
     """
     Standardize column names by lower-casing and underscore
     :param list meta_list: list of dictionaries of samples
@@ -738,7 +738,7 @@ def _unify_list_keys(processed_meta_list: list) -> list:
     return processed_meta_list
 
 
-def gse_content_to_dict(gse_content: List[str]) -> Dict[str, dict]:
+def gse_content_to_dict(gse_content: list[str]) -> dict[str, dict]:
     """
     Unpack gse soft file to dict
     :param gse_content: list of strings of gse soft file

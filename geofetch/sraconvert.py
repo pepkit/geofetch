@@ -2,12 +2,11 @@
 
 import os
 import sys
-from ubiquerg import VersionInHelpParser
+from importlib.metadata import version
 
 import logmuse
 import pypiper
-
-__version__ = "0.1.0"
+from ubiquerg import VersionInHelpParser
 
 
 def _parse_cmdl(cmdl):
@@ -73,7 +72,7 @@ def _parse_cmdl(cmdl):
         metavar="SAMPLE_NAME",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+        "-V", "--version", action="version", version=f"%(prog)s {version('geofetch')}"
     )
 
     parser.add_argument("-r", "--srr", required=True, nargs="+", help="SRR files")

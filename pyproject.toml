@@ -1,0 +1,65 @@
+[project]
+name = "geofetch"
+version = "0.12.10"
+description = "Downloads data and metadata from GEO and SRA and creates standard PEPs."
+readme = "README.md"
+license = "BSD-2-Clause"
+requires-python = ">=3.10"
+authors = [
+    { name = "Oleksandr Khoroshevskyi" },
+    { name = "Nathan Sheffield" },
+    { name = "Vince Reuter" },
+    { name = "Nathan LeRoy" },
+]
+keywords = ["project", "bioinformatics", "sequencing", "ngs", "workflow"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "colorama>=0.3.9",
+    "logmuse>=0.2.6",
+    "ubiquerg>=0.6.2",
+    "requests>=2.28.1",
+    "xmltodict>=0.13.0",
+    "pandas>=1.5.3",
+    "peppy>=0.40.6",
+    "rich>=12.5.1",
+    "coloredlogs>=15.0.1",
+    "piper>=0.14.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/pepkit/geofetch/"
+
+[project.scripts]
+geofetch = "geofetch.__main__:main"
+sraconvert = "geofetch.sraconvert:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+addopts = "-rfE"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["F403", "F405", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["geofetch"]

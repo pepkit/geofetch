@@ -5,7 +5,6 @@ import os
 import re
 import sys
 import time
-from typing import Dict, List, NoReturn, Tuple, Union
 
 import logmuse
 import pandas as pd
@@ -26,18 +25,18 @@ from geofetch.const import (
     FILE_RAW_NAME_SAMPLE_PATTERN,
     FILE_RAW_NAME_SUBSAMPLE_PATTERN,
     GSE_PATTERN,
+    LOOPER_CONFIG_FILE_NAME,
+    LOOPER_SRA_CONVERT,
     NCBI_EFETCH,
     NCBI_ESEARCH,
     NEW_GENOME_COL_NAME,
     NUM_RETRIES,
+    PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME,
     PROJECT_PATTERN,
     SAMPLE_SUPP_METADATA_FILE,
     SER_SUPP_FILE_PATTERN,
     SUPP_FILE_PATTERN,
     TEMPLATES_DIR,
-    PIPELINE_INTERFACE_CONVERT_TEMPLATE_NAME,
-    LOOPER_SRA_CONVERT,
-    LOOPER_CONFIG_FILE_NAME,
 )
 from geofetch.utils import (
     Accession,
@@ -357,7 +356,7 @@ class Geofetcher:
 
         return new_pr_dict
 
-    def fetch_all(self, input: str, name: str = None) -> Union[NoReturn, peppy.Project]:
+    def fetch_all(self, input: str, name: str = None) -> None | peppy.Project:
         """
         Main function driver/workflow
         Function that search, filters, downloads and save data and metadata from  GEO and SRA
@@ -665,7 +664,7 @@ class Geofetcher:
 
         return gsm_multi_table, gsm_metadata, runs
 
-    def _download_raw_data(self, run_name: str) -> NoReturn:
+    def _download_raw_data(self, run_name: str) -> None:
         """
         Download raw data from SRA by providing run name
 
@@ -719,7 +718,7 @@ class Geofetcher:
         gse_file_content: list,
         gsm_file_content: list,
         gsm_filter_list: dict,
-    ) -> Tuple:
+    ) -> tuple:
         """
         Fetche one processed GSE project and return its metadata
         :param gsm_file_content: gse soft file content
@@ -752,7 +751,7 @@ class Geofetcher:
         name: str,
         meta_processed_samples: list,
         meta_processed_series: list,
-        gse_meta_dict: Union[dict, None] = None,
+        gse_meta_dict: dict | None = None,
     ) -> dict:
         """
         Generate and save PEPs for processed accessions. GEO has data in GSE and GSM,
@@ -822,7 +821,7 @@ class Geofetcher:
 
     def _download_processed_data(
         self, acc_gse: str, meta_processed_samples: list, meta_processed_series: list
-    ) -> NoReturn:
+    ) -> None:
         """
         Download processed data from GEO by providing project annotation list
         :param acc_gse: accession number of the project
@@ -1019,7 +1018,7 @@ class Geofetcher:
         file_annotation_path: str,
         just_object: bool = False,
         gse_meta_dict: dict = None,
-    ) -> Union[NoReturn, peppy.Project]:
+    ) -> None | peppy.Project:
         """
         Save annotation file by providing list of dictionaries with files metadata
 
@@ -1120,7 +1119,7 @@ class Geofetcher:
         metadata_dict: dict,
         subannot_dict: dict = None,
         gse_meta_dict: dict = None,
-    ) -> Union[None, peppy.Project]:
+    ) -> None | peppy.Project:
         """
         Combine individual accessions into project-level annotations, and writing
         individual accession files (if requested)
@@ -1381,7 +1380,7 @@ class Geofetcher:
 
     @staticmethod
     def _separate_common_meta(
-        meta_list: Union[List, Dict],
+        meta_list: list | dict,
         max_len: int = 50,
         del_limit: int = 1000,
         attr_limit_truncate: int = 500,
@@ -1488,7 +1487,7 @@ class Geofetcher:
             _LOGGER.info("Prefetch attempt failed, wait a few seconds to try again")
             time.sleep(t * 2)
 
-    def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> NoReturn:
+    def _sra_to_bam_conversion_sam_dump(self, bam_file: str, run_name: str) -> None:
         """
         Convert SRA file to BAM file by using samtools function "sam-dump"
 
@@ -1515,7 +1514,7 @@ class Geofetcher:
 
     def _sra_to_bam_conversion_fastq_damp(
         self, bam_file: str, run_name: str, picard_path: str = None
-    ) -> NoReturn:
+    ) -> None:
         """
         Convert SRA file to BAM file by using fastq-dump
         (is used when sam-dump fails, yielding an empty bam file. Here fastq -> bam conversion is used)
@@ -1585,7 +1584,7 @@ class Geofetcher:
 
     def _download_file(
         self, file_url: str, data_folder: str, new_name: str = None, sleep_after=0.5
-    ) -> NoReturn:
+    ) -> None:
         """
         Given an url for a file, downloading file to specified folder
         :param str file_url: the URL of the file to download
@@ -2088,9 +2087,9 @@ class Geofetcher:
                         _LOGGER.debug(f"(SRX accession: {found[0]})")
                         srx_id = found[0]
                         gsm_metadata[srx_id] = gsm_metadata.pop(current_sample_id)
-                        gsm_metadata[srx_id][
-                            "gsm_id"
-                        ] = current_sample_id  # save the GSM id
+                        gsm_metadata[srx_id]["gsm_id"] = (
+                            current_sample_id  # save the GSM id
+                        )
                         current_sample_id = srx_id
                         current_sample_srx = True
         # GSM SOFT file parsed, save it in a list

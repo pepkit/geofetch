@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
 from importlib.metadata import version
@@ -9,12 +10,13 @@ import pypiper
 from ubiquerg import VersionInHelpParser
 
 
-def _parse_cmdl(cmdl):
-    description = """ The SRA data converter is a wrapper around sra-tools that
-    provides convenience functions for converting or deleting sra data in
-    various formats.
-    """
-    parser = VersionInHelpParser(description=description)
+def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
+    """Parse command-line arguments for sraconvert."""
+    parser = VersionInHelpParser(
+        description="The SRA data converter is a wrapper around sra-tools that "
+        "provides convenience functions for converting or deleting sra data in "
+        "various formats."
+    )
     # parser = pypiper.add_pypiper_args(parser, args=["output-parent"])
     parser.add_argument(
         "-m",
@@ -84,25 +86,19 @@ def _parse_cmdl(cmdl):
     return parser.parse_args(cmdl)
 
 
-def safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
+def safe_echo(var: str) -> str:
+    """Return an environment variable if it exists, or an empty string if not."""
     return os.getenv(var, "")
 
 
-def uniqify(seq):  # Dave Kirby
-    """
-    Return only unique items in a sequence, preserving order
-
-    :param list seq: List of items to uniqify
-    :return list[object]: Original list with duplicates removed
-    """
-    # Order preserving
+def uniqify(seq: list) -> list:
+    """Return only unique items in a sequence, preserving order."""
     seen = set()
     return [x for x in seq if x not in seen and not seen.add(x)]
 
 
-def main():
-    """Run the script."""
+def main() -> None:
+    """Run the sraconvert pipeline."""
     cmdl = sys.argv[1:]
     args = _parse_cmdl(cmdl)
     global _LOGGER

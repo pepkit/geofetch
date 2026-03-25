@@ -6,15 +6,13 @@ import logmuse
 from ubiquerg import VersionInHelpParser
 
 
-def _safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
+def _safe_echo(var: str) -> str:
+    """Return an environment variable if it exists, or an empty string if not."""
     return os.getenv(var, "")
 
 
-def _parse_cmdl(cmdl):
-    """
-    parser
-    """
+def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
+    """Parse command-line arguments for geofetch."""
     parser = VersionInHelpParser(
         description="Automatic GEO and SRA data downloader",
         usage="""geofetch [<args>]

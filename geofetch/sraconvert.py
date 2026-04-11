@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
-from ubiquerg import VersionInHelpParser
+from importlib.metadata import PackageNotFoundError, version
 
 import logmuse
 import pypiper
+from ubiquerg import VersionInHelpParser
 
-__version__ = "0.1.0"
 
-
-def _parse_cmdl(cmdl):
-    description = """ The SRA data converter is a wrapper around sra-tools that
-    provides convenience functions for converting or deleting sra data in
-    various formats.
-    """
-    parser = VersionInHelpParser(description=description)
+def _parse_cmdl(cmdl: list[str]) -> argparse.Namespace:
+    """Parse command-line arguments for sraconvert."""
+    parser = VersionInHelpParser(
+        description="The SRA data converter is a wrapper around sra-tools that "
+        "provides convenience functions for converting or deleting sra data in "
+        "various formats."
+    )
     # parser = pypiper.add_pypiper_args(parser, args=["output-parent"])
     parser.add_argument(
         "-m",
@@ -38,7 +39,7 @@ def _parse_cmdl(cmdl):
         "--bamfolder",
         default=safe_echo("SRABAM"),
         help="Optional: Specify a location to store bam files "
-        "[Default: $SRABAM:" + safe_echo("SRABAM") + "]",
+        "(Default: $SRABAM:" + safe_echo("SRABAM") + ")",
     )
 
     parser.add_argument(
@@ -46,7 +47,7 @@ def _parse_cmdl(cmdl):
         "--fqfolder",
         default=safe_echo("SRAFQ"),
         help="Optional: Specify a location to store fastq files "
-        "[Default: $SRAFQ:" + safe_echo("SRAFQ") + "]",
+        "(Default: $SRAFQ:" + safe_echo("SRAFQ") + ")",
     )
 
     parser.add_argument(
@@ -54,7 +55,7 @@ def _parse_cmdl(cmdl):
         "--srafolder",
         default=safe_echo("SRARAW"),
         help="Optional: Specify a location to store pipeline output "
-        "[Default: $SRARAW:" + safe_echo("SRARAW") + "]",
+        "(Default: $SRARAW:" + safe_echo("SRARAW") + ")",
     )
 
     parser.add_argument(
@@ -72,8 +73,12 @@ def _parse_cmdl(cmdl):
         help="Name for sample to run",
         metavar="SAMPLE_NAME",
     )
+    try:
+        _pkg_version = version("geofetch")
+    except PackageNotFoundError:
+        _pkg_version = "unknown"
     parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+        "-V", "--version", action="version", version=f"%(prog)s {_pkg_version}"
     )
 
     parser.add_argument("-r", "--srr", required=True, nargs="+", help="SRR files")
@@ -85,25 +90,19 @@ def _parse_cmdl(cmdl):
     return parser.parse_args(cmdl)
 
 
-def safe_echo(var):
-    """Returns an environment variable if it exists, or an empty string if not"""
+def safe_echo(var: str) -> str:
+    """Return an environment variable if it exists, or an empty string if not."""
     return os.getenv(var, "")
 
 
-def uniqify(seq):  # Dave Kirby
-    """
-    Return only unique items in a sequence, preserving order
-
-    :param list seq: List of items to uniqify
-    :return list[object]: Original list with duplicates removed
-    """
-    # Order preserving
+def uniqify(seq: list) -> list:
+    """Return only unique items in a sequence, preserving order."""
     seen = set()
     return [x for x in seq if x not in seen and not seen.add(x)]
 
 
-def main():
-    """Run the script."""
+def main() -> None:
+    """Run the sraconvert pipeline."""
     cmdl = sys.argv[1:]
     args = _parse_cmdl(cmdl)
     global _LOGGER

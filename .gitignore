@@ -96,3 +96,6 @@ docs_jupyter/*
 env/
 .venv/
 venv/
+
+# Test fixtures downloaded at runtime
+tests/test_files/soft_files/

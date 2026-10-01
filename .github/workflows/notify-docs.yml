@@ -1,0 +1,25 @@
+name: Notify pepkit docs
+
+# Tells databio/doc-hubs that this repo's docs changed, so pep.databio.org
+# rebuilds. All the logic is in the reusable workflow; this file only names
+# which site and which spoke. See databio/doc-hubs README, "Add a spoke".
+
+on:
+  push:
+    # Must equal this spoke's `ref` in hubs/pepkit/spokes.toml — the hub builds
+    # that ref, so notifying from any other branch would rebuild the same bytes.
+    branches: [master]
+    paths:
+      - 'docs/**'                       # the spoke's docs tree, docs.yml included
+      - 'geofetch/**'                   # the package the hub renders API pages from
+      - '.github/workflows/notify-docs.yml'  # so a notifier fix proves itself
+  workflow_dispatch:
+
+jobs:
+  notify:
+    uses: databio/actions/.github/workflows/notify-doc-hub.yml@master
+    with:
+      site: pepkit
+      spoke: geofetch
+    secrets:
+      DOCS_DISPATCH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}

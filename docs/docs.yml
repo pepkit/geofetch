@@ -1,0 +1,35 @@
+site_name: GEOfetch
+nav:
+  - GEOfetch: README.md
+  - Getting started:
+    - Install and configure: install.md
+    - SRA convert: sra-convert.md
+  - Tutorials:
+    - Tutorial for processed data: code/processed-data-downloading.md
+    - Tutorial for raw data: code/raw-data-downloading.md
+    - geofetch from within Python: code/python-usage.md
+    - GSE Finder: gse-finder.md
+  - How-to guides:
+    - Specifying samples to download: file-specification.md
+    - Set SRA data download location: howto-location.md
+    - Run SRA convert: code/howto-sra-to-fastq.md
+    - Install prefetch: howto-prefetch.md
+  - Reference:
+    - How to cite: /citations/
+    - API: code/python-api.md
+    - Metadata output: metadata-output.md
+    - CLI usage: code/usage.md
+    - FAQ: faq.md
+    - Support: http://github.com/pepkit/geofetch/issues
+    - Contributing: contributing.md
+    - Changelog: changelog.md
+
+renderers:
+  - hub-notebooks:
+      include: [notebooks/*.ipynb]
+      execute: false
+  - hub-python-api:
+      package_root: ..
+      packages: [geofetch]
+      include: [code/python-api.md]
+      docstring_style: google
